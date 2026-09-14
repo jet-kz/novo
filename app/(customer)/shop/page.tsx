@@ -11,6 +11,8 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Product } from "@/types";
 
+import { MobileStoreView } from "@/components/mobile/store/MobileStoreView";
+
 function ShopContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -22,7 +24,7 @@ function ShopContent() {
         (s) =>
           s.id === storeParam ||
           s.slug === storeParam ||
-          s.name.toLowerCase() === storeParam.toLowerCase()
+          (s.name && s.name.toLowerCase() === storeParam.toLowerCase())
       )
     : null;
 
@@ -44,7 +46,9 @@ function ShopContent() {
     });
 
     return (
-      <div className="flex flex-col w-full min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
+      <>
+        <MobileStoreView />
+        <div className="hidden md:flex flex-col w-full min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
         {/* Store Cover Header */}
         <div className="relative w-full h-56 sm:h-72 bg-slate-800 overflow-hidden">
           <img src={selectedStore.banner} alt={selectedStore.name} className="w-full h-full object-cover" />
@@ -196,7 +200,8 @@ function ShopContent() {
           )}
         </Modal>
       </div>
-    );
+    </>
+  );
   }
 
   // DEFAULT VIEW: All Stores & Merchants ({stores.length})
@@ -206,49 +211,52 @@ function ShopContent() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full min-h-screen">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            All Verified Merchants ({stores.length})
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            Explore all registered restaurants, supermarkets, and pharmacies on Novo.
-          </p>
+    <>
+      <MobileStoreView />
+      <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full min-h-screen">
+        {/* Header Banner */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+              All Verified Merchants ({stores.length})
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
+              Explore all registered restaurants, supermarkets, and pharmacies on Novo.
+            </p>
+          </div>
+
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search all merchants..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 text-xs font-medium outline-none text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 focus:border-emerald-500 shadow-xs"
+            />
+          </div>
         </div>
 
-        <div className="relative w-full sm:w-72">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search all merchants..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 text-xs font-medium outline-none text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 focus:border-emerald-500 shadow-xs"
-          />
-        </div>
+        {/* Stores Grid */}
+        {filteredStores.length === 0 ? (
+          <div className="p-16 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col items-center gap-3">
+            <StoreIcon className="w-12 h-12 text-slate-400" />
+            <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">No Merchants Found</h3>
+            <p className="text-xs text-slate-500 max-w-sm">
+              {stores.length === 0
+                ? "No merchants have registered on the backend yet."
+                : `No store matching "${searchQuery}".`}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredStores.map((st) => (
+              <RestaurantCard key={st.id} store={st} />
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Stores Grid */}
-      {filteredStores.length === 0 ? (
-        <div className="p-16 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col items-center gap-3">
-          <StoreIcon className="w-12 h-12 text-slate-400" />
-          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">No Merchants Found</h3>
-          <p className="text-xs text-slate-500 max-w-sm">
-            {stores.length === 0
-              ? "No merchants have registered on the backend yet."
-              : `No store matching "${searchQuery}".`}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredStores.map((st) => (
-            <RestaurantCard key={st.id} store={st} />
-          ))}
-        </div>
-      )}
-    </div>
+    </>
   );
 }
 

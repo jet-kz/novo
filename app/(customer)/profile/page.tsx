@@ -8,6 +8,8 @@ import { usePlatform } from "@/store/PlatformContext";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
+import { MobileProfileView } from "@/components/mobile/profile/MobileProfileView";
+
 export default function CustomerProfilePage() {
   const router = useRouter();
   const { currentUser, isAuthenticated, logout, favorites, stores, products } = usePlatform();
@@ -59,7 +61,9 @@ export default function CustomerProfilePage() {
   const displayName = name || currentUser.email.split("@")[0] || "User";
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full min-h-screen">
+    <>
+      <MobileProfileView />
+      <div className="hidden md:block max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full min-h-screen">
       {loggedOut && (
         <div className="mb-6 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
@@ -187,5 +191,6 @@ export default function CustomerProfilePage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

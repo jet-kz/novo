@@ -89,13 +89,12 @@ function AuthContent() {
           phone,
         });
 
-        if (result.access_token) {
+        if (result && result.access_token) {
           loginUser(result.access_token, email);
           setSuccessMsg("Account created successfully! Redirecting...");
           handleRouteRedirect("customer");
         } else {
-          loginUser(result.user?.id || "token_registered", email);
-          setSuccessMsg("Registration initiated! If OTP was sent to your email, enter it below.");
+          setSuccessMsg("Registration initiated! Enter the OTP token sent to your email.");
           setIsOtpStep(true);
         }
       }

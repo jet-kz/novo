@@ -12,6 +12,7 @@ export default function MerchantRegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Step 1
   const [fullName, setFullName] = useState("");
@@ -27,6 +28,7 @@ export default function MerchantRegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
     const profileData = {
       fullName,
@@ -55,15 +57,19 @@ export default function MerchantRegisterPage() {
         token = authRes.access_token;
       } else {
         // Attempt login if token was not returned directly by signup
-        try {
-          const loginRes = await apiService.login({ email, password });
-          if (loginRes && loginRes.access_token) {
-            token = loginRes.access_token;
-          }
-        } catch (lErr) {}
+        const loginRes = await apiService.login({ email, password });
+        if (loginRes && loginRes.access_token) {
+          token = loginRes.access_token;
+        } else {
+          throw new Error(authRes?.detail || "Backend registration failed. Could not obtain session token.");
+        }
       }
 
-      if (token && typeof window !== "undefined") {
+      if (!token) {
+        throw new Error("Authentication token was not returned by backend.");
+      }
+
+      if (typeof window !== "undefined") {
         localStorage.setItem("access_token", token);
       }
 
@@ -86,20 +92,22 @@ export default function MerchantRegisterPage() {
           token
         );
       }
-    } catch (e) {
-      console.warn("Backend creation status:", e);
-    } finally {
-      // Save dynamic merchant profile to localStorage
+
+      // Save dynamic merchant profile only on successful backend response
       if (typeof window !== "undefined") {
         localStorage.setItem("merchant_profile", JSON.stringify(profileData));
         localStorage.setItem("merchant_session", "true");
-        // Initialize empty merchant products array for newly created store
         if (!localStorage.getItem("merchant_products")) {
           localStorage.setItem("merchant_products", JSON.stringify([]));
         }
       }
-      setLoading(false);
+
       router.push("/merchant");
+    } catch (e: any) {
+      console.error("Backend merchant creation error:", e);
+      setError(e.message || "Registration failed on backend server. Please verify backend connection.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -111,6 +119,12 @@ export default function MerchantRegisterPage() {
           <h2 className="text-xl font-black text-slate-900 dark:text-white">Partner with Novo</h2>
           <p className="text-xs text-[#66736E] dark:text-slate-400">Register your business & start receiving customer orders</p>
         </div>
+
+        {error && (
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold text-center leading-relaxed">
+            {error}
+          </div>
+        )}
 
         {/* STEP PROGRESS */}
         <div className="flex items-center justify-center gap-3">

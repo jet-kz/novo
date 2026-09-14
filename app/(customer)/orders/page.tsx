@@ -16,6 +16,7 @@ import { OrderCard } from "@/components/cards/OrderCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { MobileOrdersView } from "@/components/mobile/orders/MobileOrdersView";
 
 function OrderTrackerContent() {
   const searchParams = useSearchParams();
@@ -75,7 +76,9 @@ function OrderTrackerContent() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full min-h-screen">
+    <>
+      <MobileOrdersView />
+      <div className="hidden md:block max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full min-h-screen">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
@@ -306,6 +309,7 @@ function OrderTrackerContent() {
         </form>
       </Modal>
     </div>
+    </>
   );
 }
 

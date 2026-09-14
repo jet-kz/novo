@@ -8,7 +8,7 @@ import { NovoLogo } from "@/components/shared/NovoLogo";
 
 export function Footer() {
   return (
-    <footer className="w-full bg-[#051d16] text-slate-300 relative overflow-hidden">
+    <footer className="hidden md:block w-full bg-[#051d16] text-slate-300 relative overflow-hidden">
       {/* TOP SVG WAVE DIVIDER */}
       <div className="w-full overflow-hidden leading-none text-slate-50 dark:text-slate-950 pointer-events-none">
         <svg
