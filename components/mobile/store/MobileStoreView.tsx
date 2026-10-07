@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
 import { Product, Store } from "@/types";
+import { ProductDetailsModal } from "@/components/modals/ProductDetailsModal";
 
 export function MobileStoreView() {
   const router = useRouter();
@@ -293,107 +294,16 @@ export function MobileStoreView() {
         </div>
       )}
 
-      {/* 6. PRODUCT DETAILS MODAL / BOTTOM SHEET (Screen 7 reference) */}
-      {selectedProduct && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl p-5 flex flex-col gap-4 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-300">
-            {/* Header Close */}
-            <div className="flex items-center justify-between pb-2 border-b border-[#E3EAE6]">
-              <h3 className="text-sm font-black text-[#101714] dark:text-white">Product Details</h3>
-              <button
-                onClick={() => setSelectedProduct(null)}
-                className="p-1.5 rounded-full bg-[#F7FAF8] dark:bg-slate-800 text-[#66736D] hover:text-[#101714]"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Product Image */}
-            <div className="relative w-full h-44 rounded-2xl overflow-hidden bg-slate-100">
-              <img
-                src={selectedProduct.image}
-                alt={selectedProduct.name}
-                className="w-full h-full object-cover"
-              />
-            </div>
-
-            {/* Info */}
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-black text-[#101714] dark:text-white">
-                  {selectedProduct.name}
-                </h2>
-                <span className="text-sm font-black text-[#008A4C]">
-                  ₦{selectedProduct.price.toLocaleString()}
-                </span>
-              </div>
-              <p className="text-xs text-[#66736D] dark:text-slate-400 font-medium">
-                {selectedProduct.description}
-              </p>
-            </div>
-
-            {/* Add-ons List */}
-            {selectedProduct.options && selectedProduct.options.length > 0 && (
-              <div className="flex flex-col gap-2 pt-2 border-t border-[#E3EAE6]">
-                <span className="text-xs font-black text-[#101714] dark:text-white uppercase tracking-wider">
-                  Add-ons
-                </span>
-                {selectedProduct.options.map((opt: any) => {
-                  const isChecked = selectedOptions.some((o) => o.id === opt.id);
-                  return (
-                    <label
-                      key={opt.id}
-                      onClick={() => toggleOption(opt)}
-                      className="flex items-center justify-between p-3 rounded-xl border border-[#E3EAE6] dark:border-slate-800 cursor-pointer text-xs font-semibold bg-[#F7FAF8] dark:bg-slate-800/50"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`w-4 h-4 rounded-md border flex items-center justify-center ${
-                            isChecked ? "bg-[#008A4C] border-[#008A4C] text-white" : "border-slate-300"
-                          }`}
-                        >
-                          {isChecked && <Check className="w-3 h-3" />}
-                        </div>
-                        <span className="text-[#101714] dark:text-slate-200">{opt.name}</span>
-                      </div>
-                      <span className="text-[#008A4C] font-bold">+₦{opt.price}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Quantity Selector */}
-            <div className="flex items-center justify-between pt-2 border-t border-[#E3EAE6]">
-              <span className="text-xs font-bold text-[#66736D]">Quantity</span>
-              <div className="flex items-center gap-3 bg-[#F7FAF8] dark:bg-slate-800 p-1.5 rounded-xl border border-[#E3EAE6]">
-                <button
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-[#101714] font-bold shadow-xs cursor-pointer"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                </button>
-                <span className="text-xs font-black w-4 text-center">{quantity}</span>
-                <button
-                  onClick={() => setQuantity((q) => q + 1)}
-                  className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-[#101714] font-bold shadow-xs cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* CTA Button */}
-            <button
-              onClick={handleAddToCartFromSheet}
-              className="w-full py-3.5 rounded-2xl bg-[#008A4C] hover:bg-[#006B3C] text-white font-extrabold text-xs flex items-center justify-between px-5 shadow-md cursor-pointer transition-colors mt-2"
-            >
-              <span>Add to Cart</span>
-              <span>₦{itemTotal.toLocaleString()}</span>
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 6. PRODUCT DETAILS MODAL / BOTTOM SHEET */}
+      <ProductDetailsModal
+        product={selectedProduct}
+        isOpen={Boolean(selectedProduct)}
+        onClose={() => setSelectedProduct(null)}
+        onAddToCart={(prod: Product, qty: number, opts: any[], inst: string) => {
+          addToCart(prod, qty, opts, inst);
+          setSelectedProduct(null);
+        }}
+      />
     </div>
   );
 }

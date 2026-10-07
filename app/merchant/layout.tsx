@@ -68,8 +68,13 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
                 address: bAddr || "Store Address",
                 businessType: store?.store_type || "Restaurant",
               };
-              setMerchantProfile(profile);
-              localStorage.setItem("merchant_profile", JSON.stringify(profile));
+              setMerchantProfile((prev: any) => {
+                if (prev && prev.businessName && prev.businessName !== "Merchant A" && prev.businessName !== "Merchant A Gourmet Kitchen") {
+                  return prev;
+                }
+                localStorage.setItem("merchant_profile", JSON.stringify(profile));
+                return profile;
+              });
             }
             if (store?.id) {
               setActiveStoreId(store.id);

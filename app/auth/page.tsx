@@ -114,8 +114,8 @@ function AuthContent() {
           {isOtpStep
             ? "Verify Email OTP"
             : isLogin
-            ? "Welcome Back to Novo"
-            : "Create Your Account"}
+              ? "Welcome Back to Novo"
+              : "Create Your Account"}
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
           {isOtpStep
@@ -209,10 +209,10 @@ function AuthContent() {
           {isLoading
             ? "Processing Request..."
             : isOtpStep
-            ? "Verify Code & Continue"
-            : isLogin
-            ? "Sign In to Novo"
-            : "Create Account"}
+              ? "Verify Code & Continue"
+              : isLogin
+                ? "Sign In to Novo"
+                : "Create Account"}
         </Button>
       </form>
 

@@ -41,11 +41,7 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
 
   return (
     <div
-      className={`flex flex-col min-h-screen w-full pb-20 sm:pb-0 font-sans ${
-        isHomePage
-          ? "bg-[#0b0f19] text-slate-100"
-          : "bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100"
-      }`}
+      className="flex flex-col min-h-screen w-full pb-20 sm:pb-0 font-sans bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100"
     >
       {/* GLOBAL HEADER (For Customer View except Home Page) */}
       {isCustomerHeaderVisible && (
@@ -102,7 +98,7 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
       {isCustomerNavVisible && <MobileBottomNav />}
 
       {/* Cart Drawer */}
-      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      <CartDrawer />
 
       {/* 24/7 Customer Support Floating Assistant */}
       <SupportChatWidget />

@@ -31,23 +31,32 @@ export function MobileCheckoutView() {
     if (cart.length === 0) return;
     setIsSubmitting(true);
     try {
-      // 1. Local platform context place order
-      const newOrder = placeOrder(deliveryAddress, paymentMethod, 0);
+      const targetStoreId = cart[0]?.product?.storeId || (cart[0]?.product as any)?.store_id;
+      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
-      // 2. Call backend order API if needed
+      let createdBackendOrder: any = null;
       try {
-        await apiService.createOrder({
-          store_id: newOrder.storeId,
-          delivery_address: deliveryAddress,
-          payment_method: paymentMethod,
-          items: cart.map((c) => ({ product_id: c.product.id, quantity: c.quantity })),
-          total_amount: cartTotal,
-        });
+        createdBackendOrder = await apiService.createOrder(
+          {
+            store_id: targetStoreId,
+            delivery_address: deliveryAddress,
+            payment_method: paymentMethod,
+            items: cart.map((c) => ({
+              product_id: c.product.id,
+              quantity: c.quantity,
+              price: c.product.price,
+             })),
+            subtotal: cartSubtotal,
+            delivery_fee: cartDeliveryFee,
+            total: cartTotal,
+          },
+          token || undefined
+        );
       } catch (e) {
-        console.warn("Backend order notification:", e);
+        console.warn("Backend order creation warning:", e);
       }
 
-      // Redirect to Order Tracking page (Screen 10)
+      const newOrder = placeOrder(deliveryAddress, paymentMethod, 0, createdBackendOrder);
       router.push(`/orders?track=${newOrder.id}`);
     } catch (e) {
       console.error("Order placement failed:", e);

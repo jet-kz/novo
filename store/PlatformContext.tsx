@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import {
   UserRole,
   User,
@@ -15,6 +15,12 @@ import {
 } from "@/types";
 import { INITIAL_STORES, INITIAL_PRODUCTS, INITIAL_RIDERS, INITIAL_ORDERS, apiService } from "@/services/api";
 import { getUniqueStoreBanner, getUniqueStoreLogo } from "@/utils/storeImageUtils";
+import {
+  Coordinates,
+  calculateDynamicDeliveryFee,
+  isStoreInDeliveryRange,
+  getCoordinatesForAddress,
+} from "@/utils/locationUtils";
 
 interface PlatformContextType {
   // Role & Auth State
@@ -28,6 +34,12 @@ interface PlatformContextType {
   toggleFavorite: (id: string) => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
+
+  // Location & Geofencing
+  userLocationAddress: string;
+  userLocationCoords: Coordinates | null;
+  setUserLocation: (address: string, coords?: Coordinates | null) => void;
+  getStoreDeliveryDetails: (store: Store) => { inRange: boolean; distanceKm: number; deliveryFee: number; deliveryTime: string };
 
   // Stores
   stores: Store[];
@@ -130,6 +142,22 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
   const [reviews, setReviews] = useState<Review[]>([]);
 
+  const [userLocationAddress, setUserLocationAddress] = useState<string>("Warri, Delta State");
+  const [userLocationCoords, setUserLocationCoords] = useState<Coordinates | null>({ lat: 5.5544, lon: 5.7932 });
+
+  const setUserLocation = (address: string, coords?: Coordinates | null) => {
+    setUserLocationAddress(address);
+    if (coords) {
+      setUserLocationCoords(coords);
+    } else {
+      setUserLocationCoords(getCoordinatesForAddress(address));
+    }
+  };
+
+  const getStoreDeliveryDetails = (store: Store) => {
+    return isStoreInDeliveryRange(store, userLocationAddress, userLocationCoords);
+  };
+
   const [favorites, setFavorites] = useState<string[]>([]);
 
   const toggleFavorite = (id: string) => {
@@ -194,6 +222,7 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       document.cookie = `novo_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
     }
     setIsAuthenticated(false);
+    setOrders([]);
     setCurrentUser({
       id: "",
       name: "",
@@ -311,12 +340,14 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setProducts(formattedProducts);
         }
 
-        const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-        if (token) {
-          const backendOrders = await apiService.getOrders(undefined, token);
+        try {
+          const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+          const backendOrders = await apiService.getOrders(undefined, token || undefined);
           if (Array.isArray(backendOrders) && backendOrders.length > 0) {
             setOrders(backendOrders);
           }
+        } catch (e) {
+          console.warn("Could not fetch backend orders on mount:", e);
         }
       } catch (e) {
         console.error("Failed to load backend stores/products in PlatformContext:", e);
@@ -428,7 +459,15 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return acc + (item.product.price + optionsPrice) * item.quantity;
   }, 0);
 
-  const cartDeliveryFee = cart.length > 0 ? 450 : 0;
+  const cartDeliveryFee = useMemo(() => {
+    if (cart.length === 0) return 0;
+    const targetStoreId = cart[0]?.product?.storeId || (cart[0]?.product as any)?.store_id;
+    const store = stores.find((s) => s.id === targetStoreId);
+    if (!store) return 450;
+    const details = isStoreInDeliveryRange(store, userLocationAddress, userLocationCoords);
+    return details.deliveryFee;
+  }, [cart, stores, userLocationAddress, userLocationCoords]);
+
   const cartServiceFee = cart.length > 0 ? 200 : 0;
   const cartTotal = cartSubtotal + cartDeliveryFee + cartServiceFee;
 
@@ -442,39 +481,24 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const targetStoreId = cart[0]?.product?.storeId || (cart[0]?.product as any)?.store_id;
     const store = stores.find((s) => s.id === targetStoreId) || stores[0];
 
-    const newOrder: Order = existingBackendOrder
+    const normalizedBackend = existingBackendOrder ? apiService.normalizeOrder(existingBackendOrder) : null;
+
+    const newOrder: Order = normalizedBackend
       ? {
-          id: existingBackendOrder.id,
-          customerId: existingBackendOrder.customer_id || currentUser.id,
-          customerName: existingBackendOrder.customer_name || currentUser.name || "Customer",
-          customerPhone: currentUser.phone || "",
-          deliveryAddress: existingBackendOrder.delivery_address || deliveryAddress,
-          storeId: targetStoreId || store.id,
-          storeName: store?.name || "Merchant Store",
-          storeAddress: store?.address || "",
-          items: [...cart],
-          subtotal: existingBackendOrder.subtotal || cartSubtotal,
-          deliveryFee: existingBackendOrder.delivery_fee || cartDeliveryFee,
-          serviceFee: existingBackendOrder.service_fee || cartServiceFee,
-          tip: existingBackendOrder.tip || tipAmount,
-          total: existingBackendOrder.total || (cartSubtotal + cartDeliveryFee + cartServiceFee + tipAmount),
-          status: "pending_merchant",
-          paymentMethod,
-          paymentStatus: paymentMethod === "cash" ? "pending" : "paid",
-          pickupCode: String(Math.floor(1000 + Math.random() * 9000)),
-          estimatedDeliveryMinutes: 25,
-          createdAt: existingBackendOrder.created_at || new Date().toISOString(),
-          updatedAt: existingBackendOrder.updated_at || new Date().toISOString(),
+          ...normalizedBackend,
+          items: cart.length > 0 ? [...cart] : normalizedBackend.items,
+          storeName: store?.name || normalizedBackend.storeName || "Merchant Store",
+          storeAddress: store?.address || normalizedBackend.storeAddress || "",
         }
       : {
           id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
-          customerId: currentUser.id,
-          customerName: currentUser.name,
-          customerPhone: currentUser.phone,
+          customerId: currentUser.id || "usr-me",
+          customerName: currentUser.name || "Customer",
+          customerPhone: currentUser.phone || "",
           deliveryAddress: deliveryAddress || currentUser.address || "14 Commercial Avenue, Central District",
-          storeId: targetStoreId || store?.id,
+          storeId: targetStoreId || store?.id || "",
           storeName: store?.name || "Merchant Store",
-          storeAddress: store?.address,
+          storeAddress: store?.address || "",
           items: [...cart],
           subtotal: cartSubtotal,
           deliveryFee: cartDeliveryFee,
@@ -490,12 +514,18 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           updatedAt: new Date().toISOString(),
         };
 
-    setOrders((prev) => [newOrder, ...prev]);
+    setOrders((prev) => [newOrder, ...prev.filter((o) => o.id !== newOrder.id)]);
     clearCart();
     return newOrder;
   };
 
   const updateOrderStatus = (orderId: string, status: OrderStatus) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+    // Asynchronously sync status update to FastAPI backend database
+    apiService.updateOrderStatus(orderId, status, token || undefined).catch((err) => {
+      console.warn("Backend status update note:", err);
+    });
+
     setOrders((prev) =>
       prev.map((ord) =>
         ord.id === orderId
@@ -619,6 +649,11 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         toggleFavorite,
         theme,
         toggleTheme,
+
+        userLocationAddress,
+        userLocationCoords,
+        setUserLocation,
+        getStoreDeliveryDetails,
 
         stores,
         activeStoreId,

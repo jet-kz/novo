@@ -30,28 +30,23 @@ export default function MerchantOrdersPage() {
   const [cancelModalOrder, setCancelModalOrder] = useState<Order | null>(null);
   const [cancelReason, setCancelReason] = useState("");
 
-  // Sync real orders from backend if authenticated
+  // Sync real orders from backend
   useEffect(() => {
     async function loadBackendOrders() {
       if (typeof window === "undefined") return;
       const token = localStorage.getItem("access_token");
-      if (token && myStore?.id) {
-        try {
-          const res = await apiService.getOrders(myStore.id, token);
-          if (Array.isArray(res)) {
-            setLiveOrders(res);
-            return;
-          }
-        } catch (e) {}
-      }
-      if (myStore?.id) {
-        setLiveOrders(orders.filter((o) => o.storeId === myStore.id));
-      } else {
-        setLiveOrders([]);
-      }
+      try {
+        const res = await apiService.getOrders(undefined, token || undefined);
+        if (Array.isArray(res) && res.length > 0) {
+          setLiveOrders(res);
+          return;
+        }
+      } catch (e) {}
+
+      setLiveOrders(orders);
     }
     loadBackendOrders();
-  }, [myStore?.id, orders]);
+  }, [orders]);
 
   // Load history timeline when selectedOrder changes
   useEffect(() => {

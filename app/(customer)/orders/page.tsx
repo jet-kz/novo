@@ -21,7 +21,10 @@ import { MobileOrdersView } from "@/components/mobile/orders/MobileOrdersView";
 function OrderTrackerContent() {
   const searchParams = useSearchParams();
   const highlightOrderId = searchParams.get("orderId");
-  const { orders, rateOrder, updateOrderStatus } = usePlatform();
+  const { orders, rateOrder, updateOrderStatus, isAuthenticated } = usePlatform();
+
+  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  const isLogged = isAuthenticated || !!token;
 
   const currentOrder = orders.find((o) => o.id === highlightOrderId) || orders[0];
 
@@ -58,20 +61,43 @@ function OrderTrackerContent() {
 
   const currentStep = currentOrder ? getStepIndex(currentOrder.status) : 1;
 
+  if (!isLogged) {
+    return (
+      <>
+        <MobileOrdersView />
+        <div className="hidden md:flex max-w-xl mx-auto px-4 py-20 text-center flex-col items-center justify-center min-h-[60vh]">
+          <div className="w-16 h-16 rounded-full bg-[#E8F7EF] text-[#008A4C] dark:bg-emerald-950 dark:text-emerald-400 flex items-center justify-center mb-4">
+            <Clock className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100">Sign In to View Orders</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 mb-6 max-w-sm">
+            Please log in or create a Novo account to view active orders, live tracking, and your order history.
+          </p>
+          <Button variant="primary" onClick={() => window.location.href = "/auth"}>
+            Sign In / Register
+          </Button>
+        </div>
+      </>
+    );
+  }
+
   if (orders.length === 0) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-20 text-center flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mb-4">
-          <Clock className="w-8 h-8" />
+      <>
+        <MobileOrdersView />
+        <div className="hidden md:flex max-w-xl mx-auto px-4 py-20 text-center flex-col items-center justify-center min-h-[60vh]">
+          <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mb-4">
+            <Clock className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100">No Active or Past Orders</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 mb-6 max-w-sm">
+            Your order tracking and order history will appear here once you place your first order.
+          </p>
+          <Button variant="primary" onClick={() => window.location.href = "/shop"}>
+            Explore Stores
+          </Button>
         </div>
-        <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100">No Active or Past Orders</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 mb-6 max-w-sm">
-          Your order tracking and order history will appear here once you place your first order.
-        </p>
-        <Button variant="primary" onClick={() => window.location.href = "/shop"}>
-          Explore Stores
-        </Button>
-      </div>
+      </>
     );
   }
 

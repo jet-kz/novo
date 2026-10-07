@@ -21,6 +21,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { HeroUIProviderWrapper } from "@/components/providers/HeroUIProviderWrapper";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,9 +31,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={sora.variable}>
       <body className={`${sora.className} antialiased bg-slate-50 dark:bg-slate-950`}>
-        <PlatformProvider>
-          <ResponsiveLayout>{children}</ResponsiveLayout>
-        </PlatformProvider>
+        <HeroUIProviderWrapper>
+          <PlatformProvider>
+            <ResponsiveLayout>{children}</ResponsiveLayout>
+          </PlatformProvider>
+        </HeroUIProviderWrapper>
       </body>
     </html>
   );

@@ -1,4 +1,4 @@
-import { Store, Product, Order, RiderProfile, PlatformAnalytics, Review } from "@/types";
+import { Store, Product, Order, OrderStatus, RiderProfile, PlatformAnalytics, Review } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
 
@@ -109,25 +109,32 @@ export const apiService = {
 
   // 3. ADDRESSES MODULE (/api/v1/addresses)
   getAddresses: async (token?: string) => {
-    const res = await fetch(`${API_BASE_URL}/addresses/`, {
-      headers: getAuthHeaders(token),
-    });
-    if (res.ok) return await res.json();
+    try {
+      const res = await fetch(`${API_BASE_URL}/addresses`, {
+        headers: getAuthHeaders(token),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        return result.data || result;
+      }
+    } catch (e) {
+      console.warn("Error fetching addresses from backend:", e);
+    }
     return [];
   },
 
   createAddress: async (
-    payload: { label: string; address_text: string; delivery_instructions?: string; is_default?: boolean },
+    payload: { title?: string; address: string; city?: string; state?: string; is_default?: boolean },
     token?: string
   ) => {
-    const res = await fetch(`${API_BASE_URL}/addresses/`, {
+    const res = await fetch(`${API_BASE_URL}/addresses`, {
       method: "POST",
       headers: getAuthHeaders(token),
       body: JSON.stringify(payload),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to add address");
-    return data;
+    return data.data || data;
   },
 
   setDefaultAddress: async (addressId: string, token?: string) => {
@@ -137,7 +144,15 @@ export const apiService = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to set default address");
-    return data;
+    return data.data || data;
+  },
+
+  deleteAddress: async (addressId: string, token?: string) => {
+    const res = await fetch(`${API_BASE_URL}/addresses/${addressId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(token),
+    });
+    return await res.json();
   },
 
   // 4. MERCHANTS MODULE (/api/v1/merchants)
@@ -150,7 +165,7 @@ export const apiService = {
         const result = await res.json();
         return result.data || result;
       }
-    } catch (e) {}
+    } catch (e) { }
     return null;
   },
 
@@ -202,7 +217,7 @@ export const apiService = {
         const result = await res.json();
         return result.data || result;
       }
-    } catch (e) {}
+    } catch (e) { }
     return null;
   },
 
@@ -217,7 +232,7 @@ export const apiService = {
     return data;
   },
 
-  updateStore: async (storeId: string, payload: Partial<Store>, token?: string) => {
+  updateStore: async (storeId: string, payload: Partial<Store> & Record<string, any>, token?: string) => {
     const res = await fetch(`${API_BASE_URL}/stores/${storeId}`, {
       method: "PUT",
       headers: getAuthHeaders(token),
@@ -236,6 +251,21 @@ export const apiService = {
     return await res.json();
   },
 
+  // Helper: Normalize Backend Product to Frontend Product
+  normalizeProduct: (p: any): Product => {
+    if (!p) return p;
+    return {
+      ...p,
+      storeId: p.store_id || p.storeId,
+      inStock: p.in_stock !== undefined ? p.in_stock : (p.inStock !== undefined ? p.inStock : true),
+      preparationTimeMinutes: p.preparation_time_minutes || p.preparationTimeMinutes || 20,
+      proteinOptions: p.protein_options || p.proteinOptions || [],
+      extrasOptions: p.extras_options || p.extrasOptions || [],
+      optionGroups: p.option_groups || p.optionGroups || [],
+      specs: p.specs || {},
+    };
+  },
+
   // 6. PRODUCTS MODULE (/api/v1/products)
   getProducts: async (storeId?: string, token?: string): Promise<Product[]> => {
     try {
@@ -248,7 +278,9 @@ export const apiService = {
       if (res.ok) {
         const result = await res.json();
         const data = result.data || result;
-        if (Array.isArray(data)) return data;
+        if (Array.isArray(data)) {
+          return data.map((item: any) => apiService.normalizeProduct(item));
+        }
       }
     } catch (e) {
       console.warn("Failed to fetch products from backend API:", e);
@@ -264,7 +296,18 @@ export const apiService = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to create product");
-    return data;
+    return data.data ? apiService.normalizeProduct(data.data) : data;
+  },
+
+  updateProduct: async (productId: string, payload: Partial<Product>, token?: string) => {
+    const res = await fetch(`${API_BASE_URL}/products/${productId}`, {
+      method: "PUT",
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to update product");
+    return data.data ? apiService.normalizeProduct(data.data) : data;
   },
 
   toggleProductStock: async (productId: string, token?: string) => {
@@ -318,6 +361,43 @@ export const apiService = {
   },
 
   // 8. ORDERS MODULE (/api/v1/orders)
+  normalizeOrder: (raw: any): Order => {
+    if (!raw) return raw;
+    const statusStr = (raw.status || "PENDING").toLowerCase();
+    let mappedStatus = statusStr;
+    if (statusStr === "pending") mappedStatus = "pending_merchant";
+    if (statusStr === "confirmed") mappedStatus = "preparing";
+    if (statusStr === "dispatched") mappedStatus = "out_for_delivery";
+
+    return {
+      id: raw.id || `ORD-${Date.now()}`,
+      customerId: raw.customer_id || raw.customerId || "usr-me",
+      customerName: raw.customer_name || raw.customerName || "Customer",
+      customerPhone: raw.customer_phone || raw.customerPhone || "",
+      deliveryAddress: raw.delivery_address || raw.deliveryAddress || "Standard Address",
+      storeId: raw.store_id || raw.storeId || "",
+      storeName: raw.store_name || raw.storeName || "Merchant Store",
+      storeAddress: raw.store_address || raw.storeAddress || "",
+      items: Array.isArray(raw.items) ? raw.items : [],
+      subtotal: raw.subtotal || 0,
+      deliveryFee: raw.delivery_fee || raw.deliveryFee || 0,
+      serviceFee: raw.service_fee || raw.serviceFee || 0,
+      tip: raw.tip || 0,
+      total: raw.total || raw.total_amount || 0,
+      status: mappedStatus as OrderStatus,
+      paymentMethod: raw.payment_method || raw.paymentMethod || "card",
+      paymentStatus: raw.payment_status || raw.paymentStatus || "pending",
+      pickupCode: raw.pickup_code || raw.pickupCode || "1234",
+      estimatedDeliveryMinutes: raw.estimated_delivery_minutes || raw.estimatedDeliveryMinutes || 25,
+      riderId: raw.rider_id || raw.riderId,
+      riderName: raw.rider_name || raw.riderName,
+      riderPhone: raw.rider_phone || raw.riderPhone,
+      riderPhoto: raw.rider_photo || raw.riderPhoto,
+      createdAt: raw.created_at || raw.createdAt || new Date().toISOString(),
+      updatedAt: raw.updated_at || raw.updatedAt || new Date().toISOString(),
+    };
+  },
+
   getOrders: async (storeId?: string, token?: string): Promise<Order[]> => {
     try {
       const url = storeId
@@ -329,7 +409,9 @@ export const apiService = {
       if (res.ok) {
         const result = await res.json();
         const data = result.data || result;
-        if (Array.isArray(data)) return data;
+        if (Array.isArray(data)) {
+          return data.map((o) => apiService.normalizeOrder(o));
+        }
       }
     } catch (e) {
       console.warn("Failed to fetch orders from backend API:", e);
@@ -344,9 +426,10 @@ export const apiService = {
       });
       if (res.ok) {
         const result = await res.json();
-        return result.data || result;
+        const data = result.data || result;
+        return apiService.normalizeOrder(data);
       }
-    } catch (e) {}
+    } catch (e) { }
     return null;
   },
 
@@ -359,7 +442,7 @@ export const apiService = {
         const result = await res.json();
         return result.data || result;
       }
-    } catch (e) {}
+    } catch (e) { }
     return [];
   },
 
@@ -371,7 +454,8 @@ export const apiService = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Failed to place order");
-    return data;
+    const created = data.data || data;
+    return apiService.normalizeOrder(created);
   },
 
   updateOrderStatus: async (orderId: string, status: string, token?: string) => {
@@ -379,7 +463,11 @@ export const apiService = {
       method: "PATCH",
       headers: getAuthHeaders(token),
     });
-    return await res.json();
+    const data = await res.json();
+    if (data.data) {
+      return apiService.normalizeOrder(data.data);
+    }
+    return data;
   },
 
   cancelOrder: async (orderId: string, reason: string, token?: string) => {
@@ -457,7 +545,7 @@ export const apiService = {
         const result = await res.json();
         return result.data || result;
       }
-    } catch (e) {}
+    } catch (e) { }
     return { balance: 0, currency };
   },
 
@@ -470,7 +558,7 @@ export const apiService = {
         const result = await res.json();
         return result.data || result;
       }
-    } catch (e) {}
+    } catch (e) { }
     return [];
   },
 

@@ -20,7 +20,7 @@ import { apiService } from "@/services/api";
 import { getUniqueStoreBanner } from "@/utils/storeImageUtils";
 
 export default function MerchantDashboardPage() {
-  const { stores, activeStore, toggleStoreStatus } = usePlatform();
+  const { stores, activeStore, toggleStoreStatus, updateOrderStatus } = usePlatform();
 
   const [merchantData, setMerchantData] = useState<any>(null);
   const [currentStore, setCurrentStore] = useState<any>(null);
@@ -110,8 +110,10 @@ export default function MerchantDashboardPage() {
       setRealOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status: "CONFIRMED" } : o))
       );
+      updateOrderStatus(orderId, "preparing");
     } catch (e) {
       console.error("Failed to accept order:", e);
+      updateOrderStatus(orderId, "preparing");
     }
   };
 
@@ -122,8 +124,10 @@ export default function MerchantDashboardPage() {
       setRealOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status: "CANCELLED" } : o))
       );
+      updateOrderStatus(orderId, "cancelled");
     } catch (e) {
       console.error("Failed to decline order:", e);
+      updateOrderStatus(orderId, "cancelled");
     }
   };
 
@@ -142,9 +146,24 @@ export default function MerchantDashboardPage() {
     return true;
   });
 
-  const activeStoreName = currentStore?.name || merchantData?.name || activeStore?.name || "My Store";
-  const activeStoreCategory = currentStore?.store_type || activeStore?.category || "Restaurant";
-  const activeStoreAddress = currentStore?.address || activeStore?.address || "Store Location";
+  let savedProfileName = "";
+  let savedProfileAddress = "";
+  let savedProfileCategory = "";
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("merchant_profile");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.businessName) savedProfileName = parsed.businessName;
+        if (parsed.address) savedProfileAddress = parsed.address;
+        if (parsed.businessType) savedProfileCategory = parsed.businessType;
+      }
+    } catch (e) {}
+  }
+
+  const activeStoreName = savedProfileName || activeStore?.name || currentStore?.name || merchantData?.name || "My Store";
+  const activeStoreCategory = savedProfileCategory || activeStore?.cuisineType || activeStore?.category || currentStore?.store_type || "Restaurant";
+  const activeStoreAddress = savedProfileAddress || activeStore?.address || currentStore?.address || "Store Location";
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-12">

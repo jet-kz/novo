@@ -37,6 +37,34 @@ export interface ProductOption {
   id: string;
   name: string;
   price: number;
+  image?: string;
+}
+
+export interface ProteinOption {
+  id: string;
+  name: string;
+  price: number;
+  image?: string;
+}
+
+export interface ExtraOption {
+  id: string;
+  name: string;
+  price: number;
+}
+
+export interface ProductSpecs {
+  prepTime?: string;
+  spicyLevel?: string;
+  calories?: string;
+  serves?: string;
+}
+
+export interface OptionGroup {
+  id: string;
+  title: string; // e.g. "Choose Protein", "Add Extras", "Choose Crust"
+  type: "single" | "multiple"; // single (radio cards) or multiple (checkbox list)
+  options: ProductOption[];
 }
 
 export interface Product {
@@ -49,6 +77,10 @@ export interface Product {
   category: string;
   inStock: boolean;
   options?: ProductOption[];
+  optionGroups?: OptionGroup[];
+  proteinOptions?: ProteinOption[];
+  extrasOptions?: ExtraOption[];
+  specs?: ProductSpecs;
   rating?: number;
   preparationTimeMinutes?: number;
 }
@@ -64,6 +96,9 @@ export interface Store {
   category: "restaurant" | "supermarket" | "pharmacy" | "express" | "drinks";
   city?: string;
   state?: string;
+  latitude?: number;
+  longitude?: number;
+  deliveryRadiusKm?: number;
   cuisineType?: string;
   rating: number;
   reviewCount: number;
