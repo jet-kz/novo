@@ -1,6 +1,6 @@
 import { Store, Product, Order, OrderStatus, RiderProfile, PlatformAnalytics, Review } from "@/types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://novobackend.onrender.com/api/v1";
 
 // Helper for authorized headers
 const getAuthHeaders = (token?: string) => {
