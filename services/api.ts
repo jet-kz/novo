@@ -577,6 +577,29 @@ export const apiService = {
     return data;
   },
 
+  // 10.1 BACHS PAYMENT GATEWAY & SUBACCOUNTS (/api/v1/payments/bachs)
+  createBachsCheckoutSession: async (payload: { order_id: string; amount: number; email?: string; splits?: any[] }, token?: string) => {
+    const res = await fetch(`${API_BASE_URL}/payments/bachs/checkout`, {
+      method: "POST",
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Bachs checkout creation failed");
+    return data;
+  },
+
+  createBachsVendorSubaccount: async (payload: { business_name: string; bank_code: string; account_number: string; contact_email?: string }, token?: string) => {
+    const res = await fetch(`${API_BASE_URL}/payments/bachs/subaccount`, {
+      method: "POST",
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Bachs subaccount creation failed");
+    return data;
+  },
+
   // 11. DELIVERIES & LOGISTICS MODULE (/api/v1/deliveries)
   getDeliveryByOrderId: async (orderId: string, token?: string) => {
     const res = await fetch(`${API_BASE_URL}/deliveries/order/${orderId}`, {
