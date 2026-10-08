@@ -14,13 +14,11 @@ function DesktopSupportContent() {
 
 export default function SupportPage() {
   return (
-    <>
+    <Suspense fallback={<div className="p-8 text-center text-xs font-bold text-slate-400">Loading Support...</div>}>
       <MobileSupportView />
       <div className="hidden md:block">
-        <Suspense fallback={<div className="p-12 text-center">Loading Support...</div>}>
-          <DesktopSupportContent />
-        </Suspense>
+        <DesktopSupportContent />
       </div>
-    </>
+    </Suspense>
   );
 }
