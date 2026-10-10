@@ -73,8 +73,13 @@ function AuthContent() {
         const result = await apiService.login({ email, password });
         if (result && result.access_token) {
           loginUser(result.access_token, email);
-          const targetRole: UserRole = email.toLowerCase().includes("admin") || email === "admin@novo.ng" ? "admin" : "customer";
-          setSuccessMsg(`Welcome back! Redirecting to ${targetRole === "admin" ? "Admin Portal" : "Novo"}...`);
+          const lowerEmail = email.toLowerCase();
+          let targetRole: UserRole = "customer";
+          if (lowerEmail.includes("admin") || lowerEmail === "admin@novo.ng") targetRole = "admin";
+          else if (lowerEmail.includes("rider") || lowerEmail === "rider@novo.ng") targetRole = "rider";
+          else if (lowerEmail.includes("merchant") || lowerEmail === "merchant@novo.ng") targetRole = "merchant";
+
+          setSuccessMsg(`Welcome back! Redirecting to ${targetRole.toUpperCase()} Portal...`);
           handleRouteRedirect(targetRole);
         } else {
           throw new Error("Invalid email or password");
@@ -234,18 +239,25 @@ function AuthContent() {
             </button>
           </div>
 
-          {/* DEDICATED MERCHANT PARTNER LINK */}
-          <div className="mt-1 p-2.5 bg-slate-100/70 dark:bg-slate-900/80 text-center">
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-              Want to list your restaurant, supermarket, or pharmacy?
-            </p>
-            <Link
-              href="/merchant/register"
-              className="inline-flex items-center gap-1 mt-0.5 text-xs font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline"
-            >
-              <Store className="w-3.5 h-3.5" />
-              <span>Register Your Business on Novo</span>
-            </Link>
+          {/* DEDICATED ROLE LINK BAR */}
+          <div className="mt-1 p-3 bg-slate-100/80 dark:bg-slate-900/90 rounded-2xl flex flex-col gap-2 border border-slate-200 dark:border-slate-800">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+              Quick Portal Switch
+            </span>
+            <div className="grid grid-cols-2 gap-2 text-center text-xs">
+              <Link
+                href="/rider/login"
+                className="p-2 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-bold rounded-xl border border-emerald-200 dark:border-emerald-800 hover:scale-[1.02] transition-transform flex items-center justify-center gap-1"
+              >
+                <span>🛵 Rider Portal</span>
+              </Link>
+              <Link
+                href="/merchant/login"
+                className="p-2 bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 font-bold rounded-xl border border-amber-200 dark:border-amber-800 hover:scale-[1.02] transition-transform flex items-center justify-center gap-1"
+              >
+                <span>🏬 Merchant Portal</span>
+              </Link>
+            </div>
           </div>
         </div>
       )}

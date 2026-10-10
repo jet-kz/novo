@@ -627,12 +627,15 @@ export const apiService = {
   },
 
   // 12. RIDERS MODULE (/api/v1/riders)
-  getRiders: async (): Promise<RiderProfile[]> => {
+  getRiders: async (token?: string): Promise<RiderProfile[]> => {
     try {
-      const res = await fetch(`${API_BASE_URL}/riders/`);
+      const res = await fetch(`${API_BASE_URL}/riders/`, {
+        headers: getAuthHeaders(token),
+      });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) return data;
+        const result = data.data || data;
+        if (Array.isArray(result)) return result;
       }
     } catch (e) {
       console.warn("Failed to fetch riders from backend API:", e);
