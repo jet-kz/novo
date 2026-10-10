@@ -102,21 +102,29 @@ export default function RiderHubPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full min-h-screen flex flex-col gap-6">
       {/* BRAND HEADER BAR */}
-      <div className="flex items-center justify-between py-2">
+      <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/80 pb-3">
         <NovoLogo variant="rider" subtitle="Courier Partner Hub" size="md" href="/rider" />
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4 text-xs font-bold">
+          <Link
+            href="/rider"
+            className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800"
+          >
+            <Bike className="w-3.5 h-3.5" />
+            <span>Active Jobs</span>
+          </Link>
           <Link
             href="/rider/earnings"
-            className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 flex items-center gap-1"
+            className="text-slate-600 dark:text-slate-300 hover:text-emerald-600 flex items-center gap-1 px-2 py-1"
           >
             <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
             <span>Earnings</span>
           </Link>
           <Link
-            href="/"
-            className="text-xs font-bold text-slate-500 hover:text-emerald-600 dark:text-slate-400"
+            href="/rider/history"
+            className="text-slate-600 dark:text-slate-300 hover:text-emerald-600 flex items-center gap-1 px-2 py-1"
           >
-            Customer View →
+            <FileCheck className="w-3.5 h-3.5 text-slate-400" />
+            <span>History</span>
           </Link>
         </div>
       </div>
