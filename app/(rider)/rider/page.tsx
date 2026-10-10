@@ -129,7 +129,7 @@ export default function RiderHubPage() {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              {riderProfile.totalDeliveries || 48} Deliveries Completed • {riderProfile.rating || 4.9} ★ Rating
+              {riderProfile.totalDeliveries} Deliveries Completed • {riderProfile.rating || 5.0} ★ Rating
             </p>
           </div>
         </div>
@@ -153,13 +153,13 @@ export default function RiderHubPage() {
         <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Today&apos;s Earnings</span>
           <span className="text-xl font-black text-slate-900 dark:text-slate-100">
-            ₦{(riderProfile.earningsToday || 12500).toLocaleString()}
+            ₦{(riderProfile.earningsToday ?? 0).toLocaleString()}
           </span>
         </div>
         <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tips Collected</span>
           <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-            ₦{(riderProfile.tipsToday || 1500).toLocaleString()}
+            ₦{(riderProfile.tipsToday ?? 0).toLocaleString()}
           </span>
         </div>
         <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col">

@@ -267,17 +267,24 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     loadUserProfile();
   }, [isAuthenticated]);
 
-  // Load cart state from LocalStorage on client start
+  // Load cart & rider state from LocalStorage on client start
   useEffect(() => {
     try {
-      localStorage.removeItem("novo_platform_state_v1");
+      const savedOnline = localStorage.getItem("novo_rider_is_online");
+      const savedStats = localStorage.getItem("novo_rider_stats");
+      setRiderProfile((prev) => ({
+        ...prev,
+        ...(savedOnline !== null ? { isOnline: savedOnline === "true" } : {}),
+        ...(savedStats ? JSON.parse(savedStats) : {}),
+      }));
+
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.cart && Array.isArray(parsed.cart)) setCart(parsed.cart);
       }
     } catch (e) {
-      console.warn("Failed to load cart state from localStorage", e);
+      console.warn("Failed to load rider state from localStorage", e);
     }
   }, []);
   useEffect(() => {
@@ -581,7 +588,13 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Rider actions
   const toggleRiderOnline = () => {
-    setRiderProfile((prev) => ({ ...prev, isOnline: !prev.isOnline }));
+    setRiderProfile((prev) => {
+      const nextOnline = !prev.isOnline;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("novo_rider_is_online", String(nextOnline));
+      }
+      return { ...prev, isOnline: nextOnline };
+    });
   };
 
   const acceptDeliveryJob = (orderId: string) => {
@@ -593,14 +606,25 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const targetOrder = orders.find((o) => o.id === orderId);
     const earned = targetOrder ? targetOrder.deliveryFee + targetOrder.tip : 950;
 
-    setRiderProfile((prev) => ({
-      ...prev,
-      currentOrderId: undefined,
-      totalDeliveries: prev.totalDeliveries + 1,
-      earningsToday: prev.earningsToday + earned,
-      earningsThisWeek: prev.earningsThisWeek + earned,
-      tipsToday: prev.tipsToday + (targetOrder?.tip || 0),
-    }));
+    setRiderProfile((prev) => {
+      const updated = {
+        ...prev,
+        currentOrderId: undefined,
+        totalDeliveries: prev.totalDeliveries + 1,
+        earningsToday: prev.earningsToday + earned,
+        earningsThisWeek: prev.earningsThisWeek + earned,
+        tipsToday: prev.tipsToday + (targetOrder?.tip || 0),
+      };
+      if (typeof window !== "undefined") {
+        localStorage.setItem("novo_rider_stats", JSON.stringify({
+          totalDeliveries: updated.totalDeliveries,
+          earningsToday: updated.earningsToday,
+          earningsThisWeek: updated.earningsThisWeek,
+          tipsToday: updated.tipsToday,
+        }));
+      }
+      return updated;
+    });
 
     updateOrderStatus(orderId, "delivered");
   };
