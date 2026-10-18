@@ -59,7 +59,7 @@ export const DeliveryMap: React.FC<DeliveryMapProps> = ({
     >
       {/* MAP HEADER OVERLAY */}
       <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
-        <div className="bg-slate-900/90 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-slate-700/60 flex items-center gap-2.5 shadow-lg pointer-events-auto">
+        <div className="bg-slate-900/90 backdrop-blur-md px-3.5 py-2 rounded-2xl flex items-center gap-2.5 shadow-lg pointer-events-auto">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
           <span className="text-xs font-black tracking-wide text-slate-100">
             {status === "picked_up" ? "En Route to Customer" : "Navigating to Pickup Store"}

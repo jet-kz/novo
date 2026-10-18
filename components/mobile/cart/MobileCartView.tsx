@@ -58,7 +58,7 @@ export function MobileCartView() {
         {cart.map((item) => (
           <div
             key={item.product.id}
-            className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] dark:border-slate-800 shadow-xs"
+            className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 shadow-xs"
           >
             <img
               src={item.product.image}
@@ -82,7 +82,7 @@ export function MobileCartView() {
 
             {/* Controls */}
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 bg-[#F7FAF8] dark:bg-slate-800 p-1 rounded-xl border border-[#E3EAE6]">
+              <div className="flex items-center gap-2 bg-[#F7FAF8] dark:bg-slate-800 p-1 rounded-xl">
                 <button
                   onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)}
                   className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-[#101714] font-bold shadow-xs cursor-pointer"
@@ -111,7 +111,7 @@ export function MobileCartView() {
 
       {/* Bill Breakdown */}
       <div className="px-4 mt-2">
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] dark:border-slate-800 flex flex-col gap-2.5 text-xs font-semibold text-[#101714] dark:text-slate-200">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 flex flex-col gap-2.5 text-xs font-semibold text-[#101714] dark:text-slate-200">
           <div className="flex items-center justify-between text-[#66736D]">
             <span>Subtotal</span>
             <span className="font-bold text-[#101714] dark:text-white">₦{cartSubtotal.toLocaleString()}</span>

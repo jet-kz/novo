@@ -15,7 +15,7 @@ export const LoadingSkeleton: React.FC<SkeletonProps> = ({ className = "" }) => 
 };
 
 export const CardSkeleton = () => (
-  <div className="flex flex-col gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+  <div className="flex flex-col gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl">
     <LoadingSkeleton className="h-40 w-full rounded-xl" />
     <LoadingSkeleton className="h-5 w-3/4" />
     <LoadingSkeleton className="h-4 w-1/2" />

@@ -12,42 +12,12 @@ import { Order } from "@/types";
 export function MobileOrdersView() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const trackId = searchParams.get("track");
-  const { isAuthenticated } = usePlatform();
+  const trackId = searchParams.get("track") || searchParams.get("orderId");
+  const { isAuthenticated, authReady, orders: userOrders, ordersLoading } = usePlatform();
 
   const [activeTab, setActiveTab] = useState<"all" | "active" | "completed">("all");
-  const [userOrders, setUserOrders] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Check client token
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-  const isLogged = isAuthenticated || !!token;
-
-  useEffect(() => {
-    async function loadOrders() {
-      if (!isLogged) {
-        setUserOrders([]);
-        setIsLoading(false);
-        return;
-      }
-      try {
-        setIsLoading(true);
-        const authToken = token || undefined;
-        const res = await apiService.getOrders(undefined, authToken);
-        if (Array.isArray(res)) {
-          setUserOrders(res);
-        } else {
-          setUserOrders([]);
-        }
-      } catch (e) {
-        console.warn("Error fetching customer orders:", e);
-        setUserOrders([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadOrders();
-  }, [isLogged, token]);
+  const isLogged = isAuthenticated;
+  const isLoading = !authReady || (ordersLoading && userOrders.length === 0);
 
   // UNAUTHENTICATED / LOGGED OUT VIEW (FLAT HERO UI STYLE)
   if (!isLogged) {

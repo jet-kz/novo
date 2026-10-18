@@ -64,7 +64,7 @@ export default function CustomerPaymentsPage() {
           })}
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#E8F7EF] dark:bg-slate-900 border border-[#008A4C]/20 flex items-center gap-3 text-xs font-bold text-[#008A4C]">
+        <div className="p-4 rounded-2xl bg-[#E8F7EF] dark:bg-slate-900 flex items-center gap-3 text-xs font-bold text-[#008A4C]">
           <ShieldCheck className="w-5 h-5 shrink-0" />
           <span>All payment transactions are encrypted using 256-bit SSL Paystack infrastructure.</span>
         </div>

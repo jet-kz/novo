@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { sectionOf, useSectionTabs } from "@/components/shared/useSectionTabs";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -45,6 +46,10 @@ export function MobileStoreView() {
         s.slug === storeIdParam ||
         (s.name && s.name.toLowerCase() === storeIdParam.toLowerCase())
     ) || stores[0];
+  const storeProducts = store
+    ? products.filter((p) => p.storeId === store.id || (p as any).store_id === store.id)
+    : [];
+  const categories = useSectionTabs(store?.id, storeProducts);
 
   if (!store) {
     return (
@@ -62,11 +67,9 @@ export function MobileStoreView() {
   }
 
   const isFav = favorites.includes(store.id);
-  const storeProducts = products.filter((p) => p.storeId === store.id || (p as any).store_id === store.id);
-  const categories = ["All", ...Array.from(new Set(storeProducts.map((p) => p.category)))];
 
   const filteredProducts = storeProducts.filter((p) => {
-    const matchesCat = activeCategory === "All" || p.category === activeCategory;
+    const matchesCat = activeCategory === "All" || sectionOf(p) === activeCategory;
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -221,7 +224,7 @@ export function MobileStoreView() {
       {activeTab === "menu" && (
         <div className="p-4 flex flex-col gap-3">
           {filteredProducts.length === 0 ? (
-            <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-[#E3EAE6] text-[#66736D] text-xs font-medium">
+            <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl text-[#66736D] text-xs font-medium">
               No products found matching your search.
             </div>
           ) : (
@@ -266,11 +269,11 @@ export function MobileStoreView() {
       {/* 4. INFO TAB */}
       {activeTab === "info" && (
         <div className="p-4 flex flex-col gap-4 text-xs font-medium text-[#101714] dark:text-slate-200">
-          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] flex flex-col gap-2">
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 flex flex-col gap-2">
             <h3 className="font-black text-sm">About {store.name}</h3>
             <p className="text-[#66736D] leading-relaxed">{store.description}</p>
           </div>
-          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] flex flex-col gap-2">
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 flex flex-col gap-2">
             <h3 className="font-black text-sm">Merchant Address</h3>
             <p className="text-[#66736D]">{store.address}</p>
           </div>
@@ -280,7 +283,7 @@ export function MobileStoreView() {
       {/* 5. REVIEWS TAB */}
       {activeTab === "reviews" && (
         <div className="p-4 flex flex-col gap-3">
-          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-between">
             <div className="flex flex-col">
               <span className="text-2xl font-black text-[#101714] dark:text-white">{store.rating}</span>
               <span className="text-[10px] text-[#66736D]">Based on {store.reviewCount} reviews</span>

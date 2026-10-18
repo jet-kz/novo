@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { usePlatform } from "@/store/PlatformContext";
 import { Store as StoreIcon, Clock, MapPin, Phone, Upload, Check, Loader2, Image as ImageIcon, Sparkles } from "lucide-react";
 import { apiService } from "@/services/api";
+import { useCatalog } from "@/components/shared/useCatalog";
 
 const BANNER_PRESETS = [
   { id: "b1", title: "Gourmet & Restaurant", url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80" },
@@ -21,14 +22,16 @@ const LOGO_PRESETS = [
 ];
 
 export default function MerchantProfilePage() {
-  const { stores, activeStore, updateStore } = usePlatform();
-  const myStore = activeStore || stores[0];
+  const { merchantStore, refreshMerchantStore } = usePlatform();
+  const myStore = merchantStore;
 
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [cuisineType, setCuisineType] = useState("Fast Food • Local Foods");
+  const [cuisineType, setCuisineType] = useState("");
+  const [storeCategory, setStoreCategory] = useState("restaurant");
+  const { categories: platformCategories } = useCatalog();
   const [deliveryFee, setDeliveryFee] = useState("450");
   const [minOrder, setMinOrder] = useState("1500");
   const [logo, setLogo] = useState(BANNER_PRESETS[0].url);
@@ -51,7 +54,8 @@ export default function MerchantProfilePage() {
           setName(backendStore.name || "");
           setAddress(backendStore.address || "");
           setPhone(backendStore.phone || "");
-          setCuisineType(backendStore.store_type || backendStore.settings?.cuisine_type || "restaurant");
+          setStoreCategory(backendStore.store_type || "restaurant");
+          setCuisineType(backendStore.settings?.cuisine_type || "");
           if (backendStore.logo) setLogo(backendStore.logo);
           if (backendStore.banner) setBanner(backendStore.banner);
           if (backendStore.settings?.email) setEmail(backendStore.settings.email);
@@ -64,141 +68,75 @@ export default function MerchantProfilePage() {
         console.warn("Could not load backend merchant profile:", e);
       }
 
-      // Fallback to local storage or activeStore
-      if (typeof window !== "undefined") {
-        const raw = localStorage.getItem("merchant_profile");
-        if (raw) {
-          try {
-            const profile = JSON.parse(raw);
-            if (profile.businessName) setName(profile.businessName);
-            if (profile.address) setAddress(profile.address);
-            if (profile.phone) setPhone(profile.phone);
-            if (profile.email) setEmail(profile.email);
-            if (profile.businessType) setCuisineType(profile.businessType);
-            if (profile.deliveryFee) setDeliveryFee(String(profile.deliveryFee));
-            if (profile.minOrder) setMinOrder(String(profile.minOrder));
-            if (profile.logo) setLogo(profile.logo);
-            if (profile.banner) setBanner(profile.banner);
-          } catch (e) {}
-        } else if (myStore) {
-          setName(myStore.name || "");
-          setAddress(myStore.address || "");
-          setPhone(myStore.phone || "");
-          setCuisineType(myStore.cuisineType || "Fast Food");
-          if (myStore.logo) setLogo(myStore.logo);
-          if (myStore.banner) setBanner(myStore.banner);
-          setStoreId(myStore.id);
-        }
-      }
       setIsLoading(false);
     }
 
     loadMerchantBackendProfile();
   }, [myStore]);
 
-  const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === "string") {
-          setLogo(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
+  const [uploading, setUploading] = useState<"logo" | "banner" | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const uploadTo = async (file: File | undefined, kind: "logo" | "banner") => {
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      setSaveError("That photo is too large (max 25 MB).");
+      return;
+    }
+    setUploading(kind);
+    setSaveError(null);
+    try {
+      const url = await apiService.uploadImage(file, kind === "logo" ? "store-logos" : "store-banners", storeId || "");
+      if (kind === "logo") setLogo(url);
+      else setBanner(url);
+    } catch (err: any) {
+      setSaveError(err?.message || "Image upload failed.");
+    } finally {
+      setUploading(null);
     }
   };
 
-  const handleBannerFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === "string") {
-          setBanner(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => uploadTo(e.target.files?.[0], "logo");
+  const handleBannerFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => uploadTo(e.target.files?.[0], "banner");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError(null);
+    setSaved(false);
+    if (!storeId) {
+      setSaveError("No store is linked to this account yet.");
+      return;
+    }
+    if (!name.trim()) {
+      setSaveError("Store name is required.");
+      return;
+    }
+    const fee = Number(deliveryFee);
+    const min = Number(minOrder);
+    if (!(fee >= 0) || !(min >= 0)) {
+      setSaveError("Delivery fee and minimum order must be numbers of 0 or more.");
+      return;
+    }
+
     setIsSubmitting(true);
-
-    const updatedProfile = {
-      fullName: name + " Owner",
-      businessName: name,
-      address,
-      phone,
-      email,
-      businessType: cuisineType,
-      deliveryFee: Number(deliveryFee),
-      minOrder: Number(minOrder),
-      logo,
-      banner,
-      isVerified: true,
-    };
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem("merchant_profile", JSON.stringify(updatedProfile));
-    }
-
-    let targetStoreId = storeId || myStore?.id;
-
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-      if (token) {
-        const meRes = await apiService.getMerchantMe(token);
-        if (meRes?.stores?.[0]?.id) {
-          targetStoreId = meRes.stores[0].id;
-        }
-      }
-
-      if (targetStoreId) {
-        await apiService.updateStore(
-          targetStoreId,
-          {
-            name,
-            address,
-            phone,
-            logo,
-            banner,
-            store_type: cuisineType.toLowerCase().includes("pharmacy")
-              ? "pharmacy"
-              : cuisineType.toLowerCase().includes("supermarket") || cuisineType.toLowerCase().includes("grocery")
-              ? "supermarket"
-              : "restaurant",
-            settings: {
-              email,
-              cuisine_type: cuisineType,
-              delivery_fee: Number(deliveryFee),
-              min_order: Number(minOrder),
-            },
-          },
-          token || undefined
-        );
-      }
-    } catch (e) {
-      console.warn("Error updating store profile via API:", e);
-    }
-
-    if (targetStoreId) {
-      updateStore(targetStoreId, {
-        name,
+      await apiService.updateStore(storeId, {
+        name: name.trim(),
         address,
         phone,
-        cuisineType,
         logo,
         banner,
-        deliveryFee: Number(deliveryFee),
-        minOrder: Number(minOrder),
+        store_type: storeCategory,
+        settings: { email, cuisine_type: cuisineType, delivery_fee: fee, min_order: min },
       });
+      await refreshMerchantStore();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err: any) {
+      setSaveError(err?.message || "Could not save your store settings.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
   };
 
   return (
@@ -209,6 +147,12 @@ export default function MerchantProfilePage() {
           Manage store branding, profile photos, delivery rules and operational details
         </p>
       </div>
+
+      {saveError && (
+        <div role="alert" className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs font-black">
+          {saveError}
+        </div>
+      )}
 
       {saved && (
         <div className="p-4 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-[#087F5B] dark:text-emerald-300 text-xs font-black flex items-center gap-2">
@@ -225,7 +169,7 @@ export default function MerchantProfilePage() {
       ) : (
         <form
           onSubmit={handleSubmit}
-          className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col gap-8"
+          className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl shadow-sm flex flex-col gap-8"
         >
           {/* SECTION 1: STORE BRANDING & IMAGES */}
           <div className="flex flex-col gap-4">
@@ -237,7 +181,7 @@ export default function MerchantProfilePage() {
             {/* STORE BANNER PREVIEW & SELECTOR */}
             <div className="flex flex-col gap-2">
               <label className="text-xs font-black text-slate-700 dark:text-slate-300">Store Cover Banner</label>
-              <div className="h-44 w-full rounded-2xl overflow-hidden relative border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
+              <div className="h-44 w-full rounded-2xl overflow-hidden relative bg-slate-100 dark:bg-slate-800">
                 <img src={banner} alt="Store Cover Banner" className="w-full h-full object-cover" />
                 <label className="absolute bottom-3 right-3 px-4 py-2 rounded-xl bg-slate-900/80 text-white text-xs font-extrabold backdrop-blur-md cursor-pointer hover:bg-slate-900 transition-all flex items-center gap-2">
                   <Upload className="w-3.5 h-3.5" />
@@ -340,13 +284,25 @@ export default function MerchantProfilePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-black text-slate-700 dark:text-slate-300">Business Category / Tags</label>
+                <label className="text-xs font-black text-slate-700 dark:text-slate-300">Category on the homepage</label>
+                <select
+                  value={storeCategory}
+                  onChange={(e) => setStoreCategory(e.target.value)}
+                  className="w-full mt-1 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold outline-none text-slate-900 dark:text-white"
+                >
+                  {platformCategories.map((c) => (
+                    <option key={c.slug} value={c.slug}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-black text-slate-700 dark:text-slate-300">What you sell (tags)</label>
                 <input
                   type="text"
                   value={cuisineType}
                   onChange={(e) => setCuisineType(e.target.value)}
-                  placeholder="e.g. Restaurant, Fast Food, Suya"
-                  required
+                  placeholder="e.g. Suya, grills, local soups"
                   className="w-full mt-1 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold outline-none text-slate-900 dark:text-white"
                 />
               </div>
@@ -400,7 +356,7 @@ export default function MerchantProfilePage() {
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || uploading !== null}
             className="w-fit px-8 py-3 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all cursor-pointer shadow-md shadow-[#087F5B]/20 flex items-center gap-2 disabled:opacity-50"
           >
             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}

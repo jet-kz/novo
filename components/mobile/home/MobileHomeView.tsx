@@ -12,38 +12,25 @@ import {
   ArrowRight,
   Navigation,
   Check,
-  MessageCircle,
   AlertCircle,
-  User,
 } from "lucide-react";
 import {
-  ForkKnife,
-  ShoppingCartSimple,
-  Pill,
-  Coffee,
-  Sparkle,
-  DeviceMobile,
   SquaresFour,
 } from "@phosphor-icons/react";
 import { usePlatform } from "@/store/PlatformContext";
+import { CategoryIcon, useCatalog } from "@/components/shared/useCatalog";
+import { HomeCollections } from "@/components/shared/HomeCollections";
 import { Store, Product } from "@/types";
 import { Modal } from "@/components/ui/Modal";
 import { reverseGeocode, getCoordinatesForAddress } from "@/utils/locationUtils";
 
-interface CategoryItem {
-  label: string;
-  icon: React.ComponentType<{ size?: number; weight?: "duotone" | "fill" | "bold" | "light" | "thin" | "regular"; className?: string }>;
-  categoryKey: string;
-}
 
 export function MobileHomeView() {
   const router = useRouter();
   const {
     stores,
     products,
-    cart,
     addToCart,
-    setIsCartOpen,
     userLocationAddress,
     setUserLocation,
     getStoreDeliveryDetails,
@@ -55,19 +42,13 @@ export function MobileHomeView() {
   const [customAddressInput, setCustomAddressInput] = useState("");
   const [isLocating, setIsLocating] = useState(false);
 
-  const totalCartItems = cart.reduce((acc, item) => acc + item.quantity, 0);
 
-  const categories: CategoryItem[] = [
-    { label: "Food", icon: ForkKnife, categoryKey: "restaurant" },
-    { label: "Groceries", icon: ShoppingCartSimple, categoryKey: "supermarket" },
-    { label: "Pharmacy", icon: Pill, categoryKey: "pharmacy" },
-    { label: "Drinks", icon: Coffee, categoryKey: "drinks" },
-    { label: "Beauty", icon: Sparkle, categoryKey: "beauty" },
-    { label: "Electronics", icon: DeviceMobile, categoryKey: "electronics" },
-    { label: "More", icon: SquaresFour, categoryKey: "all" },
+  const { categories: platformCategories } = useCatalog();
+  const categories = [
+    ...platformCategories.map((c) => ({ label: c.name, categoryKey: c.slug, category: c })),
+    { label: "More", categoryKey: "all", category: { slug: "all", name: "More", icon: null } },
   ];
 
-  const popularSearches = ["Banga Soup", "Fisherman Soup", "Jollof Rice", "Groceries", "Pharmacy", "Drinks"];
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,7 +117,7 @@ export function MobileHomeView() {
     <div className="md:hidden flex flex-col w-full min-h-screen bg-white dark:bg-slate-950 text-[#0F172A] dark:text-slate-100 pb-24 font-sans">
       {/* 1. TOP MOBILE HEADER - CLEAN NON-STICKY HEADER */}
       <div className="w-full bg-white dark:bg-slate-950 px-4 pt-4 pb-3 space-y-3">
-        {/* Top Header Row: Delivery Location & Right Actions (Cart + Account) */}
+        {/* Top Header Row: Delivery Location */}
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
@@ -158,32 +139,6 @@ export function MobileHomeView() {
               </div>
             </div>
           </button>
-
-          <div className="flex items-center gap-2">
-            {/* CART BUTTON BESIDE ACCOUNT */}
-            <button
-              type="button"
-              onClick={() => setIsCartOpen(true)}
-              className="relative w-9 h-9 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-800 dark:text-slate-100 transition-colors cursor-pointer border border-slate-200/80 dark:border-slate-800 shadow-2xs"
-              aria-label="View Cart"
-            >
-              <ShoppingCartSimple weight="duotone" className="w-4.5 h-4.5 text-slate-800 dark:text-slate-100" />
-              {totalCartItems > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#087F5B] text-white text-[10px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-950 shadow-2xs animate-pulse">
-                  {totalCartItems}
-                </span>
-              )}
-            </button>
-
-            {/* ACCOUNT PROFILE BUTTON */}
-            <Link
-              href="/profile"
-              className="px-3.5 py-1.5 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 flex items-center gap-1.5 text-xs font-black text-slate-800 dark:text-slate-100 transition-colors shadow-2xs"
-            >
-              <User className="w-3.5 h-3.5 text-[#087F5B] dark:text-emerald-400" />
-              <span>Account</span>
-            </Link>
-          </div>
         </div>
 
         {/* Search Input Bar with Filter Icon */}
@@ -204,30 +159,12 @@ export function MobileHomeView() {
             <SquaresFour weight="duotone" className="w-4.5 h-4.5" />
           </button>
         </form>
-
-        {/* Quick Search Tag Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-0.5 text-[10px] font-bold">
-          <span className="text-slate-400 dark:text-slate-500 shrink-0 font-extrabold">Quick search:</span>
-          {popularSearches.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => {
-                setSearchQuery(tag);
-                router.push(`/shop?q=${encodeURIComponent(tag)}`);
-              }}
-              className="px-3 py-1 rounded-full bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800 whitespace-nowrap transition-colors cursor-pointer"
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="px-4 mt-4 flex flex-col gap-6">
         {/* OUT-OF-RANGE LOCATION ALERT (GEOFENCING WARNING) */}
         {inRangeStores.length === 0 && stores.length > 0 && (
-          <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between gap-3 shadow-xs">
+          <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between gap-3 shadow-xs">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
               <span className="font-semibold">
@@ -244,7 +181,7 @@ export function MobileHomeView() {
         )}
 
         {/* 2. REFINED SENIOR PRODUCT PROMO BANNER */}
-        <div className="relative w-full rounded-3xl overflow-hidden bg-gradient-to-r from-slate-900 via-[#004D2A] to-slate-950 p-5 text-white shadow-xl flex items-center justify-between gap-4 border border-emerald-800/40">
+        <div className="relative w-full rounded-3xl overflow-hidden bg-gradient-to-r from-slate-900 via-[#004D2A] to-slate-950 p-5 text-white shadow-xl flex items-center justify-between gap-4">
           <div className="absolute -right-8 -top-8 w-40 h-40 bg-[#008A4C]/30 rounded-full blur-2xl pointer-events-none" />
 
           <div className="flex flex-col gap-1.5 z-10 max-w-[62%]">
@@ -285,7 +222,6 @@ export function MobileHomeView() {
 
           <div className="flex items-center gap-3 overflow-x-auto scrollbar-none py-1 -mx-4 px-4">
             {categories.map((cat) => {
-              const IconComp = cat.icon;
               const isSelected = selectedCategory === cat.categoryKey;
               return (
                 <button
@@ -307,7 +243,7 @@ export function MobileHomeView() {
                         : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-800 shadow-xs group-hover:border-[#008A4C] group-hover:text-[#008A4C]"
                     }`}
                   >
-                    <IconComp size={28} weight="duotone" className="shrink-0" />
+                    <CategoryIcon category={cat.category} size={28} />
                   </div>
                   <span
                     className={`text-[11px] font-bold transition-colors ${
@@ -349,7 +285,7 @@ export function MobileHomeView() {
                 <Link
                   key={st.id}
                   href={`/shop?store=${st.id}`}
-                  className="flex flex-col w-56 shrink-0 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-all group"
+                  className="flex flex-col w-56 shrink-0 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all group"
                 >
                   <div className="relative w-full h-28 bg-slate-100 dark:bg-slate-800">
                     <img
@@ -398,7 +334,10 @@ export function MobileHomeView() {
           )}
         </div>
 
-        {/* 5. POPULAR DISHES & ITEMS */}
+        {/* 5. ADMIN-CURATED COLLECTIONS */}
+        <HomeCollections stores={stores} />
+
+        {/* 6. POPULAR DISHES & ITEMS */}
         {featuredProducts.length > 0 && (
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -414,7 +353,7 @@ export function MobileHomeView() {
               {featuredProducts.map((prod: Product) => (
                 <div
                   key={prod.id}
-                  className="flex flex-col bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-sm transition-all p-2.5"
+                  className="flex flex-col bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-xs hover:shadow-sm transition-all p-2.5"
                 >
                   <div className="relative w-full h-24 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden mb-2">
                     <img
@@ -446,15 +385,6 @@ export function MobileHomeView() {
           </div>
         )}
       </div>
-
-      {/* FLOATING SUPPORT ACTION BUTTON */}
-      <Link
-        href="/support"
-        className="fixed bottom-20 right-4 z-40 w-12 h-12 rounded-full bg-[#008A4C] text-white shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
-        aria-label="Support Chat"
-      >
-        <MessageCircle className="w-6 h-6" />
-      </Link>
 
       {/* LOCATION PICKER MODAL */}
       <Modal

@@ -34,24 +34,27 @@ export const Modal: React.FC<ModalProps> = ({
   if (!isOpen) return null;
 
   const widthClasses = {
-    sm: "max-w-sm",
-    md: "max-w-md",
-    lg: "max-w-lg",
-    xl: "max-w-xl",
-    "2xl": "max-w-2xl",
+    sm: "sm:max-w-sm",
+    md: "sm:max-w-md",
+    lg: "sm:max-w-lg",
+    xl: "sm:max-w-xl",
+    "2xl": "sm:max-w-2xl",
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[70] flex items-stretch sm:items-center justify-center sm:p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div
         className="fixed inset-0"
         onClick={onClose}
         aria-hidden="true"
       />
       <div
-        className={`relative w-full ${widthClasses[maxWidth]} bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-10 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200`}
+        role="dialog"
+        aria-modal="true"
+        className={`relative w-full ${widthClasses[maxWidth]} h-[100dvh] sm:h-auto sm:max-h-[90vh] bg-white dark:bg-slate-900 sm:rounded-3xl shadow-2xl overflow-hidden z-10 flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200`}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800/80">
+        {/* Full screen on phones, centred card from sm up */}
+        <div className="flex items-center justify-between px-5 sm:px-6 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:pt-4 border-b border-slate-100 dark:border-slate-800/80">
           <div>
             {title && (
               <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
@@ -64,12 +67,13 @@ export const Modal: React.FC<ModalProps> = ({
           </div>
           <button
             onClick={onClose}
+            aria-label="Close"
             className="p-2 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-6 overflow-y-auto flex-1">{children}</div>
+        <div className="p-5 sm:p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   );

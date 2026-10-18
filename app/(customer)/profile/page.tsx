@@ -65,7 +65,7 @@ export default function CustomerProfilePage() {
       <MobileProfileView />
       <div className="hidden md:block max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full min-h-screen">
       {loggedOut && (
-        <div className="mb-6 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+        <div className="mb-6 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
           <span>Logged out successfully. Redirecting to login portal...</span>
         </div>
@@ -97,7 +97,7 @@ export default function CustomerProfilePage() {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
         {/* Left Form Column */}
         <div className="md:col-span-8 flex flex-col gap-6">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col gap-6">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xs flex flex-col gap-6">
             <h3 className="text-base font-black text-slate-900 dark:text-slate-100">
               Personal Profile & Delivery Address
             </h3>
@@ -117,7 +117,7 @@ export default function CustomerProfilePage() {
           </div>
 
           {/* Saved Favorites Card */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xs flex flex-col gap-4">
             <div className="flex items-center gap-2">
               <Heart className="w-5 h-5 text-rose-500 fill-rose-500" />
               <h3 className="text-base font-black text-slate-900 dark:text-slate-100">
@@ -169,10 +169,10 @@ export default function CustomerProfilePage() {
 
         {/* Right Security Column */}
         <div className="md:col-span-4 flex flex-col gap-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-xs flex flex-col gap-4">
             <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400">Account Security</h4>
             
-            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-900">
+            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-2xl">
               <ShieldCheck className="w-4 h-4 shrink-0" />
               <span>Verified Account</span>
             </div>

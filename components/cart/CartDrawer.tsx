@@ -55,9 +55,18 @@ export function CartDrawer() {
         className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
       />
 
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        {/* Slide-over Drawer Panel */}
-        <div className="w-screen max-w-md bg-white dark:bg-slate-900 shadow-2xl flex flex-col transform transition-transform animate-in slide-in-from-right duration-300 border-l border-slate-200 dark:border-slate-800">
+      <div className="fixed inset-x-0 bottom-0 md:inset-x-auto md:inset-y-0 md:right-0 max-w-full flex md:pl-10">
+        {/* Bottom sheet on mobile, slide-over panel on desktop */}
+        <div className="w-screen md:max-w-md max-h-[88vh] md:max-h-none bg-white dark:bg-slate-900 shadow-2xl flex flex-col overflow-hidden rounded-t-3xl md:rounded-none transform transition-transform animate-in slide-in-from-bottom md:slide-in-from-right duration-300 md:border-l border-slate-200 dark:border-slate-800 pb-[env(safe-area-inset-bottom,0px)]">
+          {/* Grab handle (mobile) */}
+          <button
+            type="button"
+            onClick={() => setIsCartOpen(false)}
+            aria-label="Close basket"
+            className="md:hidden w-full pt-2.5 pb-1 flex justify-center cursor-pointer bg-slate-50/80 dark:bg-slate-950/80"
+          >
+            <span className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+          </button>
           
           {/* 1. DRAWER HEADER */}
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-md">
@@ -127,7 +136,7 @@ export function CartDrawer() {
               <>
                 {/* Store Header Card */}
                 {currentStore && (
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-[#087F5B] dark:text-emerald-400">
                         <StoreIcon className="w-4 h-4" />
@@ -162,7 +171,7 @@ export function CartDrawer() {
                     return (
                       <div
                         key={item.product.id}
-                        className="p-3 bg-white dark:bg-slate-800/90 rounded-xl border border-slate-100 dark:border-slate-800 flex gap-3 shadow-2xs"
+                        className="p-3 bg-white dark:bg-slate-800/90 rounded-xl flex gap-3 shadow-2xs"
                       >
                         {/* Image */}
                         <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-900 shrink-0">
@@ -206,7 +215,7 @@ export function CartDrawer() {
                               ₦{itemPrice.toLocaleString()}
                             </span>
 
-                            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 rounded-lg p-1 border border-slate-200/60 dark:border-slate-800">
+                            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 rounded-lg p-1">
                               <button
                                 onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)}
                                 className="w-5 h-5 rounded flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 cursor-pointer"

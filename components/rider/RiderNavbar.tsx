@@ -1,17 +1,25 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bike, Wallet, FileCheck, TrendingUp, Menu, X, LogOut, ArrowRight } from "lucide-react";
+import { Bike, Wallet, FileCheck, TrendingUp, Menu, X, LogOut, ArrowRight, MessageSquare } from "lucide-react";
+import { apiService } from "@/services/api";
 import { NovoLogo } from "@/components/shared/NovoLogo";
 
 export function RiderNavbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
+  const isAuthScreen = pathname === "/rider/login" || pathname === "/rider/register";
+
+  useEffect(() => {
+    if (isAuthScreen) return;
+    apiService.getMyNotifications().then((r) => setUnread(r.unread)).catch(() => {});
+  }, [pathname, isAuthScreen]);
 
   // Don't render navigation on auth / login / register pages
-  if (pathname === "/rider/login" || pathname === "/rider/register") {
+  if (isAuthScreen) {
     return null;
   }
 
@@ -60,13 +68,26 @@ export function RiderNavbar() {
               <span>History</span>
             </Link>
           </nav>
+
+          <Link
+            href="/rider/messages"
+            aria-label={unread ? `Messages, ${unread} unread` : "Messages"}
+            className="relative p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800"
+          >
+            <MessageSquare className="w-5 h-5" />
+            {unread > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center">
+                {unread}
+              </span>
+            )}
+          </Link>
         </div>
       </header>
 
       {/* POPUP DRAWER: EXPANDABLE MOBILE MENU SHEET */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col justify-end p-4 animate-in fade-in duration-200 select-none">
-          <div className="w-full max-w-md mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl flex flex-col gap-5 text-white">
+          <div className="w-full max-w-md mx-auto bg-slate-900 rounded-3xl p-6 shadow-2xl flex flex-col gap-5 text-white">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <NovoLogo variant="rider" subtitle="Partner Portal Nav" size="sm" href="/rider" />
               <button
@@ -123,6 +144,22 @@ export function RiderNavbar() {
                 <div className="flex items-center gap-3">
                   <FileCheck className="w-5 h-5 text-sky-400" />
                   <span>Completed Delivery History</span>
+                </div>
+                <ArrowRight className="w-4 h-4 text-slate-400" />
+              </Link>
+
+              <Link
+                href="/rider/messages"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`p-3.5 rounded-2xl flex items-center justify-between font-bold text-xs border ${
+                  pathname === "/rider/messages"
+                    ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                    : "bg-slate-800/80 text-slate-200 border-slate-700/60 hover:bg-slate-800"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <MessageSquare className="w-5 h-5 text-emerald-400" />
+                  <span>Messages from Novo{unread > 0 ? ` (${unread} new)` : ""}</span>
                 </div>
                 <ArrowRight className="w-4 h-4 text-slate-400" />
               </Link>

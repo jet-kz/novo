@@ -45,7 +45,7 @@ export default function MerchantReviewsPage() {
       </div>
 
       {/* RATING OVERVIEW CARD */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-8">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm flex items-center gap-8">
         <div className="flex flex-col items-center">
           <span className="text-4xl font-black text-slate-900 dark:text-white">{averageRating}</span>
           <div className="flex items-center text-amber-400 my-1">
@@ -69,7 +69,7 @@ export default function MerchantReviewsPage() {
       {/* REVIEWS LIST */}
       <div className="flex flex-col gap-4">
         {reviews.length === 0 ? (
-          <div className="py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 text-center flex flex-col items-center justify-center gap-3">
+          <div className="py-16 bg-white dark:bg-slate-900 rounded-3xl text-center flex flex-col items-center justify-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center">
               <Star className="w-6 h-6" />
             </div>
@@ -82,7 +82,7 @@ export default function MerchantReviewsPage() {
           </div>
         ) : (
           reviews.map((rev) => (
-            <div key={rev.id} className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col gap-3">
+            <div key={rev.id} className="bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-black text-slate-900 dark:text-white">{rev.author}</span>
                 <span className="text-xs text-slate-400">{rev.date}</span>
@@ -97,7 +97,7 @@ export default function MerchantReviewsPage() {
               <p className="text-xs text-slate-700 dark:text-slate-300 font-medium">{rev.comment}</p>
 
               {rev.reply ? (
-                <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-slate-800 border border-emerald-100 flex items-start gap-2 text-xs font-semibold text-[#087F5B]">
+                <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-slate-800 flex items-start gap-2 text-xs font-semibold text-[#087F5B]">
                   <CornerDownRight className="w-4 h-4 shrink-0 mt-0.5" />
                   <div>
                     <span className="font-black block">Store Reply:</span>

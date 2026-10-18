@@ -33,7 +33,7 @@ function DesktopCartContent() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 flex flex-col gap-4">
           {cart.map((item) => (
-            <div key={item.product.id} className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <div key={item.product.id} className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-900">
               <div className="flex items-center gap-4">
                 <img src={item.product.image} alt={item.product.name} className="w-16 h-16 rounded-xl object-cover" />
                 <div className="flex flex-col">
@@ -52,7 +52,7 @@ function DesktopCartContent() {
           ))}
         </div>
 
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col gap-4 h-fit">
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 flex flex-col gap-4 h-fit">
           <h2 className="text-lg font-bold">Summary</h2>
           <div className="flex justify-between text-sm"><span>Subtotal</span><span>₦{cartSubtotal.toLocaleString()}</span></div>
           <div className="flex justify-between text-sm"><span>Delivery Fee</span><span>₦{cartDeliveryFee.toLocaleString()}</span></div>

@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { UserRole } from "@/types";
 import { apiService } from "@/services/api";
+import { OtpCodeStep, isUnverifiedEmailError } from "@/components/auth/OtpCodeStep";
 
 function AuthContent() {
   const router = useRouter();
@@ -33,7 +34,7 @@ function AuthContent() {
 
   // OTP Verification State
   const [isOtpStep, setIsOtpStep] = useState(false);
-  const [otpToken, setOtpToken] = useState("");
+  const [otpNotice, setOtpNotice] = useState<string | null>(null);
 
   // UI Feedback State
   const [isLoading, setIsLoading] = useState(false);
@@ -57,28 +58,19 @@ function AuthContent() {
     setIsLoading(true);
 
     try {
-      if (isOtpStep) {
-        // VERIFY OTP TOKEN
-        const result = await apiService.verifyOtp({ email, token: otpToken });
-        if (result.access_token) {
-          loginUser(result.access_token, email);
-        }
-        setSuccessMsg("Email verified successfully! Accessing portal...");
-        handleRouteRedirect("customer");
-        return;
-      }
-
       if (isLogin) {
         // LOGIN VIA FASTAPI BACKEND
         const result = await apiService.login({ email, password });
         if (result && result.access_token) {
           loginUser(result.access_token, email);
-          const lowerEmail = email.toLowerCase();
           let targetRole: UserRole = "customer";
-          if (lowerEmail.includes("admin") || lowerEmail === "admin@novo.ng") targetRole = "admin";
-          else if (lowerEmail.includes("rider") || lowerEmail === "rider@novo.ng") targetRole = "rider";
-          else if (lowerEmail.includes("merchant") || lowerEmail === "merchant@novo.ng") targetRole = "merchant";
-
+          try {
+            const me = await apiService.getMe(result.access_token);
+            targetRole = (me?.role || "customer") as UserRole;
+            loginUser(result.access_token, me?.email || email, targetRole);
+          } catch (e) {
+            console.warn("Could not resolve role from /auth/me:", e);
+          }
           setSuccessMsg(`Welcome back! Redirecting to ${targetRole.toUpperCase()} Portal...`);
           handleRouteRedirect(targetRole);
         } else {
@@ -99,15 +91,38 @@ function AuthContent() {
           setSuccessMsg("Account created successfully! Redirecting...");
           handleRouteRedirect("customer");
         } else {
-          setSuccessMsg("Registration initiated! Enter the OTP token sent to your email.");
+          setOtpNotice(result?.message || `We've sent a 6-digit code to ${email}.`);
           setIsOtpStep(true);
         }
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "An unexpected error occurred during authentication.");
+      if (isLogin && isUnverifiedEmailError(err?.message)) {
+        setOtpNotice(err.message);
+        setIsOtpStep(true);
+      } else {
+        setErrorMsg(err.message || "An unexpected error occurred during authentication.");
+      }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleVerified = async (token: string | null) => {
+    if (!token) {
+      setIsOtpStep(false);
+      setIsLogin(true);
+      setSuccessMsg("Email verified! Sign in to continue.");
+      return;
+    }
+    let role: UserRole = "customer";
+    try {
+      const me = await apiService.getMe(token);
+      role = (me?.role || "customer") as UserRole;
+    } catch {}
+    loginUser(token, email, role);
+    setIsOtpStep(false);
+    setSuccessMsg("Email verified! Signing you in...");
+    handleRouteRedirect(role);
   };
 
   return (
@@ -124,7 +139,7 @@ function AuthContent() {
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
           {isOtpStep
-            ? `Enter the verification code sent to ${email}`
+            ? "One last step to secure your account."
             : "Order food, groceries, pharmacy & express delivery."}
         </p>
       </div>
@@ -145,17 +160,16 @@ function AuthContent() {
       )}
 
       {/* AUTH FORM */}
+      {isOtpStep ? (
+        <OtpCodeStep
+          email={email}
+          password={password}
+          initialNotice={otpNotice}
+          onVerified={handleVerified}
+          onBack={() => setIsOtpStep(false)}
+        />
+      ) : (
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        {isOtpStep ? (
-          <Input
-            label="Verification Code (OTP)"
-            type="text"
-            value={otpToken}
-            onChange={(e) => setOtpToken(e.target.value)}
-            placeholder="e.g. 123456"
-            required
-          />
-        ) : (
           <>
             {!isLogin && (
               <>
@@ -194,8 +208,15 @@ function AuthContent() {
               placeholder="•••••••• (Min 6 chars)"
               required
             />
+            {isLogin && (
+              <Link
+                href={`/auth/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+                className="self-end -mt-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
+              >
+                Forgot password?
+              </Link>
+            )}
           </>
-        )}
 
         <Button
           variant="primary"
@@ -213,13 +234,12 @@ function AuthContent() {
         >
           {isLoading
             ? "Processing Request..."
-            : isOtpStep
-              ? "Verify Code & Continue"
-              : isLogin
-                ? "Sign In to Novo"
-                : "Create Account"}
+            : isLogin
+              ? "Sign In to Novo"
+              : "Create Account"}
         </Button>
       </form>
+      )}
 
       {/* TOGGLE LOGIN / SIGNUP */}
       {!isOtpStep && (
@@ -240,20 +260,20 @@ function AuthContent() {
           </div>
 
           {/* DEDICATED ROLE LINK BAR */}
-          <div className="mt-1 p-3 bg-slate-100/80 dark:bg-slate-900/90 rounded-2xl flex flex-col gap-2 border border-slate-200 dark:border-slate-800">
+          <div className="mt-1 p-3 bg-slate-100/80 dark:bg-slate-900/90 rounded-2xl flex flex-col gap-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
               Quick Portal Switch
             </span>
             <div className="grid grid-cols-2 gap-2 text-center text-xs">
               <Link
                 href="/rider/login"
-                className="p-2 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-bold rounded-xl border border-emerald-200 dark:border-emerald-800 hover:scale-[1.02] transition-transform flex items-center justify-center gap-1"
+                className="p-2 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-bold rounded-xl hover:scale-[1.02] transition-transform flex items-center justify-center gap-1"
               >
                 <span>🛵 Rider Portal</span>
               </Link>
               <Link
                 href="/merchant/login"
-                className="p-2 bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 font-bold rounded-xl border border-amber-200 dark:border-amber-800 hover:scale-[1.02] transition-transform flex items-center justify-center gap-1"
+                className="p-2 bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 font-bold rounded-xl hover:scale-[1.02] transition-transform flex items-center justify-center gap-1"
               >
                 <span>🏬 Merchant Portal</span>
               </Link>
@@ -262,15 +282,6 @@ function AuthContent() {
         </div>
       )}
 
-      {isOtpStep && (
-        <button
-          type="button"
-          onClick={() => setIsOtpStep(false)}
-          className="text-xs font-bold text-slate-400 hover:text-slate-200 text-center cursor-pointer"
-        >
-          Back to Account Form
-        </button>
-      )}
     </div>
   );
 }

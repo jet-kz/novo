@@ -9,10 +9,11 @@ import { NovoLogo } from "@/components/shared/NovoLogo";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { apiService } from "@/services/api";
+import { OtpCodeStep } from "@/components/auth/OtpCodeStep";
 
 export default function RiderRegisterPage() {
   const router = useRouter();
-  const { setCurrentRole, loginUser } = usePlatform();
+  const { loginUser } = usePlatform();
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -24,6 +25,28 @@ export default function RiderRegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [otpNotice, setOtpNotice] = useState<string | null>(null);
+
+  const enterHub = (token: string) => {
+    loginUser(token, email, "rider");
+    setSuccessMsg("Welcome to the Novo Delivery Network! Opening Rider Hub...");
+    router.push("/rider");
+  };
+
+  const handleVerified = async (token: string | null) => {
+    let session = token;
+    if (!session) {
+      try {
+        session = (await apiService.login({ email, password }))?.access_token || null;
+      } catch {}
+    }
+    setOtpNotice(null);
+    if (!session) {
+      setSuccessMsg("Email verified! Sign in to open the Rider Hub.");
+      return;
+    }
+    enterHub(session);
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,17 +62,14 @@ export default function RiderRegisterPage() {
         full_name: fullName,
         phone,
         role: "rider",
+        vehicle_type: vehicleType,
+        vehicle_plate: vehiclePlate.trim() || undefined,
       });
 
-      if (result && result.access_token) {
-        loginUser(result.access_token, email);
-        setCurrentRole("rider");
-        setSuccessMsg("Account created! Welcome to Novo Delivery Network. Redirecting...");
-        setTimeout(() => {
-          router.push("/rider");
-        }, 1000);
+      if (result?.access_token) {
+        enterHub(result.access_token);
       } else {
-        setSuccessMsg("Registration initiated! Please check your email to verify your code.");
+        setOtpNotice(result?.message || `We've sent a 6-digit code to ${email}.`);
       }
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to create rider partner account. Please try again.");
@@ -60,7 +80,7 @@ export default function RiderRegisterPage() {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-950 px-4 py-8 text-white">
-      <div className="w-full max-w-md flex flex-col gap-5 bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl">
+      <div className="w-full max-w-md flex flex-col gap-5 bg-slate-900 p-8 rounded-3xl shadow-2xl">
         {/* BRAND HEADER */}
         <div className="flex flex-col items-center text-center gap-2">
           <NovoLogo variant="rider" subtitle="Courier Partner Portal" size="md" />
@@ -74,20 +94,30 @@ export default function RiderRegisterPage() {
 
         {/* FEEDBACK ALERTS */}
         {errorMsg && (
-          <div className="p-3 bg-rose-950/80 text-rose-300 text-xs font-semibold rounded-2xl border border-rose-800 flex items-center gap-2">
+          <div className="p-3 bg-rose-950/80 text-rose-300 text-xs font-semibold rounded-2xl flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-3 bg-emerald-950/80 text-emerald-300 text-xs font-semibold rounded-2xl border border-emerald-800 flex items-center gap-2">
+          <div className="p-3 bg-emerald-950/80 text-emerald-300 text-xs font-semibold rounded-2xl flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>{successMsg}</span>
           </div>
         )}
 
         {/* REGISTRATION FORM */}
+        {otpNotice ? (
+          <OtpCodeStep
+            email={email}
+            password={password}
+            tone="dark"
+            initialNotice={otpNotice}
+            onVerified={handleVerified}
+            onBack={() => setOtpNotice(null)}
+          />
+        ) : (
         <form onSubmit={handleRegister} className="flex flex-col gap-3">
           <Input
             label="Full Name *"
@@ -172,6 +202,7 @@ export default function RiderRegisterPage() {
             {isLoading ? "Creating Courier Account..." : "Complete Rider Sign Up"}
           </Button>
         </form>
+        )}
 
         {/* FOOTER */}
         <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">

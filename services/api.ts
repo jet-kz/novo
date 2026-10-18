@@ -1,8 +1,22 @@
-import { Store, Product, Order, OrderStatus, RiderProfile, PlatformAnalytics, Review } from "@/types";
+import {
+  Store, Product, Order, OrderStatus, RiderProfile, PlatformAnalytics, Review,
+  PlatformCategory, HomeCollection, MenuSection, AppNotification,
+  MyPayouts, PayoutAccountView, PayoutsOverview,
+} from "@/types";
+import { shrinkImageForUpload } from "@/utils/imageUpload";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://novobackend.onrender.com/api/v1";
 
-// Helper for authorized headers
+export function extractApiError(data: any, fallback: string) {
+  const detail = data?.detail;
+  if (typeof detail === "string" && detail.trim()) return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((item) => item?.msg || item?.detail || JSON.stringify(item)).join("; ");
+  }
+  if (typeof data?.message === "string" && data.message.trim()) return data.message;
+  return fallback;
+}
+
 const getAuthHeaders = (token?: string) => {
   const authToken = token || (typeof window !== "undefined" ? localStorage.getItem("access_token") : "");
   return {
@@ -10,6 +24,45 @@ const getAuthHeaders = (token?: string) => {
     ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
   };
 };
+
+/** JSON request that unwraps `{ data }` and throws an Error carrying the server's message on failure. */
+async function request<T = any>(path: string, init: RequestInit & { token?: string } = {}, fallback = "Request failed"): Promise<T> {
+  const { token, headers, ...rest } = init;
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, { ...rest, headers: { ...getAuthHeaders(token), ...(headers || {}) } });
+  } catch {
+    throw new Error("Can't reach the server. Check your connection and try again.");
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data?.success === false) throw new Error(extractApiError(data, fallback));
+  return (data && typeof data === "object" && "data" in data ? data.data : data) as T;
+}
+
+/** Backend lifecycle (UPPER_CASE) -> frontend OrderStatus. Keep in sync with app/modules/orders/status.py. */
+const ORDER_STATUS_FROM_API: Record<string, OrderStatus> = {
+  CART: "pending_merchant",
+  PENDING: "pending_merchant",
+  PLACED: "pending_merchant",
+  CONFIRMED: "accepted",
+  PREPARING: "preparing",
+  READY_FOR_PICKUP: "ready_for_pickup",
+  RIDER_ASSIGNED: "rider_assigned",
+  PICKED_UP: "picked_up",
+  DISPATCHED: "picked_up",
+  DELIVERED: "delivered",
+  CANCELLED: "cancelled",
+  FAILED: "cancelled",
+};
+
+export const ACTIVE_ORDER_STATUSES: OrderStatus[] = [
+  "pending_merchant",
+  "accepted",
+  "preparing",
+  "ready_for_pickup",
+  "rider_assigned",
+  "picked_up",
+];
 
 // INITIAL SEED STORES (Clean fallback)
 export const INITIAL_STORES: Store[] = [];
@@ -32,6 +85,8 @@ export const apiService = {
     full_name?: string;
     role?: string;
     phone?: string;
+    vehicle_type?: string;
+    vehicle_plate?: string;
   }) => {
     const res = await fetch(`${API_BASE_URL}/auth/signup`, {
       method: "POST",
@@ -39,7 +94,7 @@ export const apiService = {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Registration failed");
+    if (!res.ok) throw new Error(extractApiError(data, "Registration failed"));
     return data;
   },
 
@@ -50,28 +105,46 @@ export const apiService = {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Login failed");
+    if (!res.ok) throw new Error(extractApiError(data, "Login failed"));
     return data;
   },
 
-  verifyOtp: async (payload: { email: string; token: string }) => {
-    const res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "OTP verification failed");
-    return data;
-  },
+  /** Pass the password to be signed in straight after verifying; the response then carries access_token. */
+  verifyOtp: (payload: { email: string; token: string; password?: string }) =>
+    request<{ access_token: string | null; user?: { id: string; email: string } }>(
+      "/auth/verify-otp",
+      { method: "POST", body: JSON.stringify(payload) },
+      "Verification failed"
+    ),
+
+  resendOtp: (email: string, purpose: "signup" | "reset" = "signup") =>
+    request<{ message: string }>(
+      "/auth/resend-otp",
+      { method: "POST", body: JSON.stringify({ email, purpose }) },
+      "Couldn't resend the code"
+    ),
+
+  forgotPassword: (email: string) =>
+    request<{ message: string }>(
+      "/auth/forgot-password",
+      { method: "POST", body: JSON.stringify({ email }) },
+      "Couldn't send the reset code"
+    ),
+
+  resetPassword: (payload: { email: string; token: string; new_password: string }) =>
+    request<{ message: string; access_token: string | null }>(
+      "/auth/reset-password",
+      { method: "POST", body: JSON.stringify(payload) },
+      "Couldn't reset your password"
+    ),
 
   getMe: async (token?: string) => {
     const res = await fetch(`${API_BASE_URL}/auth/me`, {
       headers: getAuthHeaders(token),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to fetch auth details");
-    return data;
+    if (!res.ok) throw new Error(extractApiError(data, "Failed to fetch auth details"));
+    return data.data || data;
   },
 
   // 2. USERS PROFILE MODULE (/api/v1/users)
@@ -80,7 +153,7 @@ export const apiService = {
       headers: getAuthHeaders(token),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to fetch profile");
+    if (!res.ok) throw new Error(extractApiError(data, "Failed to fetch profile"));
     return data;
   },
 
@@ -91,7 +164,7 @@ export const apiService = {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to update profile");
+    if (!res.ok) throw new Error(extractApiError(data, "Failed to update profile"));
     return data;
   },
 
@@ -103,7 +176,7 @@ export const apiService = {
       body: formData,
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Avatar upload failed");
+    if (!res.ok) throw new Error(extractApiError(data, "Avatar upload failed"));
     return data;
   },
 
@@ -133,7 +206,7 @@ export const apiService = {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to add address");
+    if (!res.ok) throw new Error(extractApiError(data, "Failed to add address"));
     return data.data || data;
   },
 
@@ -143,7 +216,7 @@ export const apiService = {
       headers: getAuthHeaders(token),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to set default address");
+    if (!res.ok) throw new Error(extractApiError(data, "Failed to set default address"));
     return data.data || data;
   },
 
@@ -187,7 +260,7 @@ export const apiService = {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to register merchant");
+    if (!res.ok) throw new Error(extractApiError(data, "Failed to register merchant"));
     return data;
   },
 
@@ -228,28 +301,18 @@ export const apiService = {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to create store");
+    if (!res.ok) throw new Error(extractApiError(data, "Failed to create store"));
     return data;
   },
 
-  updateStore: async (storeId: string, payload: Partial<Store> & Record<string, any>, token?: string) => {
-    const res = await fetch(`${API_BASE_URL}/stores/${storeId}`, {
-      method: "PUT",
-      headers: getAuthHeaders(token),
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to update store");
-    return data;
-  },
+  updateStore: async (storeId: string, payload: Partial<Store> & Record<string, any>, token?: string) =>
+    request(`/stores/${storeId}`, { method: "PUT", body: JSON.stringify(payload), token }, "Failed to update store"),
 
-  toggleStoreOpenStatus: async (storeId: string, token?: string) => {
-    const res = await fetch(`${API_BASE_URL}/stores/${storeId}/toggle-open`, {
-      method: "PATCH",
-      headers: getAuthHeaders(token),
-    });
-    return await res.json();
-  },
+  toggleStoreOpenStatus: async (storeId: string, token?: string) =>
+    request(`/stores/${storeId}/toggle-open`, { method: "PATCH", token }, "Could not update store status"),
+
+  verifyStore: async (storeId: string, isVerified = true, token?: string) =>
+    request(`/stores/${storeId}/verify`, { method: "PATCH", body: JSON.stringify({ is_verified: isVerified }), token }, "Could not update store approval"),
 
   // Helper: Normalize Backend Product to Frontend Product
   normalizeProduct: (p: any): Product => {
@@ -295,7 +358,7 @@ export const apiService = {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to create product");
+    if (!res.ok) throw new Error(extractApiError(data, "Failed to create product"));
     return data.data ? apiService.normalizeProduct(data.data) : data;
   },
 
@@ -306,19 +369,14 @@ export const apiService = {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to update product");
+    if (!res.ok) throw new Error(extractApiError(data, "Failed to update product"));
     return data.data ? apiService.normalizeProduct(data.data) : data;
   },
 
-  toggleProductStock: async (productId: string, token?: string) => {
-    const res = await fetch(`${API_BASE_URL}/products/${productId}/toggle-stock`, {
-      method: "PATCH",
-      headers: getAuthHeaders(token),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to toggle product stock");
-    return data;
-  },
+  toggleProductStock: async (productId: string, token?: string) =>
+    apiService.normalizeProduct(
+      await request(`/products/${productId}/toggle-stock`, { method: "PATCH", token }, "Failed to toggle product stock")
+    ),
 
   deleteProduct: async (productId: string, token?: string) => {
     const res = await fetch(`${API_BASE_URL}/products/${productId}`, {
@@ -326,13 +384,13 @@ export const apiService = {
       headers: getAuthHeaders(token),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to delete product");
+    if (!res.ok) throw new Error(extractApiError(data, "Failed to delete product"));
     return data;
   },
 
   // 7. CART MODULE (/api/v1/carts)
   getCartSession: async (token?: string) => {
-    const res = await fetch(`${API_BASE_URL}/carts/`, {
+    const res = await fetch(`${API_BASE_URL}/carts`, {
       headers: getAuthHeaders(token),
     });
     if (res.ok) {
@@ -342,18 +400,49 @@ export const apiService = {
     return null;
   },
 
-  addToCartSession: async (productId: string, quantity: number, token?: string) => {
-    const res = await fetch(`${API_BASE_URL}/carts/items?product_id=${productId}&quantity=${quantity}`, {
+  addToCartSession: async (
+    productId: string,
+    quantity: number,
+    token?: string,
+    extras?: { addons?: any }
+  ) => {
+    const res = await fetch(`${API_BASE_URL}/carts/items`, {
       method: "POST",
+      headers: getAuthHeaders(token),
+      body: JSON.stringify({
+        product_id: productId,
+        quantity,
+        addons: extras?.addons,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(extractApiError(data, "Failed to add item to cart"));
+    return data.data || data;
+  },
+
+  updateCartItem: async (itemId: string, quantity: number, token?: string) => {
+    const res = await fetch(`${API_BASE_URL}/carts/items/${itemId}`, {
+      method: "PATCH",
+      headers: getAuthHeaders(token),
+      body: JSON.stringify({ quantity }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(extractApiError(data, "Failed to update cart item"));
+    return data.data || data;
+  },
+
+  removeCartItem: async (itemId: string, token?: string) => {
+    const res = await fetch(`${API_BASE_URL}/carts/items/${itemId}`, {
+      method: "DELETE",
       headers: getAuthHeaders(token),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to add item to cart");
-    return data;
+    if (!res.ok) throw new Error(extractApiError(data, "Failed to remove cart item"));
+    return data.data || data;
   },
 
   clearCartSession: async (token?: string) => {
-    const res = await fetch(`${API_BASE_URL}/carts/`, {
+    const res = await fetch(`${API_BASE_URL}/carts`, {
       method: "DELETE",
       headers: getAuthHeaders(token),
     });
@@ -363,60 +452,64 @@ export const apiService = {
   // 8. ORDERS MODULE (/api/v1/orders)
   normalizeOrder: (raw: any): Order => {
     if (!raw) return raw;
-    const statusStr = (raw.status || "PENDING").toLowerCase();
-    let mappedStatus = statusStr;
-    if (statusStr === "pending") mappedStatus = "pending_merchant";
-    if (statusStr === "confirmed") mappedStatus = "preparing";
-    if (statusStr === "dispatched") mappedStatus = "out_for_delivery";
+    const apiStatus = String(raw.status || "PENDING").toUpperCase();
+    const status = ORDER_STATUS_FROM_API[apiStatus] || (String(raw.status).toLowerCase() as OrderStatus);
+    const items = Array.isArray(raw.items)
+      ? raw.items.map((it: any) =>
+          it?.product
+            ? it
+            : {
+                product: {
+                  id: it.product_id || it.id,
+                  storeId: raw.store_id || "",
+                  name: it.name || "Item",
+                  description: "",
+                  price: Number(it.price) || 0,
+                  image: it.image || "",
+                  category: "",
+                  inStock: true,
+                },
+                quantity: Number(it.quantity) || 1,
+                selectedOptions: Array.isArray(it.addons) ? it.addons : [],
+              }
+        )
+      : [];
 
     return {
-      id: raw.id || `ORD-${Date.now()}`,
-      customerId: raw.customer_id || raw.customerId || "usr-me",
+      id: raw.id,
+      customerId: raw.customer_id || raw.customerId || "",
       customerName: raw.customer_name || raw.customerName || "Customer",
       customerPhone: raw.customer_phone || raw.customerPhone || "",
-      deliveryAddress: raw.delivery_address || raw.deliveryAddress || "Standard Address",
+      customerEmail: raw.customer_email || raw.customerEmail || undefined,
+      isGuest: Boolean(raw.is_guest ?? raw.isGuest),
+      deliveryAddress: raw.delivery_address || raw.deliveryAddress || "",
       storeId: raw.store_id || raw.storeId || "",
-      storeName: raw.store_name || raw.storeName || "Merchant Store",
+      storeName: raw.store_name || raw.storeName || "",
       storeAddress: raw.store_address || raw.storeAddress || "",
-      items: Array.isArray(raw.items) ? raw.items : [],
-      subtotal: raw.subtotal || 0,
-      deliveryFee: raw.delivery_fee || raw.deliveryFee || 0,
-      serviceFee: raw.service_fee || raw.serviceFee || 0,
-      tip: raw.tip || 0,
-      total: raw.total || raw.total_amount || 0,
-      status: mappedStatus as OrderStatus,
+      items,
+      subtotal: Number(raw.subtotal) || 0,
+      deliveryFee: Number(raw.delivery_fee ?? raw.deliveryFee) || 0,
+      serviceFee: Number(raw.service_fee ?? raw.serviceFee) || 0,
+      tip: Number(raw.tip) || 0,
+      total: Number(raw.total ?? raw.total_amount) || 0,
+      status,
       paymentMethod: raw.payment_method || raw.paymentMethod || "card",
-      paymentStatus: raw.payment_status || raw.paymentStatus || "pending",
-      pickupCode: raw.pickup_code || raw.pickupCode || "1234",
-      estimatedDeliveryMinutes: raw.estimated_delivery_minutes || raw.estimatedDeliveryMinutes || 25,
+      paymentStatus: raw.payment_status === "paid" || raw.paymentStatus === "paid" ? "paid" : raw.payment_status === "failed" ? "failed" : "pending",
+      pickupCode: raw.pickup_code || raw.pickupCode,
+      estimatedDeliveryMinutes: raw.estimated_delivery_minutes || raw.estimatedDeliveryMinutes || 30,
       riderId: raw.rider_id || raw.riderId,
       riderName: raw.rider_name || raw.riderName,
       riderPhone: raw.rider_phone || raw.riderPhone,
       riderPhoto: raw.rider_photo || raw.riderPhoto,
-      createdAt: raw.created_at || raw.createdAt || new Date().toISOString(),
-      updatedAt: raw.updated_at || raw.updatedAt || new Date().toISOString(),
+      riderEarnings: raw.rider_earnings != null ? Number(raw.rider_earnings) : undefined,
+      createdAt: raw.created_at || raw.createdAt || "",
+      updatedAt: raw.updated_at || raw.updatedAt || raw.created_at || "",
     };
   },
 
   getOrders: async (storeId?: string, token?: string): Promise<Order[]> => {
-    try {
-      const url = storeId
-        ? `${API_BASE_URL}/orders?store_id=${storeId}`
-        : `${API_BASE_URL}/orders`;
-      const res = await fetch(url, {
-        headers: getAuthHeaders(token),
-      });
-      if (res.ok) {
-        const result = await res.json();
-        const data = result.data || result;
-        if (Array.isArray(data)) {
-          return data.map((o) => apiService.normalizeOrder(o));
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to fetch orders from backend API:", e);
-    }
-    return [];
+    const data = await request<any[]>(storeId ? `/orders?store_id=${encodeURIComponent(storeId)}` : "/orders", { token }, "Could not load orders");
+    return Array.isArray(data) ? data.map((o) => apiService.normalizeOrder(o)) : [];
   },
 
   getOrderById: async (orderId: string, token?: string): Promise<Order | null> => {
@@ -446,37 +539,41 @@ export const apiService = {
     return [];
   },
 
+  quoteOrder: async (payload: any, token?: string) =>
+    request<{
+      subtotal: number;
+      delivery_fee: number;
+      service_fee: number;
+      discount: number;
+      tip: number;
+      total: number;
+      distance_km: number;
+      applied_promo_code: string | null;
+      promo_valid: boolean | null;
+    }>("/orders/quote", { method: "POST", body: JSON.stringify(payload), token }, "Could not price your order"),
+
   createOrder: async (payload: any, token?: string) => {
-    const res = await fetch(`${API_BASE_URL}/orders`, {
-      method: "POST",
-      headers: getAuthHeaders(token),
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to place order");
-    const created = data.data || data;
+    const created = await request("/orders", { method: "POST", body: JSON.stringify(payload), token }, "Failed to place order");
     return apiService.normalizeOrder(created);
   },
 
-  updateOrderStatus: async (orderId: string, status: string, token?: string) => {
-    const res = await fetch(`${API_BASE_URL}/orders/${orderId}/status?status=${status}`, {
-      method: "PATCH",
-      headers: getAuthHeaders(token),
-    });
-    const data = await res.json();
-    if (data.data) {
-      return apiService.normalizeOrder(data.data);
-    }
-    return data;
+  /** extra carries e.g. { pickup_code } for rider pickup or { reason } for cancellation. */
+  updateOrderStatus: async (orderId: string, status: string, token?: string, extra?: Record<string, any>) => {
+    const updated = await request(
+      `/orders/${encodeURIComponent(orderId)}/status`,
+      { method: "PATCH", body: JSON.stringify({ status, ...(extra || {}) }), token },
+      "Failed to update order status"
+    );
+    return apiService.normalizeOrder(updated);
   },
 
   cancelOrder: async (orderId: string, reason: string, token?: string) => {
-    const res = await fetch(`${API_BASE_URL}/orders/${orderId}/cancel`, {
-      method: "POST",
-      headers: getAuthHeaders(token),
-      body: JSON.stringify({ reason }),
-    });
-    return await res.json();
+    const updated = await request(
+      `/orders/${encodeURIComponent(orderId)}/cancel`,
+      { method: "POST", body: JSON.stringify({ reason }), token },
+      "Could not cancel order"
+    );
+    return apiService.normalizeOrder(updated);
   },
 
   // 9. PAYMENTS MODULE (/api/v1/payments)
@@ -498,7 +595,7 @@ export const apiService = {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Payment initialization failed");
+    if (!res.ok) throw new Error(extractApiError(data, "Payment initialization failed"));
     return data;
   },
 
@@ -513,16 +610,16 @@ export const apiService = {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Recording transaction failed");
+    if (!res.ok) throw new Error(extractApiError(data, "Recording transaction failed"));
     return data;
   },
 
-  verifyPayment: async (reference: string) => {
-    const res = await fetch(`${API_BASE_URL}/payments/verify/${reference}`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Payment verification failed");
-    return data.data || data;
-  },
+  verifyPayment: async (reference: string, token?: string) =>
+    request<{ verified: boolean; status: string; message?: string; order_id?: string }>(
+      `/payments/verify/${encodeURIComponent(reference)}`,
+      { token },
+      "Payment verification failed"
+    ),
 
   // 10. WALLETS MODULE (/api/v1/wallets)
   getWallets: async (token?: string) => {
@@ -573,32 +670,108 @@ export const apiService = {
       }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Payout request failed");
+    if (!res.ok) throw new Error(extractApiError(data, "Payout request failed"));
     return data;
   },
 
-  // 10.1 BACHS PAYMENT GATEWAY & SUBACCOUNTS (/api/v1/payments/bachs)
-  createBachsCheckoutSession: async (payload: { order_id: string; amount: number; email?: string; splits?: any[] }, token?: string) => {
-    const res = await fetch(`${API_BASE_URL}/payments/bachs/checkout`, {
-      method: "POST",
-      headers: getAuthHeaders(token),
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Bachs checkout creation failed");
-    return data;
+  // 10.1 BACHS HOSTED CHECKOUT (/api/v1/payments/bachs). Amount always comes from the order on the server.
+  /** Returns { checkout_url } to redirect to. Guests pass the guest_token from checkout. */
+  startBachsCheckout: (payload: { order_id: string; guest_token?: string }) =>
+    request<{ checkout_id: string; checkout_url: string; expires_at?: string }>(
+      "/payments/bachs/checkout",
+      { method: "POST", body: JSON.stringify(payload) },
+      "Couldn't start payment"
+    ),
+
+  /** After returning from Bachs: records the payment if complete. Returns the order's payment_status. */
+  confirmBachsCheckout: (payload: { order_id: string; checkout_id?: string; guest_token?: string }) =>
+    request<{ order_id: string; payment_status: string }>(
+      "/payments/bachs/confirm",
+      { method: "POST", body: JSON.stringify(payload) },
+      "Couldn't check payment"
+    ),
+
+  // 10.1b PAYOUTS (/api/v1/payouts) — merchants & riders get paid through Bachs connected accounts.
+  getPayoutBanks: () => request<{ code: string; name: string }[]>("/payouts/banks", {}, "Could not load banks"),
+  getMyPayouts: () => request<MyPayouts>("/payouts/me", {}, "Could not load your payouts"),
+  savePayoutAccount: (payload: {
+    bank_code: string;
+    bank_name: string;
+    account_number: string;
+    account_name: string;
+    first_name: string;
+    last_name: string;
+    entity_type?: "individual" | "company";
+  }) => request<PayoutAccountView>("/payouts/me/account", { method: "POST", body: JSON.stringify(payload) }, "Could not save bank details"),
+  getPayoutVerificationLink: () =>
+    request<{ url: string }>("/payouts/me/verification-link", { method: "POST" }, "Could not open verification"),
+  withdrawPayout: (amount?: number) =>
+    request("/payouts/me/withdraw", { method: "POST", body: JSON.stringify(amount ? { amount } : {}) }, "Withdrawal failed"),
+  getPayoutsOverview: () => request<PayoutsOverview>("/payouts/admin/overview", {}, "Could not load settlements"),
+  settlePayee: (payload: { payee_type: "merchant" | "rider"; payee_id: string; amount: number; note?: string }) =>
+    request("/payouts/admin/settle", { method: "POST", body: JSON.stringify(payload) }, "Settlement failed"),
+
+  // 10.2 GUEST CHECKOUT (/api/v1/orders/guest) — no account needed; the token is the guest's key.
+  quoteGuestOrder: (payload: any) =>
+    request<any>("/orders/guest/quote", { method: "POST", body: JSON.stringify(payload) }, "Could not price your order"),
+
+  createGuestOrder: async (payload: any): Promise<{ order: Order; guestToken: string }> => {
+    const created = await request<any>("/orders/guest", { method: "POST", body: JSON.stringify(payload) }, "Failed to place order");
+    return { order: apiService.normalizeOrder(created), guestToken: created.guest_token };
   },
 
-  createBachsVendorSubaccount: async (payload: { business_name: string; bank_code: string; account_number: string; contact_email?: string }, token?: string) => {
-    const res = await fetch(`${API_BASE_URL}/payments/bachs/subaccount`, {
-      method: "POST",
-      headers: getAuthHeaders(token),
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Bachs subaccount creation failed");
-    return data;
+  getGuestOrder: async (orderId: string, token: string): Promise<Order & { history: any[] }> => {
+    const raw = await request<any>(
+      `/orders/guest/${encodeURIComponent(orderId)}?token=${encodeURIComponent(token)}`,
+      {},
+      "We couldn't find that order"
+    );
+    return { ...apiService.normalizeOrder(raw), history: Array.isArray(raw.history) ? raw.history : [] };
   },
+
+  cancelGuestOrder: async (orderId: string, token: string, reason: string) =>
+    apiService.normalizeOrder(
+      await request(
+        `/orders/guest/${encodeURIComponent(orderId)}/cancel`,
+        { method: "POST", body: JSON.stringify({ token, reason }) },
+        "Could not cancel order"
+      )
+    ),
+
+  // 10.3 HOMEPAGE CATALOG (/api/v1/catalog) — public reads, admin writes.
+  getPlatformCategories: (includeInactive = false) =>
+    request<PlatformCategory[]>(`/catalog/categories${includeInactive ? "?include_inactive=true" : ""}`, {}, "Could not load categories"),
+  createPlatformCategory: (payload: Partial<PlatformCategory>) =>
+    request<PlatformCategory>("/catalog/categories", { method: "POST", body: JSON.stringify(payload) }, "Could not create category"),
+  updatePlatformCategory: (id: string, payload: Partial<PlatformCategory>) =>
+    request<PlatformCategory>(`/catalog/categories/${id}`, { method: "PATCH", body: JSON.stringify(payload) }, "Could not save category"),
+  deletePlatformCategory: (id: string) =>
+    request(`/catalog/categories/${id}`, { method: "DELETE" }, "Could not delete category"),
+  getHomeCollections: (includeInactive = false) =>
+    request<HomeCollection[]>(`/catalog/collections${includeInactive ? "?include_inactive=true" : ""}`, {}, "Could not load collections"),
+  createHomeCollection: (payload: Partial<HomeCollection>) =>
+    request<HomeCollection>("/catalog/collections", { method: "POST", body: JSON.stringify(payload) }, "Could not create collection"),
+  updateHomeCollection: (id: string, payload: Partial<HomeCollection>) =>
+    request<HomeCollection>(`/catalog/collections/${id}`, { method: "PATCH", body: JSON.stringify(payload) }, "Could not save collection"),
+  deleteHomeCollection: (id: string) =>
+    request(`/catalog/collections/${id}`, { method: "DELETE" }, "Could not delete collection"),
+
+  // 10.4 MENU SECTIONS (per-store product categories)
+  getMenuSections: (storeId: string) =>
+    request<MenuSection[]>(`/products/categories?store_id=${encodeURIComponent(storeId)}`, {}, "Could not load menu sections"),
+  createMenuSection: (storeId: string, name: string) =>
+    request<MenuSection>("/products/categories", { method: "POST", body: JSON.stringify({ store_id: storeId, name }) }, "Could not add section"),
+  renameMenuSection: (id: string, name: string) =>
+    request<MenuSection>(`/products/categories/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }, "Could not rename section"),
+  deleteMenuSection: (id: string) => request(`/products/categories/${id}`, { method: "DELETE" }, "Could not remove section"),
+  reorderMenuSections: (storeId: string, ids: string[]) =>
+    request<MenuSection[]>("/products/categories/reorder", { method: "PUT", body: JSON.stringify({ store_id: storeId, ids }) }, "Could not reorder sections"),
+
+  // 10.5 NOTIFICATIONS (in-app messages, e.g. admin -> rider)
+  getMyNotifications: () =>
+    request<{ items: AppNotification[]; unread: number }>("/notifications/me", {}, "Could not load messages"),
+  markNotificationRead: (id: string) => request(`/notifications/${id}/read`, { method: "POST" }, "Could not update message"),
+  markAllNotificationsRead: () => request("/notifications/read-all", { method: "POST" }, "Could not update messages"),
 
   // 11. DELIVERIES & LOGISTICS MODULE (/api/v1/deliveries)
   getDeliveryByOrderId: async (orderId: string, token?: string) => {
@@ -629,7 +802,7 @@ export const apiService = {
   // 12. RIDERS MODULE (/api/v1/riders)
   getRiders: async (token?: string): Promise<RiderProfile[]> => {
     try {
-      const res = await fetch(`${API_BASE_URL}/riders/`, {
+      const res = await fetch(`${API_BASE_URL}/riders`, {
         headers: getAuthHeaders(token),
       });
       if (res.ok) {
@@ -643,25 +816,75 @@ export const apiService = {
     return [];
   },
 
-  toggleRiderOnlineStatus: async (token?: string) => {
-    const res = await fetch(`${API_BASE_URL}/riders/me/status`, {
-      method: "PATCH",
-      headers: getAuthHeaders(token),
-    });
-    return await res.json();
-  },
+  getRiderMe: async (token?: string) => request("/riders/me", { token }, "Could not load rider profile"),
+
+  updateRiderMe: (payload: { vehicle_type?: string; vehicle_plate?: string; id_document_path?: string }) =>
+    request("/riders/me", { method: "PATCH", body: JSON.stringify(payload) }, "Could not save your details"),
+
+  /** Admin: riders with onboarding status, email and phone. */
+  getRidersForAdmin: (approvalStatus?: string) =>
+    request<any[]>(`/riders${approvalStatus ? `?approval_status=${approvalStatus}` : ""}`, {}, "Could not load riders"),
+
+  reviewRider: (riderId: string, decision: "approve" | "reject", note?: string) =>
+    request(`/riders/${encodeURIComponent(riderId)}/review`, { method: "PATCH", body: JSON.stringify({ decision, note }) }, "Could not save review"),
+
+  messageRider: (riderId: string, title: string, body: string) =>
+    request(`/riders/${encodeURIComponent(riderId)}/message`, { method: "POST", body: JSON.stringify({ title, body }) }, "Could not send message"),
+
+  broadcastToRiders: (payload: { title: string; body: string; audience: "approved" | "online" | "pending" | "all" }) =>
+    request<{ sent: number }>("/riders/broadcast", { method: "POST", body: JSON.stringify(payload) }, "Could not send message"),
+
+  setRiderOnlineStatus: async (status?: "online" | "offline", token?: string) =>
+    request("/riders/me/status", { method: "PATCH", body: JSON.stringify(status ? { status } : {}), token }, "Could not change online status"),
 
   // 13. FILE UPLOADS & IMAGES MODULE (/api/v1/uploads)
-  uploadSingleImage: async (formData: FormData, token?: string) => {
+  /** Upload an image to storage and return its public URL. */
+  uploadImage: async (
+    file: File,
+    bucket: "avatars" | "store-logos" | "store-banners" | "product-images",
+    folder = "",
+    token?: string
+  ): Promise<string> => {
     const authToken = token || (typeof window !== "undefined" ? localStorage.getItem("access_token") : "");
-    const res = await fetch(`${API_BASE_URL}/uploads/`, {
-      method: "POST",
-      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-      body: formData,
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Image upload failed");
-    return data;
+    const formData = new FormData();
+    formData.append("file", await shrinkImageForUpload(file));
+    const qs = new URLSearchParams({ bucket, ...(folder ? { folder } : {}) });
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE_URL}/uploads?${qs}`, {
+        method: "POST",
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        body: formData,
+      });
+    } catch {
+      throw new Error("Upload failed. Check your connection and try again.");
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(extractApiError(data, "Image upload failed"));
+    const url = data?.data?.url;
+    if (!url) throw new Error("Upload succeeded but no URL was returned");
+    return url;
+  },
+
+  /** Rider ID photo into the private documents bucket. Returns the storage path to save on the profile. */
+  uploadRiderDocument: async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", await shrinkImageForUpload(file));
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : "";
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE_URL}/uploads?bucket=rider-documents`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+    } catch {
+      throw new Error("Upload failed. Check your connection and try again.");
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(extractApiError(data, "Upload failed"));
+    if (!data?.data?.path) throw new Error("Upload succeeded but no file path was returned");
+    return data.data.path;
   },
 
   // 14. INVENTORY & CSV BULK IMPORT MODULE (/api/v1/inventory)
@@ -676,7 +899,7 @@ export const apiService = {
       body: formData,
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "CSV Inventory import failed");
+    if (!res.ok) throw new Error(extractApiError(data, "CSV Inventory import failed"));
     return data;
   },
 
@@ -687,7 +910,7 @@ export const apiService = {
       headers: getAuthHeaders(token),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Deactivating rider failed");
+    if (!res.ok) throw new Error(extractApiError(data, "Deactivating rider failed"));
     return data;
   },
 
@@ -698,7 +921,7 @@ export const apiService = {
       body: JSON.stringify({ is_active }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Toggling merchant status failed");
+    if (!res.ok) throw new Error(extractApiError(data, "Toggling merchant status failed"));
     return data;
   },
 
@@ -756,7 +979,7 @@ export const apiService = {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Pricing calculation failed");
+    if (!res.ok) throw new Error(extractApiError(data, "Pricing calculation failed"));
     return data;
   },
 
@@ -772,7 +995,7 @@ export const apiService = {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Promo code validation failed");
+    if (!res.ok) throw new Error(extractApiError(data, "Promo code validation failed"));
     return data;
   },
 

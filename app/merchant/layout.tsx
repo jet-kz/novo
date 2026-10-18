@@ -13,7 +13,6 @@ import {
   Store as StoreIcon,
   Settings,
   Headphones,
-  Bell,
   CheckCircle2,
   ChevronDown,
   Menu as MenuIcon,
@@ -204,7 +203,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
         </div>
 
         {/* BOTTOM NEED HELP CARD */}
-        <div className="mt-8 p-4 rounded-3xl bg-[#E6F7F2] dark:bg-slate-800/80 border border-emerald-100 dark:border-slate-700/60 flex flex-col items-center text-center gap-3">
+        <div className="mt-8 p-4 rounded-3xl bg-[#E6F7F2] dark:bg-slate-800/80 flex flex-col items-center text-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-[#087F5B]/15 text-[#087F5B] dark:bg-emerald-400/20 dark:text-emerald-300 flex items-center justify-center">
             <Headphones className="w-5 h-5" />
           </div>
@@ -213,7 +212,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
             <p className="text-[11px] text-[#66736E] dark:text-slate-400 font-medium mt-0.5">Contact our support team</p>
           </div>
           <a
-            href="mailto:support@novo.ng"
+            href="mailto:info@novong.com"
             className="w-full py-2.5 rounded-xl bg-[#087F5B] text-white text-xs font-extrabold hover:bg-[#065A43] transition-colors shadow-md shadow-[#087F5B]/20 text-center cursor-pointer"
           >
             Get Help
@@ -224,7 +223,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
       {/* RIGHT MAIN CONTAINER */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* TOP HEADER BAR */}
-        <header className="h-20 bg-[#F8FAF9] dark:bg-slate-950 px-4 sm:px-8 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800">
+        <header className="sticky top-0 z-30 h-16 bg-white dark:bg-slate-900 px-4 sm:px-6 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => setMobileMenuOpen(true)}
@@ -249,14 +248,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
 
           {/* TOP RIGHT PROFILE & NOTIFICATIONS & LOGOUT */}
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-            <button className="relative p-2.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-all shadow-sm">
-              <Bell className="w-4 h-4" />
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white dark:border-slate-950">
-                0
-              </span>
-            </button>
-
-            <div className="flex items-center gap-3 pl-2 sm:pl-4 border-l border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-3">
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#087F5B] text-white font-black text-xs flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
                 {(merchantProfile?.fullName || "M").charAt(0).toUpperCase()}
               </div>

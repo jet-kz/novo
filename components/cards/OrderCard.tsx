@@ -22,7 +22,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   return (
     <div
       onClick={() => onSelectOrder && onSelectOrder(order)}
-      className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col gap-4"
+      className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col gap-4"
     >
       {/* Top Header */}
       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">

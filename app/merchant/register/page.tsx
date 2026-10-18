@@ -5,11 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Building2, Store, MapPin, Check, ArrowRight } from "lucide-react";
 import { apiService } from "@/services/api";
+import { usePlatform } from "@/store/PlatformContext";
 import { getUniqueStoreBanner, getUniqueStoreLogo } from "@/utils/storeImageUtils";
 import { NovoLogo } from "@/components/shared/NovoLogo";
+import { useCatalog } from "@/components/shared/useCatalog";
+import { OtpCodeStep } from "@/components/auth/OtpCodeStep";
 
 export default function MerchantRegisterPage() {
   const router = useRouter();
+  const { loginUser, refreshMerchantStore } = usePlatform();
+  const { categories: platformCategories } = useCatalog();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,11 +30,11 @@ export default function MerchantRegisterPage() {
   const [businessType, setBusinessType] = useState("restaurant");
   const [address, setAddress] = useState("");
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+  // Email verification
+  const [otpNotice, setOtpNotice] = useState<string | null>(null);
 
+  /** Runs once we hold a session token: creates the merchant + store and opens the dashboard. */
+  const finishSetup = async (token: string) => {
     const profileData = {
       fullName,
       email,
@@ -43,40 +48,13 @@ export default function MerchantRegisterPage() {
     };
 
     try {
-      // 1. Auth Signup with backend API
-      let token = "";
-      const authRes = await apiService.signUp({
-        email,
-        password,
-        full_name: fullName,
-        role: "merchant_owner",
-        phone,
-      });
-
-      if (authRes && authRes.access_token) {
-        token = authRes.access_token;
-      } else {
-        // Attempt login if token was not returned directly by signup
-        const loginRes = await apiService.login({ email, password });
-        if (loginRes && loginRes.access_token) {
-          token = loginRes.access_token;
-        } else {
-          throw new Error(authRes?.detail || "Backend registration failed. Could not obtain session token.");
-        }
-      }
-
-      if (!token) {
-        throw new Error("Authentication token was not returned by backend.");
-      }
-
-      if (typeof window !== "undefined") {
-        localStorage.setItem("access_token", token);
-      }
+      loginUser(token, email, "merchant");
 
       // 2. Merchant & Store creation with backend API
       const merch = await apiService.createMerchant({ name: businessName }, token);
       const merchantId = merch?.data?.id || merch?.id;
-      if (merchantId) {
+      if (!merchantId) throw new Error("Merchant account could not be created.");
+      {
         const uniqueBanner = getUniqueStoreBanner({ name: businessName, category: businessType });
         const uniqueLogo = getUniqueStoreLogo({ name: businessName, category: businessType });
         await apiService.createStore(
@@ -102,13 +80,56 @@ export default function MerchantRegisterPage() {
         }
       }
 
+      await refreshMerchantStore().catch(() => {});
       router.push("/merchant");
     } catch (e: any) {
       console.error("Backend merchant creation error:", e);
+      setOtpNotice(null);
       setError(e.message || "Registration failed on backend server. Please verify backend connection.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const authRes = await apiService.signUp({
+        email,
+        password,
+        full_name: fullName,
+        role: "merchant_owner",
+        phone,
+      });
+      if (authRes?.access_token) {
+        await finishSetup(authRes.access_token);
+        return;
+      }
+      setOtpNotice(authRes?.message || `We've sent a 6-digit code to ${email}.`);
+    } catch (e: any) {
+      setError(e.message || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerified = async (token: string | null) => {
+    setLoading(true);
+    let session = token;
+    if (!session) {
+      try {
+        session = (await apiService.login({ email, password }))?.access_token || null;
+      } catch {}
+    }
+    if (!session) {
+      setLoading(false);
+      setOtpNotice(null);
+      setError("Email verified, but we couldn't sign you in. Sign in to finish setting up your store.");
+      return;
+    }
+    await finishSetup(session);
   };
 
   return (
@@ -121,13 +142,13 @@ export default function MerchantRegisterPage() {
         </div>
 
         {error && (
-          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold text-center leading-relaxed">
+          <div className="p-4 rounded-2xl bg-rose-50 text-rose-700 text-xs font-bold text-center leading-relaxed">
             {error}
           </div>
         )}
 
         {/* STEP PROGRESS */}
-        <div className="flex items-center justify-center gap-3">
+        <div className={`flex items-center justify-center gap-3 ${otpNotice ? "hidden" : ""}`}>
           <div className={`w-8 h-8 rounded-none flex items-center justify-center text-xs font-black ${step >= 1 ? "bg-[#087F5B] text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>
             1
           </div>
@@ -137,6 +158,16 @@ export default function MerchantRegisterPage() {
           </div>
         </div>
 
+        {otpNotice ? (
+          <OtpCodeStep
+            email={email}
+            password={password}
+            initialNotice={otpNotice}
+            onVerified={handleVerified}
+            onBack={() => setOtpNotice(null)}
+            submitLabel={loading ? "Setting up your store..." : "Verify & Create Store"}
+          />
+        ) : (
         <form onSubmit={handleRegister} className="flex flex-col gap-4">
           {step === 1 && (
             <>
@@ -222,10 +253,9 @@ export default function MerchantRegisterPage() {
                   onChange={(e) => setBusinessType(e.target.value)}
                   className="w-full mt-1 p-3 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none rounded-none"
                 >
-                  <option value="restaurant">Restaurant / Fast Food 🍲</option>
-                  <option value="supermarket">Supermarket / Groceries 🛍️</option>
-                  <option value="pharmacy">Pharmacy / Medical 💊</option>
-                  <option value="bakery">Bakery & Pastries 🥐</option>
+                  {platformCategories.map((c) => (
+                    <option key={c.slug} value={c.slug}>{c.name}</option>
+                  ))}
                 </select>
               </div>
 
@@ -260,6 +290,7 @@ export default function MerchantRegisterPage() {
             </>
           )}
         </form>
+        )}
 
         <div className="text-center pt-2 text-xs">
           <span className="text-[#66736E] dark:text-slate-400">Already registered? </span>

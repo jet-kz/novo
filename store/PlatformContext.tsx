@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   UserRole,
   User,
@@ -13,14 +13,9 @@ import {
   PlatformAnalytics,
   Review,
 } from "@/types";
-import { INITIAL_STORES, INITIAL_PRODUCTS, INITIAL_RIDERS, INITIAL_ORDERS, apiService } from "@/services/api";
+import { apiService } from "@/services/api";
 import { getUniqueStoreBanner, getUniqueStoreLogo } from "@/utils/storeImageUtils";
-import {
-  Coordinates,
-  calculateDynamicDeliveryFee,
-  isStoreInDeliveryRange,
-  getCoordinatesForAddress,
-} from "@/utils/locationUtils";
+import { Coordinates, isStoreInDeliveryRange, getCoordinatesForAddress } from "@/utils/locationUtils";
 
 interface PlatformContextType {
   // Role & Auth State
@@ -28,7 +23,8 @@ interface PlatformContextType {
   setCurrentRole: (role: UserRole) => void;
   currentUser: User;
   isAuthenticated: boolean;
-  loginUser: (token: string, email?: string) => void;
+  authReady: boolean;
+  loginUser: (token: string, email?: string, role?: UserRole) => void;
   logout: () => void;
   favorites: string[];
   toggleFavorite: (id: string) => void;
@@ -46,50 +42,63 @@ interface PlatformContextType {
   activeStoreId: string;
   setActiveStoreId: (id: string) => void;
   activeStore: Store;
+  /** The store owned by the signed-in merchant, resolved from /merchants/me. */
+  merchantStore: Store | null;
+  merchantStoreLoading: boolean;
+  refreshMerchantStore: () => Promise<void>;
   addStore: (store: Omit<Store, "id" | "rating" | "reviewCount" | "isVerified">) => Store;
-  updateStore: (id: string, updates: Partial<Store>) => void;
-  toggleStoreStatus: (id: string) => void;
+  updateStore: (id: string, updates: Partial<Store>) => Promise<Store>;
+  toggleStoreStatus: (id: string) => Promise<void>;
 
   // Products
   products: Product[];
-  addProduct: (product: Omit<Product, "id">) => void;
-  updateProduct: (id: string, updates: Partial<Product>) => void;
-  deleteProduct: (id: string) => void;
-  toggleProductStock: (id: string) => void;
+  saveProduct: (product: Partial<Product>, id?: string) => Promise<Product>;
+  addProduct: (product: Omit<Product, "id">) => Promise<Product>;
+  updateProduct: (id: string, updates: Partial<Product>) => Promise<Product>;
+  deleteProduct: (id: string) => Promise<void>;
+  toggleProductStock: (id: string) => Promise<void>;
 
   // Cart
   cart: CartItem[];
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
-  addToCart: (product: Product, quantity?: number, selectedOptions?: any[], specialInstructions?: string) => void;
+  addToCart: (product: Product, quantity?: number, selectedOptions?: any[], specialInstructions?: string) => boolean;
   removeFromCart: (productId: string) => void;
   updateCartQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   cartSubtotal: number;
+  /** Estimate only — the checkout shows the server quote. */
   cartDeliveryFee: number;
   cartTotal: number;
 
   // Orders
   orders: Order[];
+  ordersLoading: boolean;
+  ordersError: string | null;
+  refreshOrders: () => Promise<void>;
   activeOrder: Order | null;
+  /** Record an order the server has already created and clear the cart. */
   placeOrder: (
     deliveryAddress: string,
     paymentMethod: "card" | "cash" | "transfer",
     tipAmount: number,
     existingBackendOrder?: any
   ) => Order;
-  updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+  updateOrderStatus: (orderId: string, status: OrderStatus, extra?: Record<string, any>) => Promise<Order>;
+  cancelOrder: (orderId: string, reason?: string) => Promise<Order>;
   rateOrder: (orderId: string, storeRating: number, riderRating: number, comment: string) => void;
 
   // Rider State
   riderProfile: RiderProfile;
-  toggleRiderOnline: () => void;
-  acceptDeliveryJob: (orderId: string) => void;
-  completeDelivery: (orderId: string) => void;
+  refreshRider: () => Promise<void>;
+  toggleRiderOnline: () => Promise<void>;
+  acceptDeliveryJob: (orderId: string) => Promise<Order>;
+  confirmPickup: (orderId: string, pickupCode: string) => Promise<Order>;
+  completeDelivery: (orderId: string) => Promise<Order>;
 
   // Admin Analytics
   analytics: PlatformAnalytics;
-  approveStore: (storeId: string) => void;
+  approveStore: (storeId: string) => Promise<void>;
   verifyRider: (riderId: string) => void;
 
   // Reviews
@@ -98,48 +107,108 @@ interface PlatformContextType {
 
 const PlatformContext = createContext<PlatformContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY = "novo_platform_state_v2";
+const CART_STORAGE_KEY = "novo_cart_v1";
+const ORDER_POLL_MS = 20_000;
+
+const EMPTY_USER: User = { id: "", name: "", email: "", phone: "", role: "customer", address: "", createdAt: "" };
+
+const EMPTY_RIDER: RiderProfile = {
+  ...EMPTY_USER,
+  role: "rider",
+  avatar: "",
+  isOnline: false,
+  isVerified: false,
+  verificationStatus: "pending",
+  vehicleType: "motorcycle",
+  vehiclePlate: "",
+  rating: 5.0,
+  totalDeliveries: 0,
+  earningsToday: 0,
+  earningsThisWeek: 0,
+  tipsToday: 0,
+};
+
+const getToken = () => (typeof window !== "undefined" ? localStorage.getItem("access_token") || undefined : undefined);
+
+export function normalizeStore(bs: any): Store {
+  const settings = bs.settings && typeof bs.settings === "object" ? bs.settings : {};
+  return {
+    id: bs.id,
+    merchantId: bs.merchant_id,
+    name: bs.name,
+    slug: bs.slug || (bs.name ? bs.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") : `store-${bs.id}`),
+    description: settings.description || bs.description || `${bs.name} - Quality items & fast delivery`,
+    category: (bs.store_type || "restaurant").toLowerCase() as Store["category"],
+    address: bs.address || "",
+    phone: bs.phone || "",
+    rating: bs.rating || 5.0,
+    reviewCount: bs.review_count || 0,
+    isOpening: bs.is_open ?? true,
+    isVerified: !!bs.is_verified,
+    status: bs.is_verified ? "active" : "pending",
+    latitude: bs.location?.latitude,
+    longitude: bs.location?.longitude,
+    banner: getUniqueStoreBanner({ id: bs.id, name: bs.name, category: bs.store_type, banner: bs.banner }),
+    logo: getUniqueStoreLogo({ id: bs.id, name: bs.name, category: bs.store_type, logo: bs.logo }),
+    deliveryFee: Number(settings.delivery_fee) || 450,
+    deliveryTime: settings.delivery_time || "20-30 min",
+    minOrder: Number(settings.min_order) || 0,
+    cuisineType: bs.store_type || "Restaurant",
+  };
+}
+
+function storeUpdatesToApi(updates: Partial<Store> & Record<string, any>) {
+  const out: Record<string, any> = {};
+  const direct = ["name", "address", "phone", "logo", "banner", "description"] as const;
+  for (const key of direct) if (updates[key] !== undefined) out[key] = updates[key];
+  if (updates.category !== undefined) out.store_type = updates.category;
+  if (updates.isOpening !== undefined) out.is_open = updates.isOpening;
+  if (updates.deliveryFee !== undefined) out.deliveryFee = updates.deliveryFee;
+  if (updates.minOrder !== undefined) out.minOrder = updates.minOrder;
+  if (updates.deliveryTime !== undefined) out.deliveryTime = updates.deliveryTime;
+  if (updates.latitude !== undefined && updates.longitude !== undefined) {
+    out.location = { latitude: updates.latitude, longitude: updates.longitude };
+  }
+  return out;
+}
+
+function riderFromApi(data: any, base: RiderProfile): RiderProfile {
+  return {
+    ...base,
+    id: data.id || base.id,
+    isOnline: data.status === "online" || data.status === "busy",
+    vehicleType: data.vehicle_type || base.vehicleType,
+    vehiclePlate: data.vehicle_plate || base.vehiclePlate,
+    rating: data.rating || base.rating,
+    totalDeliveries: data.total_deliveries ?? base.totalDeliveries,
+    earningsToday: data.earnings_today ?? base.earningsToday,
+    earningsThisWeek: data.earnings_this_week ?? base.earningsThisWeek,
+    tipsToday: data.tips_today ?? base.tipsToday,
+    approvalStatus: data.approval_status ?? base.approvalStatus,
+    approvalNote: data.approval_note ?? null,
+    idDocumentUrl: data.id_document_url ?? null,
+    isVerified: data.approval_status ? data.approval_status === "approved" : base.isVerified,
+    verificationStatus:
+      data.approval_status === "approved" ? "verified" : data.approval_status === "rejected" ? "rejected" : data.approval_status ? "pending" : base.verificationStatus,
+  };
+}
 
 export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentRole, setCurrentRole] = useState<UserRole>("customer");
-
-  const [currentUser, setCurrentUser] = useState<User>({
-    id: "",
-    name: "",
-    email: "",
-    phone: "",
-    role: "customer",
-    address: "",
-    createdAt: new Date().toISOString(),
-  });
+  const [currentUser, setCurrentUser] = useState<User>(EMPTY_USER);
 
   const [stores, setStores] = useState<Store[]>([]);
   const [activeStoreId, setActiveStoreId] = useState<string>("");
+  const [merchantStore, setMerchantStore] = useState<Store | null>(null);
+  const [merchantStoreLoading, setMerchantStoreLoading] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartHydrated, setCartHydrated] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [riders, setRiders] = useState<RiderProfile[]>([]);
-  const [riderProfile, setRiderProfile] = useState<RiderProfile>({
-    id: "",
-    name: "",
-    email: "",
-    phone: "",
-    role: "rider",
-    avatar: "",
-    address: "",
-    createdAt: new Date().toISOString(),
-    isOnline: false,
-    isVerified: false,
-    verificationStatus: "pending",
-    vehicleType: "motorcycle",
-    vehiclePlate: "",
-    rating: 5.0,
-    totalDeliveries: 0,
-    earningsToday: 0,
-    earningsThisWeek: 0,
-    tipsToday: 0,
-  });
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [riderProfile, setRiderProfile] = useState<RiderProfile>(EMPTY_RIDER);
   const [reviews, setReviews] = useState<Review[]>([]);
 
   const [userLocationAddress, setUserLocationAddress] = useState<string>("Warri, Delta State");
@@ -147,226 +216,218 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const setUserLocation = (address: string, coords?: Coordinates | null) => {
     setUserLocationAddress(address);
-    if (coords) {
-      setUserLocationCoords(coords);
-    } else {
-      setUserLocationCoords(getCoordinatesForAddress(address));
-    }
+    setUserLocationCoords(coords || getCoordinatesForAddress(address));
   };
 
-  const getStoreDeliveryDetails = (store: Store) => {
-    return isStoreInDeliveryRange(store, userLocationAddress, userLocationCoords);
-  };
+  const getStoreDeliveryDetails = (store: Store) => isStoreInDeliveryRange(store, userLocationAddress, userLocationCoords);
 
   const [favorites, setFavorites] = useState<string[]>([]);
-
   const toggleFavorite = (id: string) => {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
+    setFavorites((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
   };
 
   const [theme, setTheme] = useState<"light" | "dark">("light");
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
-  };
+  const toggleTheme = () => setTheme((prev) => (prev === "light" ? "dark" : "light"));
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedTheme = (localStorage.getItem("novo_theme") as "light" | "dark") || "light";
-      setTheme(savedTheme);
-    }
+    try {
+      setTheme((localStorage.getItem("novo_theme") as "light" | "dark") || "light");
+    } catch {}
   }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    try {
       localStorage.setItem("novo_theme", theme);
-    }
+    } catch {}
   }, [theme]);
 
+  // ── Auth ────────────────────────────────────────────────────────────────
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [backendAnalytics, setBackendAnalytics] = useState<PlatformAnalytics | null>(null);
 
-  // Check auth state on mount
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("access_token");
-      setIsAuthenticated(!!token);
-    }
+    const token = getToken();
+    setIsAuthenticated(!!token);
+    if (!token) setAuthReady(true);
   }, []);
 
-  const loginUser = (token: string, email?: string) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("access_token", token);
-      document.cookie = `access_token=${token}; path=/; max-age=2592000`;
-      if (email) {
-        localStorage.setItem("user_email", email);
-        if (email.toLowerCase().includes("admin") || email === "admin@novo.ng") {
-          localStorage.setItem("novo_role", "admin");
-          document.cookie = `novo_role=admin; path=/; max-age=2592000`;
-          setCurrentRole("admin");
-        }
-      }
-    }
+  const persistRole = (role: UserRole) => {
+    setCurrentRole(role);
+    localStorage.setItem("novo_role", role);
+    document.cookie = `novo_role=${role}; path=/; max-age=2592000; samesite=lax`;
+  };
+
+  const loginUser = (token: string, email?: string, role?: UserRole) => {
+    localStorage.setItem("access_token", token);
+    document.cookie = `access_token=${token}; path=/; max-age=2592000; samesite=lax`;
+    if (email) localStorage.setItem("user_email", email);
+    if (role) persistRole(role);
     setIsAuthenticated(true);
   };
 
   const logout = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user_email");
-      localStorage.removeItem("merchant_profile");
-      localStorage.removeItem("novo_role");
-      document.cookie = `access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-      document.cookie = `novo_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    for (const key of ["access_token", "user_email", "merchant_profile", "merchant_session", "novo_role"]) {
+      localStorage.removeItem(key);
     }
+    document.cookie = `access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    document.cookie = `novo_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
     setIsAuthenticated(false);
     setOrders([]);
-    setCurrentUser({
-      id: "",
-      name: "",
-      email: "",
-      phone: "",
-      role: "customer",
-      address: "",
-      createdAt: new Date().toISOString(),
+    setMerchantStore(null);
+    setRiderProfile(EMPTY_RIDER);
+    setBackendAnalytics(null);
+    setCurrentRole("customer");
+    setCurrentUser(EMPTY_USER);
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setAuthReady(true);
+      return;
+    }
+    let cancelled = false;
+    apiService
+      .getMe()
+      .then((profile) => {
+        if (cancelled || !profile) return;
+        const userRole = (profile.role || "customer") as UserRole;
+        setCurrentUser({
+          id: profile.id || profile.user_id || "",
+          name: profile.full_name || profile.name || profile.email?.split("@")[0] || "User",
+          email: profile.email || "",
+          phone: profile.phone || "",
+          role: userRole,
+          avatar: profile.avatar,
+          address: profile.address || "",
+          createdAt: profile.created_at || "",
+        });
+        persistRole(userRole);
+      })
+      .catch((e) => {
+        console.warn("Session could not be validated:", e);
+        // An expired/invalid token must not leave the UI looking signed in.
+        if (!cancelled && /not authenticated|credentials|expired|subject/i.test(String(e?.message))) logout();
+      })
+      .finally(() => !cancelled && setAuthReady(true));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  // ── Cart persistence (per-browser convenience) ──────────────────────────
+  useEffect(() => {
+    try {
+      localStorage.removeItem("novo_platform_state_v1");
+      localStorage.removeItem("novo_platform_state_v2");
+      const saved = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || "[]");
+      if (Array.isArray(saved)) setCart(saved);
+    } catch {}
+    setCartHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!cartHydrated) return;
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    } catch {}
+  }, [cart, cartHydrated]);
+
+  // ── Catalogue ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const backendStores = await apiService.getStores();
+        const formatted = backendStores.map(normalizeStore);
+        setStores(formatted);
+        if (formatted.length > 0) setActiveStoreId((prev) => prev || formatted[0].id);
+        setProducts(await apiService.getProducts());
+      } catch (e) {
+        console.error("Failed to load stores/products:", e);
+      }
+    })();
+  }, []);
+
+  // ── Orders ──────────────────────────────────────────────────────────────
+  const refreshOrders = useCallback(async () => {
+    if (!getToken()) return;
+    setOrdersLoading(true);
+    try {
+      setOrders(await apiService.getOrders());
+      setOrdersError(null);
+    } catch (e: any) {
+      setOrdersError(e?.message || "Could not load orders");
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authReady || !isAuthenticated) return;
+    refreshOrders();
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") refreshOrders();
+    }, ORDER_POLL_MS);
+    return () => clearInterval(timer);
+  }, [authReady, isAuthenticated, refreshOrders]);
+
+  const replaceOrder = (updated: Order) => {
+    setOrders((prev) => {
+      const exists = prev.some((o) => o.id === updated.id);
+      return exists ? prev.map((o) => (o.id === updated.id ? updated : o)) : [updated, ...prev];
     });
   };
 
-  // Fetch logged in user profile
-  useEffect(() => {
-    async function loadUserProfile() {
-      if (isAuthenticated) {
-        try {
-          const profile = await apiService.getMe();
-          if (profile) {
-            const userRole = profile.role || (profile.email?.includes("admin") ? "admin" : "customer");
-            setCurrentUser({
-              id: profile.id || profile.user_id || "usr-me",
-              name: profile.full_name || profile.name || profile.email?.split("@")[0] || "User",
-              email: profile.email || "",
-              phone: profile.phone || "",
-              role: userRole as UserRole,
-              address: profile.address || "",
-              createdAt: profile.created_at || new Date().toISOString(),
-            });
-            if (userRole === "admin" || userRole === "super_admin") {
-              setCurrentRole("admin");
-              if (typeof window !== "undefined") {
-                localStorage.setItem("novo_role", "admin");
-                document.cookie = `novo_role=admin; path=/; max-age=2592000`;
-              }
-            }
-          }
-        } catch (e) {
-          console.warn("Failed to load user profile in PlatformContext:", e);
-        }
-      }
-    }
-    loadUserProfile();
-  }, [isAuthenticated]);
-
-  // Load cart & rider state from LocalStorage on client start
-  useEffect(() => {
+  // ── Merchant store ──────────────────────────────────────────────────────
+  const refreshMerchantStore = useCallback(async () => {
+    setMerchantStoreLoading(true);
     try {
-      const savedOnline = localStorage.getItem("novo_rider_is_online");
-      const savedStats = localStorage.getItem("novo_rider_stats");
-      setRiderProfile((prev) => ({
-        ...prev,
-        ...(savedOnline !== null ? { isOnline: savedOnline === "true" } : {}),
-        ...(savedStats ? JSON.parse(savedStats) : {}),
-      }));
-
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.cart && Array.isArray(parsed.cart)) setCart(parsed.cart);
+      const me = await apiService.getMerchantMe();
+      const first = Array.isArray(me?.stores) && me.stores.length > 0 ? normalizeStore(me.stores[0]) : null;
+      setMerchantStore(first);
+      if (first) {
+        setActiveStoreId(first.id);
+        setStores((prev) => (prev.some((s) => s.id === first.id) ? prev.map((s) => (s.id === first.id ? first : s)) : [first, ...prev]));
       }
+    } finally {
+      setMerchantStoreLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authReady && isAuthenticated && currentRole === "merchant") refreshMerchantStore();
+  }, [authReady, isAuthenticated, currentRole, refreshMerchantStore]);
+
+  // ── Rider profile ───────────────────────────────────────────────────────
+  const refreshRider = useCallback(async () => {
+    try {
+      const data = await apiService.getRiderMe();
+      setRiderProfile((prev) => riderFromApi(data, prev));
     } catch (e) {
-      console.warn("Failed to load rider state from localStorage", e);
+      console.warn("Could not load rider profile:", e);
     }
   }, []);
+
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.removeItem("novo_platform_state_v1");
-        localStorage.removeItem("novo_platform_state_v2");
-      } catch (e) {
-        console.warn("Error purging stale storage keys:", e);
-      }
-    }
-  }, []);
+    if (authReady && isAuthenticated && currentRole === "rider") refreshRider();
+  }, [authReady, isAuthenticated, currentRole, refreshRider]);
 
-  // Fetch backend stores and products on mount
   useEffect(() => {
-    async function loadBackendStoresAndProducts() {
-      try {
-        const backendStores = await apiService.getStores();
-        if (Array.isArray(backendStores)) {
-          const formattedStores: Store[] = backendStores.map((bs: any) => ({
-            id: bs.id,
-            merchantId: bs.merchant_id,
-            name: bs.name,
-            slug: bs.slug || (bs.name ? bs.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") : `store-${bs.id}`),
-            description: bs.description || `${bs.name} - Quality items & fast delivery`,
-            category: (bs.store_type || "restaurant").toLowerCase() as any,
-            address: bs.address || "Lagos, Nigeria",
-            phone: bs.phone || "+2348000000000",
-            rating: bs.rating || 5.0,
-            reviewCount: bs.review_count || 0,
-            isVerified: true,
-            status: "active",
-            isOpening: bs.is_open ?? true,
-            banner: getUniqueStoreBanner({ id: bs.id, name: bs.name, category: bs.store_type, banner: bs.banner }),
-            logo: getUniqueStoreLogo({ id: bs.id, name: bs.name, category: bs.store_type, logo: bs.logo }),
-            deliveryFee: 450,
-            deliveryTime: "20-30 min",
-            minOrder: 1000,
-            cuisineType: bs.store_type || "Restaurant",
-          }));
+    setRiderProfile((prev) => ({
+      ...prev,
+      id: currentUser.id || prev.id,
+      name: currentUser.name,
+      email: currentUser.email,
+      phone: currentUser.phone,
+      avatar: currentUser.avatar || prev.avatar,
+    }));
+  }, [currentUser]);
 
-          setStores(formattedStores);
-          if (formattedStores.length > 0) {
-            setActiveStoreId((prev) => prev || formattedStores[0].id);
-          }
-        }
-
-        const backendProducts = await apiService.getProducts();
-        if (Array.isArray(backendProducts)) {
-          const formattedProducts: Product[] = backendProducts.map((bp: any) => ({
-            id: bp.id,
-            storeId: bp.store_id || bp.storeId,
-            name: bp.name,
-            description: bp.description || "",
-            price: bp.price || 0,
-            category: bp.category || "General",
-            image: bp.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
-            inStock: bp.in_stock !== false,
-          }));
-          setProducts(formattedProducts);
-        }
-
-        try {
-          const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-          const backendOrders = await apiService.getOrders(undefined, token || undefined);
-          if (Array.isArray(backendOrders) && backendOrders.length > 0) {
-            setOrders(backendOrders);
-          }
-        } catch (e) {
-          console.warn("Could not fetch backend orders on mount:", e);
-        }
-      } catch (e) {
-        console.error("Failed to load backend stores/products in PlatformContext:", e);
-      }
-    }
-
-    loadBackendStoresAndProducts();
-  }, []);
-
-
-  // Store management
+  // ── Store management ────────────────────────────────────────────────────
   const addStore = (storeData: Omit<Store, "id" | "rating" | "reviewCount" | "isVerified">): Store => {
+    // Local preview only; merchant registration creates the real store through apiService.createStore.
     const newId = `store-${Date.now()}`;
     const newStore: Store = {
       ...storeData,
@@ -375,290 +436,208 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       logo: storeData.logo || getUniqueStoreLogo({ id: newId, name: storeData.name, category: storeData.category }),
       rating: 5.0,
       reviewCount: 0,
-      isVerified: true,
-      status: "active",
+      isVerified: false,
+      status: "pending",
       isOpening: true,
     };
     setStores((prev) => [newStore, ...prev]);
-    setActiveStoreId(newStore.id);
     return newStore;
   };
 
-  const updateStore = (id: string, updates: Partial<Store>) => {
-    setStores((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s)));
+  const applyStore = (store: Store) => {
+    setStores((prev) => prev.map((s) => (s.id === store.id ? store : s)));
+    setMerchantStore((prev) => (prev && prev.id === store.id ? store : prev));
   };
 
-  const toggleStoreStatus = (id: string) => {
-    setStores((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, isOpening: !s.isOpening } : s))
-    );
+  const updateStore = async (id: string, updates: Partial<Store>) => {
+    const saved = normalizeStore(await apiService.updateStore(id, storeUpdatesToApi(updates), getToken()));
+    applyStore(saved);
+    return saved;
   };
 
-  // Product management
-  const addProduct = (productData: Omit<Product, "id">) => {
-    const newProduct: Product = {
-      ...productData,
-      id: `prod-${Date.now()}`,
-    };
-    setProducts((prev) => [newProduct, ...prev]);
+  const toggleStoreStatus = async (id: string) => {
+    applyStore(normalizeStore(await apiService.toggleStoreOpenStatus(id, getToken())));
   };
 
-  const updateProduct = (id: string, updates: Partial<Product>) => {
-    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+  // ── Products ────────────────────────────────────────────────────────────
+  const saveProduct = async (product: Partial<Product>, id?: string) => {
+    const saved = id
+      ? await apiService.updateProduct(id, product, getToken())
+      : await apiService.createProduct(product, getToken());
+    setProducts((prev) => (prev.some((p) => p.id === saved.id) ? prev.map((p) => (p.id === saved.id ? saved : p)) : [saved, ...prev]));
+    return saved;
   };
 
-  const deleteProduct = (id: string) => {
+  const addProduct = (product: Omit<Product, "id">) => saveProduct(product);
+  const updateProduct = (id: string, updates: Partial<Product>) => saveProduct(updates, id);
+
+  const deleteProduct = async (id: string) => {
+    await apiService.deleteProduct(id, getToken());
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const toggleProductStock = (id: string) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, inStock: !p.inStock } : p))
-    );
+  const toggleProductStock = async (id: string) => {
+    const saved = await apiService.toggleProductStock(id, getToken());
+    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...saved } : p)));
   };
 
-  // Cart operations
-  const addToCart = (
-    product: Product,
-    quantity = 1,
-    selectedOptions: any[] = [],
-    specialInstructions = ""
-  ) => {
-    setCart((prevCart) => {
-      const existingIndex = prevCart.findIndex((item) => item.product.id === product.id);
-      if (existingIndex > -1) {
-        const updated = [...prevCart];
-        updated[existingIndex].quantity += quantity;
-        return updated;
+  // ── Cart ────────────────────────────────────────────────────────────────
+  const sameOptions = (a: any[] = [], b: any[] = []) =>
+    a.map((o) => o.id).sort().join("|") === b.map((o) => o.id).sort().join("|");
+
+  /** Returns false when the shopper declines to replace a cart from another store. */
+  const addToCart = (product: Product, quantity = 1, selectedOptions: any[] = [], specialInstructions = "") => {
+    const cartStore = cart[0]?.product?.storeId;
+    if (cartStore && product.storeId && cartStore !== product.storeId) {
+      const ok = window.confirm("Your cart has items from another store. Start a new cart with this item?");
+      if (!ok) return false;
+      setCart([{ product, quantity, selectedOptions, specialInstructions }]);
+      return true;
+    }
+    setCart((prev) => {
+      const idx = prev.findIndex((item) => item.product.id === product.id && sameOptions(item.selectedOptions, selectedOptions));
+      if (idx > -1) {
+        return prev.map((item, i) => (i === idx ? { ...item, quantity: item.quantity + quantity } : item));
       }
-      return [
-        ...prevCart,
-        {
-          product,
-          quantity,
-          selectedOptions,
-          specialInstructions,
-        },
-      ];
+      return [...prev, { product, quantity, selectedOptions, specialInstructions }];
     });
+    return true;
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart((prevCart) => prevCart.filter((item) => item.product.id !== productId));
-  };
+  const removeFromCart = (productId: string) => setCart((prev) => prev.filter((item) => item.product.id !== productId));
 
   const updateCartQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-    setCart((prevCart) =>
-      prevCart.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
-      )
-    );
+    if (quantity <= 0) return removeFromCart(productId);
+    setCart((prev) => prev.map((item) => (item.product.id === productId ? { ...item, quantity } : item)));
   };
 
   const clearCart = () => setCart([]);
 
   const cartSubtotal = cart.reduce((acc, item) => {
-    const optionsPrice = (item.selectedOptions || []).reduce((oAcc, opt) => oAcc + opt.price, 0);
+    const optionsPrice = (item.selectedOptions || []).reduce((oAcc, opt) => oAcc + (Number(opt.price) || 0), 0);
     return acc + (item.product.price + optionsPrice) * item.quantity;
   }, 0);
 
   const cartDeliveryFee = useMemo(() => {
     if (cart.length === 0) return 0;
-    const targetStoreId = cart[0]?.product?.storeId || (cart[0]?.product as any)?.store_id;
-    const store = stores.find((s) => s.id === targetStoreId);
+    const store = stores.find((s) => s.id === cart[0]?.product?.storeId);
     if (!store) return 450;
-    const details = isStoreInDeliveryRange(store, userLocationAddress, userLocationCoords);
-    return details.deliveryFee;
+    return isStoreInDeliveryRange(store, userLocationAddress, userLocationCoords).deliveryFee;
   }, [cart, stores, userLocationAddress, userLocationCoords]);
 
-  const cartServiceFee = cart.length > 0 ? 200 : 0;
-  const cartTotal = cartSubtotal + cartDeliveryFee + cartServiceFee;
+  const cartTotal = cartSubtotal + cartDeliveryFee;
 
-  // Orders
+  // ── Orders: actions ─────────────────────────────────────────────────────
   const placeOrder = (
     deliveryAddress: string,
     paymentMethod: "card" | "cash" | "transfer",
-    tipAmount = 0,
+    _tipAmount = 0,
     existingBackendOrder?: any
   ): Order => {
-    const targetStoreId = cart[0]?.product?.storeId || (cart[0]?.product as any)?.store_id;
-    const store = stores.find((s) => s.id === targetStoreId) || stores[0];
-
-    const normalizedBackend = existingBackendOrder ? apiService.normalizeOrder(existingBackendOrder) : null;
-
-    const newOrder: Order = normalizedBackend
-      ? {
-          ...normalizedBackend,
-          items: cart.length > 0 ? [...cart] : normalizedBackend.items,
-          storeName: store?.name || normalizedBackend.storeName || "Merchant Store",
-          storeAddress: store?.address || normalizedBackend.storeAddress || "",
-        }
-      : {
-          id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
-          customerId: currentUser.id || "usr-me",
-          customerName: currentUser.name || "Customer",
-          customerPhone: currentUser.phone || "",
-          deliveryAddress: deliveryAddress || currentUser.address || "14 Commercial Avenue, Central District",
-          storeId: targetStoreId || store?.id || "",
-          storeName: store?.name || "Merchant Store",
-          storeAddress: store?.address || "",
-          items: [...cart],
-          subtotal: cartSubtotal,
-          deliveryFee: cartDeliveryFee,
-          serviceFee: cartServiceFee,
-          tip: tipAmount,
-          total: cartSubtotal + cartDeliveryFee + cartServiceFee + tipAmount,
-          status: "pending_merchant",
-          paymentMethod,
-          paymentStatus: paymentMethod === "cash" ? "pending" : "paid",
-          pickupCode: String(Math.floor(1000 + Math.random() * 9000)),
-          estimatedDeliveryMinutes: 25,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-
-    setOrders((prev) => [newOrder, ...prev.filter((o) => o.id !== newOrder.id)]);
+    if (!existingBackendOrder?.id) throw new Error("Order was not saved. Please try again.");
+    const order: Order = existingBackendOrder.customerId !== undefined
+      ? existingBackendOrder
+      : apiService.normalizeOrder(existingBackendOrder);
+    const store = stores.find((s) => s.id === order.storeId);
+    const saved: Order = {
+      ...order,
+      storeName: order.storeName || store?.name || "",
+      storeAddress: order.storeAddress || store?.address || "",
+      deliveryAddress: order.deliveryAddress || deliveryAddress,
+      paymentMethod: order.paymentMethod || paymentMethod,
+    };
+    replaceOrder(saved);
     clearCart();
-    return newOrder;
+    return saved;
   };
 
-  const updateOrderStatus = (orderId: string, status: OrderStatus) => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-    // Asynchronously sync status update to FastAPI backend database
-    apiService.updateOrderStatus(orderId, status, token || undefined).catch((err) => {
-      console.warn("Backend status update note:", err);
-    });
-
-    setOrders((prev) =>
-      prev.map((ord) =>
-        ord.id === orderId
-          ? {
-              ...ord,
-              status,
-              updatedAt: new Date().toISOString(),
-              ...(status === "rider_assigned" && !ord.riderId
-                ? {
-                    riderId: riderProfile.id,
-                    riderName: riderProfile.name,
-                    riderPhone: riderProfile.phone,
-                    riderPhoto: riderProfile.avatar,
-                  }
-                : {}),
-            }
-          : ord
-      )
-    );
+  const updateOrderStatus = async (orderId: string, status: OrderStatus, extra?: Record<string, any>) => {
+    const updated = await apiService.updateOrderStatus(orderId, status, getToken(), extra);
+    replaceOrder(updated);
+    return updated;
   };
 
-  const rateOrder = (
-    orderId: string,
-    storeRating: number,
-    riderRating: number,
-    comment: string
-  ) => {
-    setOrders((prev) =>
-      prev.map((ord) =>
-        ord.id === orderId
-          ? {
-              ...ord,
-              ratings: { storeRating, riderRating, comment },
-            }
-          : ord
-      )
-    );
+  const cancelOrder = async (orderId: string, reason = "") => {
+    const updated = await apiService.cancelOrder(orderId, reason, getToken());
+    replaceOrder(updated);
+    return updated;
+  };
 
-    const targetOrder = orders.find((o) => o.id === orderId);
-    if (targetOrder && comment) {
-      const newReview: Review = {
-        id: `rev-${Date.now()}`,
-        orderId,
-        customerName: targetOrder.customerName,
-        storeId: targetOrder.storeId,
-        rating: storeRating,
-        comment,
-        createdAt: new Date().toISOString(),
-      };
-      setReviews((prev) => [newReview, ...prev]);
+  const rateOrder = (orderId: string, storeRating: number, riderRating: number, comment: string) => {
+    // Ratings are not stored server-side yet (no reviews table); kept for this session only.
+    setOrders((prev) => prev.map((ord) => (ord.id === orderId ? { ...ord, ratings: { storeRating, riderRating, comment } } : ord)));
+    const target = orders.find((o) => o.id === orderId);
+    if (target && comment) {
+      setReviews((prev) => [
+        {
+          id: `rev-${Date.now()}`,
+          orderId,
+          customerName: target.customerName,
+          storeId: target.storeId,
+          rating: storeRating,
+          comment,
+          createdAt: new Date().toISOString(),
+        },
+        ...prev,
+      ]);
     }
   };
 
-  // Rider actions
-  const toggleRiderOnline = () => {
-    setRiderProfile((prev) => {
-      const nextOnline = !prev.isOnline;
-      if (typeof window !== "undefined") {
-        localStorage.setItem("novo_rider_is_online", String(nextOnline));
-      }
-      return { ...prev, isOnline: nextOnline };
-    });
+  // ── Rider actions ───────────────────────────────────────────────────────
+  const toggleRiderOnline = async () => {
+    const data = await apiService.setRiderOnlineStatus(riderProfile.isOnline ? "offline" : "online");
+    setRiderProfile((prev) => riderFromApi(data, prev));
+    if (data?.status !== "offline") refreshOrders();
   };
 
-  const acceptDeliveryJob = (orderId: string) => {
+  const acceptDeliveryJob = async (orderId: string) => {
+    const order = await updateOrderStatus(orderId, "rider_assigned");
     setRiderProfile((prev) => ({ ...prev, currentOrderId: orderId }));
-    updateOrderStatus(orderId, "rider_assigned");
+    return order;
   };
 
-  const completeDelivery = (orderId: string) => {
-    const targetOrder = orders.find((o) => o.id === orderId);
-    const earned = targetOrder ? targetOrder.deliveryFee + targetOrder.tip : 950;
+  const confirmPickup = (orderId: string, pickupCode: string) =>
+    updateOrderStatus(orderId, "picked_up", { pickup_code: pickupCode });
 
-    setRiderProfile((prev) => {
-      const updated = {
-        ...prev,
-        currentOrderId: undefined,
-        totalDeliveries: prev.totalDeliveries + 1,
-        earningsToday: prev.earningsToday + earned,
-        earningsThisWeek: prev.earningsThisWeek + earned,
-        tipsToday: prev.tipsToday + (targetOrder?.tip || 0),
-      };
-      if (typeof window !== "undefined") {
-        localStorage.setItem("novo_rider_stats", JSON.stringify({
-          totalDeliveries: updated.totalDeliveries,
-          earningsToday: updated.earningsToday,
-          earningsThisWeek: updated.earningsThisWeek,
-          tipsToday: updated.tipsToday,
-        }));
-      }
-      return updated;
-    });
-
-    updateOrderStatus(orderId, "delivered");
+  const completeDelivery = async (orderId: string) => {
+    const order = await updateOrderStatus(orderId, "delivered");
+    setRiderProfile((prev) => ({ ...prev, currentOrderId: undefined }));
+    refreshRider();
+    return order;
   };
 
-  // Admin actions
-  const approveStore = (storeId: string) => {
-    setStores((prev) =>
-      prev.map((s) => (s.id === storeId ? { ...s, isVerified: true, status: "active" } : s))
-    );
+  // ── Admin actions ───────────────────────────────────────────────────────
+  const approveStore = async (storeId: string) => {
+    applyStore(normalizeStore(await apiService.verifyStore(storeId, true, getToken())));
   };
 
-  const verifyRider = (riderId: string) => {
-    setRiders((prev) =>
-      prev.map((r) => (r.id === riderId ? { ...r, isVerified: true, verificationStatus: "verified" } : r))
-    );
+  const verifyRider = (_riderId: string) => {
+    // Rider verification has no backend field yet; the admin page shows this as unavailable.
   };
 
-  const activeOrder = orders[0] || null;
+  const activeOrder = orders.find((o) => o.status !== "delivered" && o.status !== "cancelled") || orders[0] || null;
 
-  // Platform Analytics computation
-  const totalRevenue = orders.reduce((acc, o) => acc + o.total, 0);
-  const commissionEarned = Math.round(totalRevenue * 0.15);
+  // ── Analytics ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!authReady || !isAuthenticated || (currentRole !== "admin" && currentRole !== "merchant")) return;
+    apiService
+      .getAnalytics()
+      .then((data) => data && typeof data === "object" && setBackendAnalytics(data))
+      .catch(() => {});
+  }, [authReady, isAuthenticated, currentRole, orders.length]);
 
-  const analytics: PlatformAnalytics = {
-    totalRevenue: totalRevenue,
+  const totalRevenue = orders.filter((o) => o.paymentStatus === "paid").reduce((acc, o) => acc + o.total, 0);
+  const analytics: PlatformAnalytics = backendAnalytics || {
+    totalRevenue,
     totalOrders: orders.length,
     activeStoresCount: stores.filter((s) => s.status === "active").length,
-    activeRidersCount: riders.length,
-    totalCustomersCount: orders.length,
+    activeRidersCount: 0,
+    totalCustomersCount: new Set(orders.map((o) => o.customerId)).size,
     gmvToday: totalRevenue,
-    commissionEarned: commissionEarned,
+    commissionEarned: Math.round(totalRevenue * 0.15),
   };
 
-  const activeStore = stores.find((s) => s.id === activeStoreId) || stores[0] || ({} as Store);
+  const activeStore = merchantStore || stores.find((s) => s.id === activeStoreId) || stores[0] || ({} as Store);
 
   return (
     <PlatformContext.Provider
@@ -667,6 +646,7 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setCurrentRole,
         currentUser,
         isAuthenticated,
+        authReady,
         loginUser,
         logout,
         favorites,
@@ -683,11 +663,15 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         activeStoreId,
         setActiveStoreId,
         activeStore,
+        merchantStore,
+        merchantStoreLoading,
+        refreshMerchantStore,
         addStore,
         updateStore,
         toggleStoreStatus,
 
         products,
+        saveProduct,
         addProduct,
         updateProduct,
         deleteProduct,
@@ -705,14 +689,20 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         cartTotal,
 
         orders,
+        ordersLoading,
+        ordersError,
+        refreshOrders,
         activeOrder,
         placeOrder,
         updateOrderStatus,
+        cancelOrder,
         rateOrder,
 
         riderProfile,
+        refreshRider,
         toggleRiderOnline,
         acceptDeliveryJob,
+        confirmPickup,
         completeDelivery,
 
         analytics,

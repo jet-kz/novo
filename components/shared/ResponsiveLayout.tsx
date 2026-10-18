@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Home, Search, User, Clock } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
 import { CartDrawer } from "@/components/cart/CartDrawer";
+import { CartBar } from "@/components/cart/CartBar";
 import { Footer } from "@/components/shared/Footer";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 import { SupportChatWidget } from "@/components/shared/SupportChatWidget";
@@ -20,15 +21,16 @@ interface ResponsiveLayoutProps {
 
 export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
   const pathname = usePathname();
-  const { isCartOpen, setIsCartOpen, isAuthenticated } = usePlatform();
+  const { isAuthenticated, currentUser } = usePlatform();
 
-  // Determine active view mode
-  const isMerchant = pathname.startsWith("/merchant");
-  const isRider = pathname.startsWith("/rider");
-  const isAdmin = pathname.startsWith("/admin");
-  // Hide main outer header on home page ("/") because header is integrated in hero banner
-  const isCustomerHeaderVisible = !isMerchant && !isRider && !isAdmin && pathname !== "/";
-  const isCustomerNavVisible = !isMerchant && !isRider && !isAdmin;
+  // Merchant, rider and admin portals bring their own chrome; auth screens stay bare.
+  const isPortal = ["/merchant", "/rider", "/admin"].some((p) => pathname.startsWith(p));
+  const isAuthScreen = pathname === "/auth" || pathname.startsWith("/auth/");
+  const isCustomerChrome = !isPortal && !isAuthScreen;
+  // One header for every customer page on desktop. On mobile each screen has its own
+  // title bar and the bottom nav handles navigation, so a second global bar is not shown.
+  const isCustomerHeaderVisible = isCustomerChrome;
+  const isCustomerNavVisible = isCustomerChrome;
 
   const customerNavItems = [
     { label: "Home", href: "/", icon: <Home className="w-5 h-5" /> },
@@ -37,15 +39,13 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
     { label: "Profile", href: "/profile", icon: <User className="w-5 h-5" /> },
   ];
 
-  const isHomePage = pathname === "/";
-
   return (
     <div
-      className="flex flex-col min-h-screen w-full pb-20 sm:pb-0 font-sans bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100"
+      className={`flex flex-col min-h-screen w-full font-sans bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 ${isCustomerNavVisible ? "pb-20 md:pb-0" : ""}`}
     >
-      {/* GLOBAL HEADER (For Customer View except Home Page) */}
+      {/* GLOBAL CUSTOMER HEADER (desktop) */}
       {isCustomerHeaderVisible && (
-        <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-slate-900/95 border-b border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md">
+        <header className="hidden md:block sticky top-0 z-40 w-full bg-white/95 dark:bg-slate-900/95 border-b border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             {/* Logo */}
             <NovoLogo subtitle="Delivery Express" size="md" />
@@ -53,7 +53,7 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-1">
               {customerNavItems.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
                 return (
                   <Link
                     key={item.href}
@@ -73,14 +73,22 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
             {/* Right Actions */}
             <div className="flex items-center gap-3">
               <ThemeToggle />
-              <NotificationBell />
+              {isAuthenticated && <NotificationBell />}
 
-              {!isAuthenticated && (
+              {isAuthenticated ? (
+                <Link
+                  href="/profile"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-extrabold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 transition-colors"
+                >
+                  <User className="w-4 h-4 text-[#087F5B] dark:text-emerald-400" />
+                  <span className="max-w-[120px] truncate">{currentUser?.name || "Account"}</span>
+                </Link>
+              ) : (
                 <Link
                   href="/auth"
-                  className="hidden sm:inline-flex px-4 py-2 rounded-xl text-xs font-extrabold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 transition-colors"
+                  className="inline-flex px-4 py-2 rounded-xl text-xs font-extrabold bg-[#087F5B] hover:bg-[#066a4c] text-white transition-colors"
                 >
-                  Account
+                  Sign In
                 </Link>
               )}
             </div>
@@ -97,11 +105,12 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
       {/* MOBILE BOTTOM NAVIGATION BAR */}
       {isCustomerNavVisible && <MobileBottomNav />}
 
-      {/* Cart Drawer */}
+      {/* Floating basket bar + cart sheet */}
+      <CartBar />
       <CartDrawer />
 
       {/* 24/7 Customer Support Floating Assistant */}
-      <SupportChatWidget />
+      {isCustomerChrome && <SupportChatWidget />}
     </div>
   );
 }

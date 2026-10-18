@@ -20,7 +20,7 @@ export const CartItem: React.FC<CartItemProps> = ({
   const totalPrice = unitPrice * item.quantity;
 
   return (
-    <div className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800/80">
+    <div className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
       <img
         src={item.product.image}
         alt={item.product.name}
@@ -41,7 +41,7 @@ export const CartItem: React.FC<CartItemProps> = ({
         )}
       </div>
 
-      <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-xs">
+      <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 rounded-xl p-1 shadow-xs">
         <button
           onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
           className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 transition-colors"

@@ -89,7 +89,7 @@ export function MobileOrderTracker({ order, onBack }: MobileOrderTrackerProps) {
         </div>
 
         {/* Visual Map Graphic Path */}
-        <div className="relative w-full h-24 rounded-2xl bg-emerald-900/40 backdrop-blur-md border border-white/20 p-3 flex items-center justify-between">
+        <div className="relative w-full h-24 rounded-2xl bg-emerald-900/40 backdrop-blur-md p-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-white text-[#008A4C] flex items-center justify-center shadow-md animate-bounce">
               <Bike className="w-5 h-5" />
@@ -115,7 +115,7 @@ export function MobileOrderTracker({ order, onBack }: MobileOrderTrackerProps) {
 
       {/* 2. TIMELINE STEPS PROGRESSION */}
       <div className="p-5 flex flex-col gap-4">
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] dark:border-slate-800 shadow-xs flex flex-col gap-4">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 shadow-xs flex flex-col gap-4">
           <h3 className="text-xs font-black text-[#101714] dark:text-white uppercase tracking-wider">
             Live Order Status Timeline
           </h3>
@@ -160,7 +160,7 @@ export function MobileOrderTracker({ order, onBack }: MobileOrderTrackerProps) {
         </div>
 
         {/* 3. REAL RIDER / COURIER CONTACT CARD */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] dark:border-slate-800 shadow-xs flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 shadow-xs flex items-center justify-between">
           {order.riderName ? (
             <>
               <div className="flex items-center gap-3">

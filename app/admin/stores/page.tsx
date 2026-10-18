@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { usePlatform } from "@/store/PlatformContext";
 import { Table, Column } from "@/components/ui/Table";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -10,80 +10,62 @@ import { Input } from "@/components/ui/Input";
 import { Store } from "@/types";
 import { apiService } from "@/services/api";
 import { Star, ShieldCheck, Sparkles, Edit3 } from "lucide-react";
+import { useCatalog } from "@/components/shared/useCatalog";
 
 export default function AdminStoresPage() {
-  const { stores: contextStores, approveStore, updateStore } = usePlatform();
-  const [storesList, setStoresList] = useState<Store[]>(contextStores);
-  const [loading, setLoading] = useState(true);
+  const { stores: storesList, approveStore, updateStore, toggleStoreStatus } = usePlatform();
 
-  // Edit Store Config Modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
-  const [customCommission, setCustomCommission] = useState("15");
+  const [customCommission, setCustomCommission] = useState("");
+  const { categories: platformCategories } = useCatalog();
   const [storeCategory, setStoreCategory] = useState("restaurant");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const fetchBackendStores = async () => {
-    setLoading(true);
+  const run = async (id: string, fn: () => Promise<unknown>) => {
+    setBusyId(id);
+    setError(null);
     try {
-      const data = await apiService.getStores();
-      if (Array.isArray(data) && data.length > 0) {
-        setStoresList(data);
-      } else {
-        setStoresList(contextStores);
-      }
-    } catch (e) {
-      console.warn("Failed to fetch backend stores:", e);
-      setStoresList(contextStores);
+      await fn();
+    } catch (e: any) {
+      setError(e?.message || "That action failed.");
     } finally {
-      setLoading(false);
+      setBusyId(null);
     }
   };
 
-  useEffect(() => {
-    fetchBackendStores();
-  }, []);
+  const handleApprove = (storeId: string) => run(storeId, () => approveStore(storeId));
+  const handleToggleOpen = (storeId: string) => run(storeId, () => toggleStoreStatus(storeId));
 
-  const handleApprove = async (storeId: string) => {
-    approveStore(storeId);
-    setStoresList((prev) =>
-      prev.map((s) => (s.id === storeId ? { ...s, isVerified: true, status: "active" } : s))
-    );
-    try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-      await apiService.toggleMerchantStatus(storeId, true, token || undefined);
-    } catch (e) {
-      console.warn("Backend toggle status note:", e);
-    }
-  };
-
-  const handleToggleFeatured = (storeId: string) => {
-    setStoresList((prev) =>
-      prev.map((s) => {
-        if (s.id === storeId) {
-          const updated = { ...s, isOpening: !s.isOpening };
-          updateStore(storeId, updated);
-          return updated;
-        }
-        return s;
-      })
-    );
-  };
-
-  const handleSaveStoreConfig = (e: React.FormEvent) => {
+  const handleSaveStoreConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedStore) {
-      updateStore(selectedStore.id, {
-        category: storeCategory as any,
-      });
-      setStoresList((prev) =>
-        prev.map((s) =>
-          s.id === selectedStore.id
-            ? { ...s, category: storeCategory as any }
-            : s
-        )
-      );
+    if (!selectedStore) return;
+    setSaving(true);
+    setError(null);
+    try {
+      if (storeCategory !== selectedStore.category) {
+        await updateStore(selectedStore.id, { category: storeCategory as Store["category"] });
+      }
+      if (customCommission.trim() !== "") {
+        const rate = Number(customCommission);
+        if (!(rate >= 0 && rate <= 100)) throw new Error("Commission must be between 0 and 100%");
+        const res = await apiService.saveCommissionRule({
+          name: `${selectedStore.name} override`,
+          rule_type: "PERCENTAGE",
+          value: rate,
+          merchant_id: selectedStore.merchantId,
+          is_active: true,
+        });
+        if (res?.detail) throw new Error(typeof res.detail === "string" ? res.detail : "Could not save commission");
+      }
+      setIsEditModalOpen(false);
+    } catch (err: any) {
+      setError(err?.message || "Could not save store configuration.");
+    } finally {
+      setSaving(false);
     }
-    setIsEditModalOpen(false);
   };
 
   const columns: Column<Store>[] = [
@@ -91,16 +73,17 @@ export default function AdminStoresPage() {
     { header: "Category", accessorKey: "category" },
     { header: "Phone", accessorKey: "phone" },
     {
-      header: "Featured on Home",
+      header: "Accepting Orders",
       cell: (s) => (
         <button
-          onClick={() => handleToggleFeatured(s.id)}
-          className={`px-3 py-1 text-xs font-black flex items-center gap-1 cursor-pointer ${
-            s.isOpening !== false ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-500"
+          onClick={() => handleToggleOpen(s.id)}
+          disabled={busyId === s.id}
+          className={`px-3 py-1 text-xs font-black flex items-center gap-1 cursor-pointer disabled:opacity-50 ${
+            s.isOpening !== false ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
           }`}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span>{s.isOpening !== false ? "Featured" : "Standard"}</span>
+          <span>{s.isOpening !== false ? "Open" : "Closed"}</span>
         </button>
       ),
     },
@@ -115,6 +98,7 @@ export default function AdminStoresPage() {
               size="sm"
               variant="primary"
               onClick={() => handleApprove(s.id)}
+              disabled={busyId === s.id}
             >
               Approve Store
             </Button>
@@ -125,6 +109,7 @@ export default function AdminStoresPage() {
             onClick={() => {
               setSelectedStore(s);
               setStoreCategory(s.category || "restaurant");
+              setCustomCommission("");
               setIsEditModalOpen(true);
             }}
           >
@@ -141,16 +126,22 @@ export default function AdminStoresPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100">
-            Store Approvals &amp; Home Highlights
+            Store Approvals &amp; Configuration
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Approve registered store merchants, feature top stores on customer home, and manage commission overrides.
+            Approve registered stores, open or close them for orders, and set commission overrides.
           </p>
         </div>
         <span className="text-xs font-bold text-slate-500">
           {storesList.length} Stores Total
         </span>
       </div>
+
+      {error && (
+        <p role="alert" className="text-xs font-semibold text-rose-700 bg-rose-50 dark:bg-rose-950/40 rounded-xl p-3">
+          {error}
+        </p>
+      )}
 
       <Table columns={columns} data={storesList} keyExtractor={(s) => s.id} />
 
@@ -170,11 +161,9 @@ export default function AdminStoresPage() {
               onChange={(e) => setStoreCategory(e.target.value)}
               className="w-full mt-1 p-3 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none"
             >
-              <option value="restaurant">Restaurant / Fast Food 🍲</option>
-              <option value="supermarket">Supermarket / Groceries 🛍️</option>
-              <option value="pharmacy">Pharmacy / Medical 💊</option>
-              <option value="bakery">Bakery &amp; Pastries 🥐</option>
-              <option value="drinks">Drinks &amp; Liquor 🥤</option>
+              {platformCategories.map((c) => (
+                    <option key={c.slug} value={c.slug}>{c.name}</option>
+                  ))}
             </select>
           </div>
 
@@ -183,10 +172,10 @@ export default function AdminStoresPage() {
             type="number"
             value={customCommission}
             onChange={(e) => setCustomCommission(e.target.value)}
-            placeholder="15"
+            placeholder="Leave blank to keep the platform default"
           />
 
-          <Button type="submit" variant="primary" className="w-full mt-2">
+          <Button type="submit" variant="primary" className="w-full mt-2" isLoading={saving}>
             Save Store Configuration
           </Button>
         </form>

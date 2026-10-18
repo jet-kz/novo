@@ -25,31 +25,25 @@ import { Button } from "@/components/ui/Button";
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentRole, currentUser, setCurrentRole, logout } = usePlatform();
+  const { currentRole, currentUser, authReady, isAuthenticated, setCurrentRole, logout } = usePlatform();
   const [isChecking, setIsChecking] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-    const storedRole = typeof window !== "undefined" ? localStorage.getItem("novo_role") : null;
-    const storedEmail = typeof window !== "undefined" ? localStorage.getItem("user_email") : null;
+    if (!authReady) return;
 
-    const isAdmin =
-      currentRole === "admin" ||
-      storedRole === "admin" ||
-      storedEmail === "admin@novo.ng" ||
-      currentUser?.email === "admin@novo.ng" ||
-      currentUser?.role === "admin" ||
-      !!token;
-
-    if (!isAdmin) {
-      router.replace("/auth");
-    } else {
-      setIsAuthorized(true);
+    const isAdmin = currentRole === "admin" || currentUser?.role === "admin";
+    if (!isAuthenticated || !isAdmin) {
+      router.replace("/auth?next=/admin");
+      setIsAuthorized(false);
       setIsChecking(false);
+      return;
     }
-  }, [currentRole, currentUser, router]);
+
+    setIsAuthorized(true);
+    setIsChecking(false);
+  }, [authReady, isAuthenticated, currentRole, currentUser, router]);
 
   // Close mobile drawer on route change
   useEffect(() => {

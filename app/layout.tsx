@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Sora } from "next/font/google";
 import "./globals.css";
 import { PlatformProvider } from "@/store/PlatformContext";
@@ -19,6 +19,19 @@ export const metadata: Metadata = {
     shortcut: "/novo-logo/01_Motion_N/01-motion-n_green.svg",
     apple: "/novo-logo/01_Motion_N/01-motion-n_green.png",
   },
+  // Home-screen launches on iPhone open without Safari's bars.
+  appleWebApp: { capable: true, title: "Novo", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Draw under the notch / home indicator; layouts pad with env(safe-area-inset-*).
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#020617" },
+  ],
 };
 
 import { HeroUIProviderWrapper } from "@/components/providers/HeroUIProviderWrapper";

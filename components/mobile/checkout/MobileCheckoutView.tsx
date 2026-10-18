@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -8,73 +8,21 @@ import {
   CreditCard,
   Banknote,
   CheckCircle2,
-  Plus,
   ShieldCheck,
   Building,
 } from "lucide-react";
-import { usePlatform } from "@/store/PlatformContext";
-import { apiService } from "@/services/api";
+import type { useCheckout, PaymentMethod } from "@/components/checkout/useCheckout";
+import { ContactFields } from "@/components/checkout/ContactFields";
 
-export function MobileCheckoutView() {
+const naira = (n: number) => `₦${Math.round(n).toLocaleString()}`;
+
+export function MobileCheckoutView({ checkout }: { checkout: ReturnType<typeof useCheckout> }) {
   const router = useRouter();
-  const { cart, cartSubtotal, cartDeliveryFee, cartTotal, currentUser, placeOrder } = usePlatform();
-
-  const [deliveryAddress, setDeliveryAddress] = useState(
-    currentUser?.address || "12 Adeola street, Victoria Island, Lagos"
-  );
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | "transfer">("card");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showAddressModal, setShowAddressModal] = useState(false);
-  const [newAddressText, setNewAddressText] = useState("");
-
-  const handlePlaceOrder = async () => {
-    if (cart.length === 0) return;
-    setIsSubmitting(true);
-    try {
-      const targetStoreId = cart[0]?.product?.storeId || (cart[0]?.product as any)?.store_id;
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-
-      let createdBackendOrder: any = null;
-      try {
-        createdBackendOrder = await apiService.createOrder(
-          {
-            store_id: targetStoreId,
-            delivery_address: deliveryAddress,
-            payment_method: paymentMethod,
-            items: cart.map((c) => ({
-              product_id: c.product.id,
-              quantity: c.quantity,
-              price: c.product.price,
-             })),
-            subtotal: cartSubtotal,
-            delivery_fee: cartDeliveryFee,
-            total: cartTotal,
-          },
-          token || undefined
-        );
-      } catch (e) {
-        console.warn("Backend order creation warning:", e);
-      }
-
-      const newOrder = placeOrder(deliveryAddress, paymentMethod, 0, createdBackendOrder);
-      router.push(`/orders?track=${newOrder.id}`);
-    } catch (e) {
-      console.error("Order placement failed:", e);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAddNewAddress = () => {
-    if (newAddressText.trim()) {
-      setDeliveryAddress(newAddressText);
-      setShowAddressModal(false);
-      setNewAddressText("");
-    }
-  };
+  const { cart, summary, isQuote } = checkout;
+  const isSubmitting = checkout.isSubmitting;
 
   return (
-    <div className="md:hidden flex flex-col w-full min-h-screen bg-[#F7FAF8] dark:bg-slate-950 text-[#101714] dark:text-slate-100 pb-28">
+    <div className="md:hidden flex flex-col w-full min-h-screen bg-[#F7FAF8] dark:bg-slate-950 text-[#101714] dark:text-slate-100 pb-44">
       {/* Top Header */}
       <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-[#E3EAE6] dark:border-slate-800 px-4 py-3 flex items-center gap-3 shadow-xs">
         <button
@@ -87,52 +35,46 @@ export function MobileCheckoutView() {
       </div>
 
       <div className="p-4 flex flex-col gap-4">
-        {/* 1. DELIVERY ADDRESS SECTION */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] dark:border-slate-800 flex flex-col gap-2.5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-[#101714] dark:text-white uppercase tracking-wider">
-              Delivery Address
-            </span>
-            <button
-              onClick={() => setShowAddressModal(true)}
-              className="text-[11px] font-bold text-[#008A4C] hover:underline flex items-center gap-1"
-            >
-              <Plus className="w-3 h-3" />
-              <span>Add New Address</span>
-            </button>
-          </div>
-
-          <div className="flex items-start gap-3 p-3 rounded-xl bg-[#F7FAF8] dark:bg-slate-800/60 border border-[#E3EAE6]">
-            <div className="w-8 h-8 rounded-full bg-[#E8F7EF] dark:bg-slate-700 flex items-center justify-center text-[#008A4C] shrink-0 mt-0.5">
-              <MapPin className="w-4 h-4" />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-xs font-bold text-[#101714] dark:text-white">Home</span>
-              <span className="text-[11px] text-[#66736D] dark:text-slate-400 leading-snug">
-                {deliveryAddress}
-              </span>
-            </div>
-          </div>
+        {/* 1. CONTACT */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 shadow-xs">
+          <ContactFields checkout={checkout} />
         </div>
 
-        {/* 2. PAYMENT METHOD SECTION */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] dark:border-slate-800 flex flex-col gap-2.5 shadow-xs">
+        {/* 2. DELIVERY ADDRESS */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 flex flex-col gap-2.5 shadow-xs">
+          <label htmlFor="m-address" className="flex items-center gap-2 text-xs font-black text-[#101714] dark:text-white uppercase tracking-wider">
+            <MapPin className="w-4 h-4 text-[#008A4C]" />
+            Delivery address
+          </label>
+          <textarea
+            id="m-address"
+            value={checkout.address}
+            onChange={(e) => checkout.setAddress(e.target.value)}
+            rows={2}
+            autoComplete="street-address"
+            placeholder="House number, street, area, landmark"
+            className="w-full p-3 rounded-xl bg-[#F7FAF8] dark:bg-slate-800 text-sm text-[#101714] dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-emerald-500/40 resize-none"
+          />
+        </div>
+
+        {/* 3. PAYMENT METHOD SECTION */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 flex flex-col gap-2.5 shadow-xs">
           <span className="text-xs font-black text-[#101714] dark:text-white uppercase tracking-wider">
             Payment Method
           </span>
 
           <div className="flex flex-col gap-2">
             {[
-              { id: "card", label: "Card (**** 4242)", icon: CreditCard },
-              { id: "cash", label: "Pay with Cash", icon: Banknote },
-              { id: "transfer", label: "Bank Transfer / Apple Pay", icon: Building },
+              { id: "card", label: "Pay online now", icon: CreditCard },
+              { id: "cash", label: "Cash on Delivery", icon: Banknote },
+              { id: "transfer", label: "Transfer on Delivery", icon: Building },
             ].map((pm) => {
               const Icon = pm.icon;
-              const isSelected = paymentMethod === pm.id;
+              const isSelected = checkout.paymentMethod === pm.id;
               return (
                 <label
                   key={pm.id}
-                  onClick={() => setPaymentMethod(pm.id as any)}
+                  onClick={() => checkout.setPaymentMethod(pm.id as PaymentMethod)}
                   className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
                     isSelected
                       ? "bg-[#E8F7EF] border-[#008A4C] text-[#008A4C] dark:bg-slate-800"
@@ -150,69 +92,68 @@ export function MobileCheckoutView() {
           </div>
         </div>
 
-        {/* 3. ORDER SUMMARY */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] dark:border-slate-800 flex flex-col gap-2.5 shadow-xs text-xs font-semibold">
+        {/* 4. ORDER SUMMARY */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 flex flex-col gap-2.5 shadow-xs text-xs font-semibold">
           <span className="text-xs font-black text-[#101714] dark:text-white uppercase tracking-wider">
             Order Summary
           </span>
 
           <div className="flex items-center justify-between text-[#66736D]">
             <span>Items ({cart.length})</span>
-            <span className="font-bold text-[#101714] dark:text-white">₦{cartSubtotal.toLocaleString()}</span>
+            <span className="font-bold text-[#101714] dark:text-white">{naira(summary.subtotal)}</span>
           </div>
 
           <div className="flex items-center justify-between text-[#66736D]">
             <span>Delivery Fee</span>
-            <span className="font-bold text-[#101714] dark:text-white">₦{cartDeliveryFee.toLocaleString()}</span>
+            <span className="font-bold text-[#101714] dark:text-white">{naira(summary.delivery_fee)}</span>
           </div>
 
+          {isQuote && (
+            <div className="flex items-center justify-between text-[#66736D]">
+              <span>Service Fee</span>
+              <span className="font-bold text-[#101714] dark:text-white">{naira(summary.service_fee)}</span>
+            </div>
+          )}
+
+          {summary.discount > 0 && (
+            <div className="flex items-center justify-between text-[#008A4C]">
+              <span>Promo Discount</span>
+              <span className="font-bold">-{naira(summary.discount)}</span>
+            </div>
+          )}
+
           <div className="flex items-center justify-between pt-2 border-t border-[#E3EAE6] dark:border-slate-800 text-sm font-black text-[#101714] dark:text-white">
-            <span>Total</span>
-            <span className="text-[#008A4C]">₦{cartTotal.toLocaleString()}</span>
+            <span>{isQuote ? "Total" : "Estimated total"}</span>
+            <span className="text-[#008A4C]">{checkout.quoteLoading ? "Calculating…" : naira(summary.total)}</span>
           </div>
         </div>
+
+        {checkout.notice && (
+          <p className="text-[11px] font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 rounded-xl p-3">{checkout.notice}</p>
+        )}
+        {checkout.error && (
+          <p role="alert" className="text-[11px] font-semibold text-rose-700 bg-rose-50 dark:bg-rose-950/40 rounded-xl p-3">
+            {checkout.error}
+          </p>
+        )}
       </div>
 
       {/* Sticky Place Order CTA */}
       <div className="fixed bottom-14 left-0 right-0 p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-[#E3EAE6] dark:border-slate-800 z-30">
         <button
-          onClick={handlePlaceOrder}
-          disabled={isSubmitting || cart.length === 0}
+          onClick={checkout.submit}
+          disabled={isSubmitting || checkout.quoteLoading || cart.length === 0}
           className="w-full py-3.5 rounded-2xl bg-[#008A4C] hover:bg-[#006B3C] disabled:opacity-50 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg cursor-pointer transition-colors"
         >
           <ShieldCheck className="w-4 h-4" />
-          <span>{isSubmitting ? "Placing Order..." : "Place Order"}</span>
+          <span>
+            {isSubmitting
+              ? checkout.paymentMethod === "card" ? "Opening payment..." : "Placing order..."
+              : `${checkout.paymentMethod === "card" ? "Continue to payment" : "Place order"} • ${naira(summary.total)}`}
+          </span>
         </button>
       </div>
 
-      {/* Add New Address Modal */}
-      {showAddressModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-5 flex flex-col gap-4 shadow-2xl">
-            <h3 className="text-sm font-black text-[#101714] dark:text-white">Add Delivery Address</h3>
-            <textarea
-              value={newAddressText}
-              onChange={(e) => setNewAddressText(e.target.value)}
-              placeholder="Enter street name, house number, area..."
-              className="w-full h-24 p-3 rounded-xl bg-[#F7FAF8] dark:bg-slate-800 text-xs font-semibold border border-[#E3EAE6] outline-none"
-            />
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowAddressModal(false)}
-                className="flex-1 py-2.5 rounded-xl border border-[#E3EAE6] text-xs font-bold text-[#66736D]"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddNewAddress}
-                className="flex-1 py-2.5 rounded-xl bg-[#008A4C] text-white text-xs font-bold"
-              >
-                Save Address
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

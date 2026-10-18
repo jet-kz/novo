@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import {
   ShoppingBag,
@@ -16,133 +16,68 @@ import {
   Lightbulb,
 } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
-import { apiService } from "@/services/api";
 import { getUniqueStoreBanner } from "@/utils/storeImageUtils";
+import { isDone, isInKitchen, isNewOrder, isOnTheWay, isReady, statusLabel } from "@/utils/orderStatus";
+import type { OrderStatus } from "@/types";
 
 export default function MerchantDashboardPage() {
-  const { stores, activeStore, toggleStoreStatus, updateOrderStatus } = usePlatform();
+  const {
+    activeStore,
+    merchantStore,
+    merchantStoreLoading,
+    toggleStoreStatus,
+    updateOrderStatus,
+    orders,
+    ordersError,
+    products,
+    analytics,
+  } = usePlatform();
 
-  const [merchantData, setMerchantData] = useState<any>(null);
-  const [currentStore, setCurrentStore] = useState<any>(null);
-  const [realOrders, setRealOrders] = useState<any[]>([]);
-  const [realProducts, setRealProducts] = useState<any[]>([]);
-  const [analytics, setAnalytics] = useState<any>({
-    totalRevenue: 0,
-    totalOrders: 0,
-    totalCustomersCount: 0,
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const currentStore: any = merchantStore;
+  const isLoading = merchantStoreLoading && !merchantStore;
+  const realOrders = merchantStore ? orders.filter((o) => o.storeId === merchantStore.id) : [];
+  const realProducts = merchantStore ? products.filter((p) => p.storeId === merchantStore.id) : [];
+  const storeOpen = merchantStore?.isOpening ?? true;
 
   const [orderTab, setOrderTab] = useState<"all" | "new" | "preparing" | "ready" | "completed">("new");
   const [menuTab, setMenuTab] = useState<"all" | "available" | "out">("all");
-  const [storeOpen, setStoreOpen] = useState(true);
+  const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadMerchantDashboard() {
-      if (typeof window === "undefined") return;
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        // Fetch current authenticated merchant & stores
-        const merchRes = await apiService.getMerchantMe(token);
-        if (merchRes) {
-          setMerchantData(merchRes.merchant || merchRes);
-          if (merchRes.stores && merchRes.stores.length > 0) {
-            setCurrentStore(merchRes.stores[0]);
-            setStoreOpen(merchRes.stores[0].is_open ?? true);
-          }
-        }
-
-        // Selected store ID
-        const targetStoreId = merchRes?.stores?.[0]?.id || (merchRes ? undefined : activeStore?.id || stores[0]?.id);
-
-        // Fetch real analytics
-        const stats = await apiService.getAnalytics(token);
-        if (stats) {
-          setAnalytics(stats);
-        }
-
-        // Fetch real orders
-        if (targetStoreId) {
-          const fetchedOrders = await apiService.getOrders(targetStoreId, token);
-          if (Array.isArray(fetchedOrders)) {
-            setRealOrders(fetchedOrders);
-          }
-
-          // Fetch real products
-          const fetchedProducts = await apiService.getProducts(targetStoreId, token);
-          if (Array.isArray(fetchedProducts)) {
-            setRealProducts(fetchedProducts);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load merchant dashboard:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadMerchantDashboard();
-  }, [activeStore]);
-
-  // Sync store open status
-  const handleToggleStore = async () => {
-    const nextState = !storeOpen;
-    setStoreOpen(nextState);
-    if (currentStore?.id) {
-      try {
-        const token = localStorage.getItem("access_token");
-        await apiService.toggleStoreOpenStatus(currentStore.id, token || undefined);
-      } catch (e) {
-        await toggleStoreStatus(currentStore.id);
-      }
-    }
-  };
-
-  const handleAcceptOrder = async (orderId: string) => {
+  const run = async (id: string, fn: () => Promise<unknown>) => {
+    setBusyOrderId(id);
+    setActionError(null);
     try {
-      const token = localStorage.getItem("access_token");
-      await apiService.updateOrderStatus(orderId, "CONFIRMED", token || undefined);
-      setRealOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status: "CONFIRMED" } : o))
-      );
-      updateOrderStatus(orderId, "preparing");
-    } catch (e) {
-      console.error("Failed to accept order:", e);
-      updateOrderStatus(orderId, "preparing");
+      await fn();
+    } catch (e: any) {
+      setActionError(e?.message || "That action failed. Please try again.");
+    } finally {
+      setBusyOrderId(null);
     }
   };
 
-  const handleDeclineOrder = async (orderId: string) => {
-    try {
-      const token = localStorage.getItem("access_token");
-      await apiService.updateOrderStatus(orderId, "CANCELLED", token || undefined);
-      setRealOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status: "CANCELLED" } : o))
-      );
-      updateOrderStatus(orderId, "cancelled");
-    } catch (e) {
-      console.error("Failed to decline order:", e);
-      updateOrderStatus(orderId, "cancelled");
-    }
+  const handleToggleStore = () => {
+    if (merchantStore) run("store", () => toggleStoreStatus(merchantStore.id));
   };
 
-  const filteredOrders = realOrders.filter((o) => {
-    const st = (o.status || "").toLowerCase();
-    if (orderTab === "new") return st === "pending" || st === "cart";
-    if (orderTab === "preparing") return st === "confirmed" || st === "preparing";
-    if (orderTab === "ready") return st === "ready";
-    if (orderTab === "completed") return st === "delivered" || st === "completed";
+  const handleAcceptOrder = (orderId: string) => run(orderId, () => updateOrderStatus(orderId, "preparing"));
+  const handleDeclineOrder = (orderId: string) => {
+    if (!window.confirm("Reject this order? The customer will be notified.")) return;
+    run(orderId, () => updateOrderStatus(orderId, "cancelled", { reason: "Rejected by store" }));
+  };
+
+  const inTab = (status: OrderStatus, tab: typeof orderTab) => {
+    if (tab === "new") return isNewOrder(status);
+    if (tab === "preparing") return isInKitchen(status);
+    if (tab === "ready") return isReady(status) || isOnTheWay(status);
+    if (tab === "completed") return isDone(status);
     return true;
-  });
+  };
+  const filteredOrders = realOrders.filter((o) => inTab(o.status, orderTab));
 
   const filteredProducts = realProducts.filter((p) => {
-    if (menuTab === "available") return p.in_stock !== false;
-    if (menuTab === "out") return p.in_stock === false;
+    if (menuTab === "available") return p.inStock !== false;
+    if (menuTab === "out") return p.inStock === false;
     return true;
   });
 
@@ -161,8 +96,8 @@ export default function MerchantDashboardPage() {
     } catch (e) {}
   }
 
-  const activeStoreName = savedProfileName || activeStore?.name || currentStore?.name || merchantData?.name || "My Store";
-  const activeStoreCategory = savedProfileCategory || activeStore?.cuisineType || activeStore?.category || currentStore?.store_type || "Restaurant";
+  const activeStoreName = savedProfileName || activeStore?.name || currentStore?.name || "My Store";
+  const activeStoreCategory = savedProfileCategory || activeStore?.cuisineType || activeStore?.category || currentStore?.cuisineType || "Restaurant";
   const activeStoreAddress = savedProfileAddress || activeStore?.address || currentStore?.address || "Store Location";
 
   return (
@@ -170,7 +105,7 @@ export default function MerchantDashboardPage() {
       {/* 1. TOP SUMMARY METRICS (4 CARDS GRID) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Today's Orders */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-[#087F5B] flex items-center justify-center shrink-0">
             <ShoppingBag className="w-6 h-6 text-[#087F5B]" />
           </div>
@@ -188,7 +123,7 @@ export default function MerchantDashboardPage() {
         </div>
 
         {/* Card 2: Today's Earnings */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 flex items-center justify-center shrink-0">
             <Wallet className="w-6 h-6 text-sky-600" />
           </div>
@@ -206,7 +141,7 @@ export default function MerchantDashboardPage() {
         </div>
 
         {/* Card 3: Total Reviews */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center shrink-0">
             <Star className="w-6 h-6 text-amber-500 fill-amber-500" />
           </div>
@@ -217,14 +152,14 @@ export default function MerchantDashboardPage() {
                 {currentStore?.rating && currentStore.rating > 0 ? `${Number(currentStore.rating).toFixed(1)}/5` : "0.0/5"}
               </span>
               <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center">
-                {currentStore?.review_count || currentStore?.reviewCount ? `${currentStore.review_count || currentStore.reviewCount} reviews` : "New Store"}
+                {currentStore?.reviewCount ? `${currentStore.reviewCount} reviews` : "New Store"}
               </span>
             </div>
           </div>
         </div>
 
         {/* Card 4: Active Customers */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center shrink-0">
             <Users className="w-6 h-6 text-purple-600" />
           </div>
@@ -247,7 +182,7 @@ export default function MerchantDashboardPage() {
         {/* LEFT COLUMN (WIDE - 8/12) */}
         <div className="lg:col-span-8 flex flex-col gap-6">
           {/* RECENT ORDERS CARD */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-black text-slate-900 dark:text-white">Recent Orders</h3>
               <Link
@@ -262,10 +197,10 @@ export default function MerchantDashboardPage() {
             <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3 overflow-x-auto">
               {(
                 [
-                  { id: "new", label: "New", count: realOrders.filter((o) => (o.status || "").toLowerCase() === "pending").length },
-                  { id: "preparing", label: "Preparing", count: realOrders.filter((o) => ["confirmed", "preparing"].includes((o.status || "").toLowerCase())).length },
-                  { id: "ready", label: "Ready", count: realOrders.filter((o) => (o.status || "").toLowerCase() === "ready").length },
-                  { id: "completed", label: "Completed", count: realOrders.filter((o) => ["delivered", "completed"].includes((o.status || "").toLowerCase())).length },
+                  { id: "new", label: "New", count: realOrders.filter((o) => inTab(o.status, "new")).length },
+                  { id: "preparing", label: "Preparing", count: realOrders.filter((o) => inTab(o.status, "preparing")).length },
+                  { id: "ready", label: "Ready", count: realOrders.filter((o) => inTab(o.status, "ready")).length },
+                  { id: "completed", label: "Completed", count: realOrders.filter((o) => inTab(o.status, "completed")).length },
                 ] as const
               ).map((tab) => (
                 <button
@@ -282,9 +217,21 @@ export default function MerchantDashboardPage() {
               ))}
             </div>
 
+            {(actionError || ordersError) && (
+              <p role="alert" className="text-xs font-semibold text-rose-700 bg-rose-50 dark:bg-rose-950/40 rounded-xl p-3">
+                {actionError || ordersError}
+              </p>
+            )}
+
             {/* ORDERS TABLE ROWS */}
             <div className="flex flex-col gap-2.5 mt-1">
-              {filteredOrders.length === 0 ? (
+              {isLoading ? (
+                <div className="py-12 text-center text-xs font-bold text-slate-500">Loading your store…</div>
+              ) : !merchantStore ? (
+                <div className="py-12 text-center text-xs font-bold text-slate-500">
+                  No store is linked to this account yet. Complete merchant registration to start receiving orders.
+                </div>
+              ) : filteredOrders.length === 0 ? (
                 <div className="py-12 text-center flex flex-col items-center justify-center gap-2">
                   <ShoppingBag className="w-8 h-8 text-slate-300 dark:text-slate-600" />
                   <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
@@ -298,7 +245,7 @@ export default function MerchantDashboardPage() {
                 filteredOrders.map((ord) => (
                   <div
                     key={ord.id}
-                    className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/50 hover:bg-slate-100/80 transition-all border border-slate-100 dark:border-slate-800"
+                    className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/50 hover:bg-slate-100/80 transition-all"
                   >
                     <div className="flex items-center gap-4">
                       <div className="flex flex-col">
@@ -308,22 +255,22 @@ export default function MerchantDashboardPage() {
                           </span>
                           <span
                             className={`w-2 h-2 rounded-full ${
-                              (ord.status || "").toLowerCase() === "pending" ? "bg-emerald-500" : "bg-amber-500"
+                              isNewOrder(ord.status) ? "bg-emerald-500" : "bg-amber-500"
                             }`}
                           />
                           <span
                             className={`text-[11px] font-extrabold capitalize ${
-                              (ord.status || "").toLowerCase() === "pending" ? "text-emerald-600" : "text-amber-600"
+                              isNewOrder(ord.status) ? "text-emerald-600" : "text-amber-600"
                             }`}
                           >
-                            {ord.status || "Pending"}
+                            {statusLabel(ord.status)}
                           </span>
                         </div>
                       </div>
 
                       <div className="flex flex-col ml-4">
                         <span className="text-xs font-black text-slate-900 dark:text-white">
-                          {ord.customer_name || "Customer"}
+                          {ord.customerName || "Customer"}
                         </span>
                         <span className="text-xs font-black text-slate-800 dark:text-slate-200">
                           ₦{(ord.total || 0).toLocaleString()}
@@ -333,27 +280,29 @@ export default function MerchantDashboardPage() {
 
                     <div className="flex items-center gap-4">
                       <span className="text-[11px] font-semibold text-[#66736E] dark:text-slate-400 hidden sm:inline">
-                        {ord.created_at ? new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
+                        {ord.createdAt ? new Date(ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
                       </span>
 
-                      {(ord.status || "").toLowerCase() === "pending" ? (
+                      {isNewOrder(ord.status) ? (
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleAcceptOrder(ord.id)}
-                            className="px-4 py-1.5 rounded-xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all shadow-sm cursor-pointer"
+                            disabled={busyOrderId === ord.id}
+                            className="disabled:opacity-50 px-4 py-1.5 rounded-xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all shadow-sm cursor-pointer"
                           >
                             Accept
                           </button>
                           <button
                             onClick={() => handleDeclineOrder(ord.id)}
-                            className="px-4 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-extrabold hover:bg-slate-300 transition-all cursor-pointer"
+                            disabled={busyOrderId === ord.id}
+                            className="disabled:opacity-50 px-4 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-extrabold hover:bg-slate-300 transition-all cursor-pointer"
                           >
                             Decline
                           </button>
                         </div>
                       ) : (
                         <span className="px-4 py-1.5 rounded-xl bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 text-xs font-black">
-                          {ord.status}
+                          {statusLabel(ord.status)}
                         </span>
                       )}
                     </div>
@@ -364,7 +313,7 @@ export default function MerchantDashboardPage() {
           </div>
 
           {/* MENU ITEMS CARD */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <h3 className="text-base font-black text-slate-900 dark:text-white">Menu Items</h3>
@@ -390,8 +339,8 @@ export default function MerchantDashboardPage() {
               {(
                 [
                   { id: "all", label: "All Items", count: realProducts.length },
-                  { id: "available", label: "Available", count: realProducts.filter((p) => p.in_stock !== false).length },
-                  { id: "out", label: "Out of Stock", count: realProducts.filter((p) => p.in_stock === false).length },
+                  { id: "available", label: "Available", count: realProducts.filter((p) => p.inStock !== false).length },
+                  { id: "out", label: "Out of Stock", count: realProducts.filter((p) => p.inStock === false).length },
                 ] as const
               ).map((tab) => (
                 <button
@@ -429,7 +378,7 @@ export default function MerchantDashboardPage() {
                 {filteredProducts.map((p) => (
                   <div
                     key={p.id}
-                    className="bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl overflow-hidden border border-slate-200/60 dark:border-slate-800 flex flex-col group hover:shadow-md transition-all"
+                    className="bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl overflow-hidden flex flex-col group hover:shadow-md transition-all"
                   >
                     <div className="h-32 w-full overflow-hidden relative">
                       <img
@@ -444,9 +393,9 @@ export default function MerchantDashboardPage() {
                         ₦{(p.price || 0).toLocaleString()}
                       </span>
                       <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
-                        <span className={`text-[10px] font-extrabold flex items-center gap-1 ${p.in_stock !== false ? "text-emerald-600" : "text-rose-500"}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${p.in_stock !== false ? "bg-emerald-500" : "bg-rose-500"}`} />
-                          {p.in_stock !== false ? "Available" : "Out of Stock"}
+                        <span className={`text-[10px] font-extrabold flex items-center gap-1 ${p.inStock !== false ? "text-emerald-600" : "text-rose-500"}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${p.inStock !== false ? "bg-emerald-500" : "bg-rose-500"}`} />
+                          {p.inStock !== false ? "Available" : "Out of Stock"}
                         </span>
                         <Link href="/merchant/menu" className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white">
                           <Pencil className="w-3.5 h-3.5" />
@@ -463,8 +412,8 @@ export default function MerchantDashboardPage() {
         {/* RIGHT COLUMN (NARROW - 4/12) */}
         <div className="lg:col-span-4 flex flex-col gap-6">
           {/* STORE OVERVIEW WIDGET (MATCHING MOCKUP) */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col gap-4">
-            <div className="h-36 w-full rounded-2xl overflow-hidden relative border border-slate-200/60 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex flex-col gap-4">
+            <div className="h-36 w-full rounded-2xl overflow-hidden relative">
               <img
                 src={currentStore?.banner || (activeStore ? getUniqueStoreBanner(activeStore) : getUniqueStoreBanner({ id: "store-merchant", name: activeStoreName }))}
                 alt="Store Banner"
@@ -472,6 +421,7 @@ export default function MerchantDashboardPage() {
               />
               <button
                 onClick={handleToggleStore}
+                disabled={busyOrderId === "store"}
                 className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-black shadow-md cursor-pointer transition-all ${
                   storeOpen ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
                 }`}
@@ -515,7 +465,7 @@ export default function MerchantDashboardPage() {
           </div>
 
           {/* QUICK STATS WIDGET */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-[#087F5B]" />
@@ -577,7 +527,7 @@ export default function MerchantDashboardPage() {
           </div>
 
           {/* TIPS FOR GROWTH WIDGET */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex flex-col gap-4">
             <div className="flex items-center gap-2">
               <Lightbulb className="w-4 h-4 text-amber-500 fill-amber-500" />
               <h3 className="text-sm font-black text-slate-900 dark:text-white">Tips for Growth</h3>
@@ -586,7 +536,7 @@ export default function MerchantDashboardPage() {
             <div className="flex flex-col gap-3">
               <Link
                 href="/merchant/menu"
-                className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all border border-slate-100 dark:border-slate-800"
+                className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#087F5B] flex items-center justify-center">
@@ -602,7 +552,7 @@ export default function MerchantDashboardPage() {
 
               <Link
                 href="/merchant/menu?action=add"
-                className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all border border-slate-100 dark:border-slate-800"
+                className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#087F5B] flex items-center justify-center">
@@ -618,7 +568,7 @@ export default function MerchantDashboardPage() {
 
               <Link
                 href="/merchant/profile"
-                className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all border border-slate-100 dark:border-slate-800"
+                className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#087F5B] flex items-center justify-center">

@@ -42,7 +42,7 @@ export default function MerchantAnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-        <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl shadow-sm flex flex-col justify-between">
           <span className="text-xs font-bold text-[#66736E] uppercase tracking-wider">Average Store Rating</span>
           <div className="flex items-center gap-3 my-3">
             <span className="text-3xl font-black text-slate-900 dark:text-white">{myStore?.rating || "4.8"}</span>
@@ -51,7 +51,7 @@ export default function MerchantAnalyticsPage() {
           <span className="text-[10px] text-slate-400 font-medium">Based on customer feedback</span>
         </div>
 
-        <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl shadow-sm flex flex-col justify-between">
           <span className="text-xs font-bold text-[#66736E] uppercase tracking-wider">Gross Sales (GMV Today)</span>
           <div className="flex items-center gap-2 my-3">
             <span className="text-3xl font-black text-[#087F5B]">₦{analyticsData.gmvToday?.toLocaleString() || "185,400"}</span>
@@ -59,7 +59,7 @@ export default function MerchantAnalyticsPage() {
           <span className="text-[10px] text-emerald-600 font-bold">Processed today</span>
         </div>
 
-        <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl shadow-sm flex flex-col justify-between">
           <span className="text-xs font-bold text-[#66736E] uppercase tracking-wider">Lifetime Total Orders</span>
           <div className="flex items-center gap-2 my-3">
             <span className="text-3xl font-black text-slate-900 dark:text-white">{analyticsData.totalOrders || orders.length}</span>
@@ -72,7 +72,7 @@ export default function MerchantAnalyticsPage() {
         <h3 className="text-lg font-black text-slate-900 dark:text-white">Customer Feedback & Reviews</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {storeReviews.map((rev) => (
-            <div key={rev.id} className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 flex flex-col gap-2 shadow-xs">
+            <div key={rev.id} className="p-5 bg-white dark:bg-slate-900 rounded-3xl flex flex-col gap-2 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-xs text-slate-900 dark:text-white">{rev.customerName}</span>
                 <div className="flex items-center gap-1">

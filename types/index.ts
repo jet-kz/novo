@@ -93,7 +93,8 @@ export interface Store {
   description: string;
   logo: string;
   banner: string;
-  category: "restaurant" | "supermarket" | "pharmacy" | "express" | "drinks";
+  /** Platform category slug (see PlatformCategory). Admins can add new ones. */
+  category: string;
   city?: string;
   state?: string;
   latitude?: number;
@@ -149,6 +150,9 @@ export interface Order {
   customerId: string;
   customerName: string;
   customerPhone: string;
+  customerEmail?: string;
+  /** Placed without an account; tracked via a private link. */
+  isGuest?: boolean;
   deliveryAddress: string;
   storeId: string;
   storeName: string;
@@ -166,6 +170,9 @@ export interface Order {
   riderName?: string;
   riderPhone?: string;
   riderPhoto?: string;
+  /** What the assigned rider earns for this job (delivery share + tip). */
+  riderEarnings?: number;
+  /** Shown to merchants/admins only; the rider must enter it at pickup. */
   pickupCode?: string;
   estimatedDeliveryMinutes: number;
   createdAt: string;
@@ -200,6 +207,10 @@ export interface RiderProfile extends User {
   earningsToday: number;
   earningsThisWeek: number;
   tipsToday: number;
+  /** Onboarding review from the backend; undefined until the profile has loaded. */
+  approvalStatus?: "pending" | "approved" | "rejected";
+  approvalNote?: string | null;
+  idDocumentUrl?: string | null;
 }
 
 export interface DeliveryRequest {
@@ -233,4 +244,104 @@ export interface Review {
   rating: number;
   comment: string;
   createdAt: string;
+}
+
+/** Homepage category managed by admins. `slug` matches a store's category. */
+export interface PlatformCategory {
+  id: string;
+  slug: string;
+  name: string;
+  icon?: string | null;
+  description?: string | null;
+  display_order: number;
+  is_active: boolean;
+  store_count?: number;
+}
+
+/** Featured strip on the homepage. */
+export interface HomeCollection {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  badge?: string | null;
+  image?: string | null;
+  /** Platform category slug, or "all". */
+  target_category: string;
+  display_order: number;
+  is_active: boolean;
+}
+
+/** A section of a store's menu, e.g. "Rice dishes". */
+export interface MenuSection {
+  id: string;
+  store_id: string;
+  name: string;
+  slug: string;
+  display_order: number;
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  body: string;
+  kind: "message" | "approval" | "system" | string;
+  read_at: string | null;
+  created_at: string;
+}
+
+/** Earnings maths for a merchant or rider (see backend PayoutService.earnings). */
+export interface PayeeEarnings {
+  orders: number;
+  earned: number;
+  /** Riders: cash/transfer-on-delivery money they collected, which belongs to Novo. */
+  cash_collected: number;
+  settled: number;
+  /** What Novo still owes them; negative means they owe Novo. */
+  owed: number;
+}
+
+export interface PayoutAccountView {
+  status: "incomplete" | "in_review" | "active" | "restricted" | string;
+  transfers_enabled: boolean;
+  payouts_enabled: boolean;
+  requirements_due: string[];
+  bank_name?: string | null;
+  account_last4?: string | null;
+  account_name?: string | null;
+}
+
+export interface SettlementRow {
+  id: string;
+  payee_type: "merchant" | "rider";
+  payee_id: string;
+  amount: number;
+  status: "processing" | "paid" | "failed";
+  failure_reason?: string | null;
+  note?: string | null;
+  created_at: string;
+}
+
+export interface WithdrawalRow {
+  id: string;
+  amount: number;
+  status: string;
+  failure_reason?: string | null;
+  created_at: string;
+}
+
+export interface MyPayouts {
+  payee_type: "merchant" | "rider";
+  earnings: PayeeEarnings;
+  account: PayoutAccountView | null;
+  /** Settled money sitting in their Bachs account, ready to withdraw. */
+  withdrawable: number | null;
+  settlements: SettlementRow[];
+  withdrawals: WithdrawalRow[];
+}
+
+export interface PayoutsOverview {
+  bachs_configured: boolean;
+  available_balance: number | null;
+  payees: { payee_type: "merchant" | "rider"; payee_id: string; name: string; earnings: PayeeEarnings; account: PayoutAccountView | null }[];
+  settlements: SettlementRow[];
 }

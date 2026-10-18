@@ -42,7 +42,7 @@ export default function MerchantPromotionsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {promos.map((p) => (
-          <div key={p.id} className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
+          <div key={p.id} className="bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#087F5B] flex items-center justify-center">
                 <Tag className="w-6 h-6" />

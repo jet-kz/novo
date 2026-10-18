@@ -130,8 +130,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-      <div className="w-full sm:max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 flex flex-col gap-4 max-h-[92vh] overflow-y-auto shadow-2xl relative scrollbar-none">
+    <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-xs flex items-stretch sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+      <div className="w-full sm:max-w-lg h-[100dvh] sm:h-auto sm:max-h-[92vh] bg-white dark:bg-slate-900 sm:rounded-3xl p-5 sm:p-6 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))] flex flex-col gap-4 overflow-y-auto shadow-2xl relative scrollbar-none">
         {/* 1. TOP HEADER WITH TITLE & CLOSE BUTTON */}
         <div className="flex items-center justify-between pb-3 border-b border-[#E3EAE6] dark:border-slate-800">
           <h3 className="text-base font-black text-[#101714] dark:text-white">Product Details</h3>
@@ -277,7 +277,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
         {/* 6. QUANTITY STEPPER & ADD TO CART CTA BAR */}
         <div className="flex items-center gap-3 pt-3 border-t border-[#E3EAE6] dark:border-slate-800 mt-1">
-          <div className="flex items-center gap-3 bg-[#F7FAF8] dark:bg-slate-800 px-3 py-2 rounded-2xl border border-[#E3EAE6] dark:border-slate-700 shrink-0">
+          <div className="flex items-center gap-3 bg-[#F7FAF8] dark:bg-slate-800 px-3 py-2 rounded-2xl shrink-0">
             <button
               type="button"
               onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -309,25 +309,25 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
         {/* 7. NUTRITIONAL & PREP INFO SPECS GRID */}
         <div className="grid grid-cols-4 gap-2 pt-3 border-t border-[#E3EAE6] dark:border-slate-800 text-center">
-          <div className="flex flex-col items-center p-2 rounded-xl bg-[#F7FAF8] dark:bg-slate-800/50 border border-[#E3EAE6] dark:border-slate-800">
+          <div className="flex flex-col items-center p-2 rounded-xl bg-[#F7FAF8] dark:bg-slate-800/50">
             <Clock className="w-4 h-4 text-[#008A4C] mb-1" />
             <span className="text-[9px] text-[#66736D] dark:text-slate-400 font-semibold">Prep Time</span>
             <span className="text-[10px] font-black text-[#101714] dark:text-white mt-0.5">{specsInfo.prepTime}</span>
           </div>
 
-          <div className="flex flex-col items-center p-2 rounded-xl bg-[#F7FAF8] dark:bg-slate-800/50 border border-[#E3EAE6] dark:border-slate-800">
+          <div className="flex flex-col items-center p-2 rounded-xl bg-[#F7FAF8] dark:bg-slate-800/50">
             <Flame className="w-4 h-4 text-amber-500 mb-1" />
             <span className="text-[9px] text-[#66736D] dark:text-slate-400 font-semibold">Spicy Level</span>
             <span className="text-[10px] font-black text-[#101714] dark:text-white mt-0.5">{specsInfo.spicyLevel}</span>
           </div>
 
-          <div className="flex flex-col items-center p-2 rounded-xl bg-[#F7FAF8] dark:bg-slate-800/50 border border-[#E3EAE6] dark:border-slate-800">
+          <div className="flex flex-col items-center p-2 rounded-xl bg-[#F7FAF8] dark:bg-slate-800/50">
             <UtensilsCrossed className="w-4 h-4 text-[#008A4C] mb-1" />
             <span className="text-[9px] text-[#66736D] dark:text-slate-400 font-semibold">Calories</span>
             <span className="text-[10px] font-black text-[#101714] dark:text-white mt-0.5">{specsInfo.calories}</span>
           </div>
 
-          <div className="flex flex-col items-center p-2 rounded-xl bg-[#F7FAF8] dark:bg-slate-800/50 border border-[#E3EAE6] dark:border-slate-800">
+          <div className="flex flex-col items-center p-2 rounded-xl bg-[#F7FAF8] dark:bg-slate-800/50">
             <Users className="w-4 h-4 text-[#008A4C] mb-1" />
             <span className="text-[9px] text-[#66736D] dark:text-slate-400 font-semibold">Serves</span>
             <span className="text-[10px] font-black text-[#101714] dark:text-white mt-0.5">{specsInfo.serves}</span>

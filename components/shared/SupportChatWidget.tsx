@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { MessageCircle, X, Send, Bot, User, PhoneCall, ShieldCheck } from "lucide-react";
+import { useCartBarVisible } from "@/components/cart/CartBar";
 
 interface Message {
   id: string;
@@ -12,6 +13,7 @@ interface Message {
 
 export function SupportChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
+  const cartBarVisible = useCartBarVisible();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -66,7 +68,7 @@ export function SupportChatWidget() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-20 sm:bottom-6 right-5 z-40 p-4 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-2xl hover:scale-105 transition-all cursor-pointer flex items-center justify-center gap-2 group"
+        className={`fixed ${cartBarVisible ? "bottom-[calc(140px+env(safe-area-inset-bottom,0px))] md:bottom-28" : "bottom-24 md:bottom-6"} right-5 z-40 p-4 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-2xl hover:scale-105 transition-all cursor-pointer flex items-center justify-center gap-2 group`}
         title="24/7 Novo Customer Support"
       >
         <MessageCircle className="w-6 h-6" />
@@ -77,7 +79,7 @@ export function SupportChatWidget() {
 
       {/* Floating Chat Modal */}
       {isOpen && (
-        <div className="fixed bottom-24 sm:bottom-20 right-4 sm:right-6 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl z-50 overflow-hidden flex flex-col h-[480px] animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-24 sm:bottom-20 right-4 sm:right-6 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col h-[480px] animate-in fade-in slide-in-from-bottom-4">
           {/* Header */}
           <div className="p-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex items-center justify-between">
             <div className="flex items-center gap-2.5">

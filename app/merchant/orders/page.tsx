@@ -2,8 +2,18 @@
 
 import React, { useState, useEffect } from "react";
 import { usePlatform } from "@/store/PlatformContext";
+import {
+  isDone,
+  isInKitchen,
+  isNewOrder,
+  isOnTheWay,
+  isReady,
+  merchantCanReject,
+  merchantNextStep,
+  statusLabel,
+} from "@/utils/orderStatus";
 import { apiService } from "@/services/api";
-import { Order } from "@/types";
+import { Order, OrderStatus } from "@/types";
 import {
   ShoppingBag,
   Clock,
@@ -20,92 +30,72 @@ import {
 } from "lucide-react";
 
 export default function MerchantOrdersPage() {
-  const { orders, stores, activeStore, updateOrderStatus } = usePlatform();
-  const myStore = activeStore || stores[0];
+  const { orders, merchantStore, updateOrderStatus, ordersError, ordersLoading } = usePlatform();
 
-  const [liveOrders, setLiveOrders] = useState<Order[]>(orders);
+  const liveOrders = merchantStore ? orders.filter((o) => o.storeId === merchantStore.id) : [];
   const [filter, setFilter] = useState("all");
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const selectedOrder = liveOrders.find((o) => o.id === selectedOrderId) || null;
+  const setSelectedOrder = (o: Order | null) => setSelectedOrderId(o?.id || null);
   const [orderHistory, setOrderHistory] = useState<any[]>([]);
   const [cancelModalOrder, setCancelModalOrder] = useState<Order | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  // Sync real orders from backend
   useEffect(() => {
-    async function loadBackendOrders() {
-      if (typeof window === "undefined") return;
-      const token = localStorage.getItem("access_token");
-      try {
-        const res = await apiService.getOrders(undefined, token || undefined);
-        if (Array.isArray(res) && res.length > 0) {
-          setLiveOrders(res);
-          return;
-        }
-      } catch (e) {}
+    if (!selectedOrderId) return;
+    let cancelled = false;
+    apiService
+      .getOrderHistory(selectedOrderId)
+      .then((hist) => !cancelled && setOrderHistory(Array.isArray(hist) ? hist : []))
+      .catch(() => !cancelled && setOrderHistory([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedOrderId, selectedOrder?.status]);
 
-      setLiveOrders(orders);
+  const matchesFilter = (o: Order) => {
+    switch (filter) {
+      case "pending":
+        return isNewOrder(o.status);
+      case "preparing":
+        return isInKitchen(o.status);
+      case "ready":
+        return isReady(o.status);
+      case "out_for_delivery":
+        return isOnTheWay(o.status);
+      case "completed":
+        return isDone(o.status);
+      case "cancelled":
+        return o.status === "cancelled";
+      default:
+        return true;
     }
-    loadBackendOrders();
-  }, [orders]);
+  };
+  const filteredOrders = liveOrders.filter(matchesFilter);
 
-  // Load history timeline when selectedOrder changes
-  useEffect(() => {
-    async function loadHistory() {
-      if (typeof window === "undefined") return;
-      const token = localStorage.getItem("access_token");
-      if (!token || !selectedOrder?.id) return;
-
-      try {
-        const hist = await apiService.getOrderHistory(selectedOrder.id, token);
-        if (Array.isArray(hist)) setOrderHistory(hist);
-      } catch (e) {
-        setOrderHistory([]);
-      }
-    }
-    loadHistory();
-  }, [selectedOrder?.id]);
-
-  const filteredOrders = liveOrders.filter((o) => {
-    if (filter === "all") return true;
-    if (filter === "pending")
-      return (
-        (o.status as string) === "new" ||
-        (o.status as string) === "pending" ||
-        (o.status as string) === "pending_merchant"
-      );
-    return o.status === filter;
-  });
-
-  const handleStatusChange = async (orderId: string, newStatus: string) => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-    if (token) {
-      try {
-        await apiService.updateOrderStatus(orderId, newStatus, token);
-      } catch (e) {}
-    }
-
-    await updateOrderStatus(orderId, newStatus as any);
-    setLiveOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status: newStatus as any } : o))
-    );
-
-    if (selectedOrder?.id === orderId) {
-      setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus as any } : null));
+  const handleStatusChange = async (orderId: string, newStatus: OrderStatus, extra?: Record<string, any>) => {
+    setBusyId(orderId);
+    setActionError(null);
+    try {
+      await updateOrderStatus(orderId, newStatus, extra);
+      return true;
+    } catch (e: any) {
+      setActionError(e?.message || "Could not update the order.");
+      return false;
+    } finally {
+      setBusyId(null);
     }
   };
 
   const handleConfirmCancel = async () => {
     if (!cancelModalOrder) return;
-    try {
-      await apiService.cancelOrder(cancelModalOrder.id, cancelReason || "Merchant declined");
-    } catch (e) {}
-
-    await updateOrderStatus(cancelModalOrder.id, "cancelled");
-    setLiveOrders((prev) =>
-      prev.map((o) => (o.id === cancelModalOrder.id ? { ...o, status: "cancelled" } : o))
-    );
-    setCancelModalOrder(null);
-    setCancelReason("");
+    const ok = await handleStatusChange(cancelModalOrder.id, "cancelled", { reason: cancelReason.trim() || "Declined by store" });
+    if (ok) {
+      setCancelModalOrder(null);
+      setCancelReason("");
+    }
   };
 
   return (
@@ -120,8 +110,10 @@ export default function MerchantOrdersPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-extrabold text-[#087F5B] dark:text-emerald-400">Live Backend Queue Active</span>
+          <span className={`w-3 h-3 rounded-full ${ordersError ? "bg-rose-500" : "bg-emerald-500 animate-pulse"}`} />
+          <span className="text-xs font-extrabold text-[#087F5B] dark:text-emerald-400">
+            {ordersError ? "Connection problem — retrying" : ordersLoading ? "Refreshing…" : "Live queue · refreshes every 20s"}
+          </span>
         </div>
       </div>
 
@@ -150,10 +142,16 @@ export default function MerchantOrdersPage() {
         ))}
       </div>
 
+      {(actionError || ordersError) && (
+        <p role="alert" className="text-xs font-semibold text-rose-700 bg-rose-50 dark:bg-rose-950/40 rounded-2xl p-3">
+          {actionError || ordersError}
+        </p>
+      )}
+
       {/* ORDERS LIST */}
       <div className="flex flex-col gap-4">
         {filteredOrders.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-slate-200/80 dark:border-slate-800 flex flex-col items-center gap-3">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center flex flex-col items-center gap-3">
             <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
               <ShoppingBag className="w-7 h-7" />
             </div>
@@ -166,7 +164,7 @@ export default function MerchantOrdersPage() {
           filteredOrders.map((ord) => (
             <div
               key={ord.id}
-              className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all hover:border-[#087F5B]"
+              className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all"
             >
               <div className="flex flex-col sm:flex-row sm:items-center gap-5">
                 <div className="flex flex-col">
@@ -174,20 +172,18 @@ export default function MerchantOrdersPage() {
                     <span className="text-base font-black text-slate-900 dark:text-white">#{ord.id}</span>
                     <span
                       className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        (ord.status as string) === "new" ||
-                        (ord.status as string) === "pending" ||
-                        (ord.status as string) === "pending_merchant"
+                        isNewOrder(ord.status)
                           ? "bg-emerald-100 text-[#087F5B]"
-                          : ord.status === "preparing"
+                          : isInKitchen(ord.status)
                           ? "bg-amber-100 text-amber-700"
-                          : ord.status === "ready" || ord.status === "ready_for_pickup"
+                          : isReady(ord.status) || isOnTheWay(ord.status)
                           ? "bg-blue-100 text-blue-700"
-                          : ord.status === "completed" || ord.status === "delivered"
+                          : isDone(ord.status)
                           ? "bg-slate-100 text-slate-700"
                           : "bg-rose-100 text-rose-700"
                       }`}
                     >
-                      {ord.status.replace(/_/g, " ")}
+                      {statusLabel(ord.status)}
                     </span>
                   </div>
                   <span className="text-xs text-[#66736E] font-semibold mt-1" suppressHydrationWarning>
@@ -197,7 +193,7 @@ export default function MerchantOrdersPage() {
 
                 <div className="flex flex-col border-l border-slate-200 dark:border-slate-800 pl-5">
                   <span className="text-xs font-black text-slate-900 dark:text-white">{ord.customerName || "Customer"}</span>
-                  <span className="text-xs text-[#66736E] font-medium">{ord.customerPhone || "+234 800 000 0000"}</span>
+                  <span className="text-xs text-[#66736E] font-medium">{ord.customerPhone || "No phone provided"}</span>
                 </div>
 
                 <div className="flex flex-col border-l border-slate-200 dark:border-slate-800 pl-5 max-w-xs">
@@ -220,41 +216,30 @@ export default function MerchantOrdersPage() {
                   <Eye className="w-4 h-4" />
                 </button>
 
-                {((ord.status as string) === "new" ||
-                  (ord.status as string) === "pending" ||
-                  (ord.status as string) === "pending_merchant") && (
-                  <>
-                    <button
-                      onClick={() => handleStatusChange(ord.id, "preparing")}
-                      className="px-5 py-2.5 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all shadow-md shadow-[#087F5B]/20 cursor-pointer"
-                    >
-                      Accept & Prepare
-                    </button>
-                    <button
-                      onClick={() => setCancelModalOrder(ord)}
-                      className="px-4 py-2.5 rounded-2xl bg-rose-100 text-rose-700 text-xs font-extrabold hover:bg-rose-200 transition-all cursor-pointer"
-                    >
-                      Decline
-                    </button>
-                  </>
-                )}
-
-                {ord.status === "preparing" && (
+                {merchantNextStep(ord.status) && (
                   <button
-                    onClick={() => handleStatusChange(ord.id, "ready")}
-                    className="px-5 py-2.5 rounded-2xl bg-amber-500 text-white text-xs font-black hover:bg-amber-600 transition-all shadow-md cursor-pointer"
+                    onClick={() => handleStatusChange(ord.id, merchantNextStep(ord.status)!.status)}
+                    disabled={busyId === ord.id}
+                    className="px-5 py-2.5 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all shadow-md shadow-[#087F5B]/20 cursor-pointer disabled:opacity-50"
                   >
-                    Mark Ready for Pickup
+                    {busyId === ord.id ? "Saving…" : merchantNextStep(ord.status)!.label}
                   </button>
                 )}
 
-                {(ord.status === "ready" || ord.status === "ready_for_pickup") && (
+                {merchantCanReject(ord.status) && (
                   <button
-                    onClick={() => handleStatusChange(ord.id, "completed")}
-                    className="px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-xs font-black hover:bg-blue-700 transition-all shadow-md cursor-pointer"
+                    onClick={() => setCancelModalOrder(ord)}
+                    disabled={busyId === ord.id}
+                    className="px-4 py-2.5 rounded-2xl bg-rose-100 text-rose-700 text-xs font-extrabold hover:bg-rose-200 transition-all cursor-pointer disabled:opacity-50"
                   >
-                    Complete Order
+                    Decline
                   </button>
+                )}
+
+                {(isReady(ord.status) || ord.status === "rider_assigned") && ord.pickupCode && (
+                  <span className="px-4 py-2.5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-black" title="Give this code to the rider at pickup">
+                    Pickup code: {ord.pickupCode}
+                  </span>
                 )}
               </div>
             </div>
@@ -265,7 +250,7 @@ export default function MerchantOrdersPage() {
       {/* ORDER DETAILS MODAL */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white">Order #{selectedOrder.id}</h3>
@@ -290,7 +275,7 @@ export default function MerchantOrdersPage() {
               </div>
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
                 <Phone className="w-4 h-4 text-slate-400" />
-                <span>{selectedOrder.customerPhone || "+234 800 000 0000"}</span>
+                <span>{selectedOrder.customerPhone || "No phone provided"}</span>
               </div>
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
                 <MapPin className="w-4 h-4 text-slate-400" />
@@ -327,9 +312,12 @@ export default function MerchantOrdersPage() {
                 <div className="flex flex-col gap-2">
                   {orderHistory.map((h, idx) => (
                     <div key={idx} className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400">
-                      <span className="font-bold capitalize">{h.status || h.event}</span>
+                      <span className="font-bold">
+                        {statusLabel(apiService.normalizeOrder({ status: h.new_status }).status)}
+                        {h.cancellation_reason ? ` — ${h.cancellation_reason}` : ""}
+                      </span>
                       <span className="text-[10px]" suppressHydrationWarning>
-                        {new Date(h.timestamp || h.createdAt || Date.now()).toLocaleTimeString()}
+                        {h.created_at ? new Date(h.created_at).toLocaleTimeString() : ""}
                       </span>
                     </div>
                   ))}
@@ -350,7 +338,7 @@ export default function MerchantOrdersPage() {
       {/* CANCEL MODAL */}
       {cancelModalOrder && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-4">
             <h3 className="text-base font-black text-slate-900 dark:text-white">Decline Order #{cancelModalOrder.id}?</h3>
             <p className="text-xs text-[#66736E]">Please specify a cancellation reason for the customer:</p>
 
@@ -371,7 +359,8 @@ export default function MerchantOrdersPage() {
               </button>
               <button
                 onClick={handleConfirmCancel}
-                className="px-5 py-2 rounded-xl bg-rose-600 text-white text-xs font-black hover:bg-rose-700 cursor-pointer"
+                disabled={busyId === cancelModalOrder.id}
+                className="disabled:opacity-50 px-5 py-2 rounded-xl bg-rose-600 text-white text-xs font-black hover:bg-rose-700 cursor-pointer"
               >
                 Confirm Decline
               </button>

@@ -68,8 +68,8 @@ export function MobileSupportView() {
           </button>
 
           <a
-            href="mailto:support@novo.ng"
-            className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] dark:border-slate-800 flex flex-col gap-2 shadow-xs cursor-pointer hover:border-[#008A4C] text-left"
+            href="mailto:info@novong.com"
+            className="p-4 rounded-2xl bg-white dark:bg-slate-900 flex flex-col gap-2 shadow-xs cursor-pointer text-left"
           >
             <div className="w-9 h-9 rounded-xl bg-[#E8F7EF] text-[#008A4C] flex items-center justify-center">
               <Mail className="w-5 h-5" />
@@ -80,7 +80,7 @@ export function MobileSupportView() {
         </div>
 
         {/* FAQs Accordion */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] dark:border-slate-800 flex flex-col gap-3 shadow-xs">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 flex flex-col gap-3 shadow-xs">
           <span className="text-xs font-black uppercase text-[#66736D] tracking-wider">
             Frequently Asked Questions
           </span>
@@ -112,7 +112,7 @@ export function MobileSupportView() {
         </div>
 
         {/* Policy & Terms Links */}
-        <div className="p-2 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] dark:border-slate-800 shadow-xs flex flex-col">
+        <div className="p-2 rounded-2xl bg-white dark:bg-slate-900 shadow-xs flex flex-col">
           <a
             href="#"
             onClick={(e) => { e.preventDefault(); alert("Opening Novo Privacy Policy..."); }}

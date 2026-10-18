@@ -1,65 +1,88 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { usePlatform } from "@/store/PlatformContext";
+import { Plus, Trash2, Upload, FileText, Check, X, Pencil, Search, ImagePlus, Loader2 } from "lucide-react";
 import { apiService } from "@/services/api";
-import { Plus, Trash2, Upload, FileText, Check, X, Pencil, Search } from "lucide-react";
+import { MenuSection } from "@/types";
+import { MenuSectionsManager } from "@/components/merchant/MenuSectionsManager";
 
 export default function MerchantMenuPage() {
-  const { products, stores, activeStore, addProduct, toggleProductStock, deleteProduct } = usePlatform();
+  const { products, merchantStore, merchantStoreLoading, saveProduct, toggleProductStock, deleteProduct } = usePlatform();
 
-  // Resolve merchant store with fallbacks to ensure food items are created for this exact restaurant
-  let myStore = activeStore;
-  if (typeof window !== "undefined") {
-    const rawProfile = localStorage.getItem("merchant_profile");
-    if (rawProfile) {
-      try {
-        const profile = JSON.parse(rawProfile);
-        if (profile.businessName) {
-          const found = stores.find(
-            (s) =>
-              s.name.toLowerCase() === profile.businessName.toLowerCase() ||
-              s.slug === profile.businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-")
-          );
-          if (found) myStore = found;
-        }
-      } catch (e) { }
-    }
-  }
-  if (!myStore) myStore = stores[0];
+  // The menu always belongs to the store the server says this merchant owns.
+  const myStore = merchantStore || ({ id: "", name: merchantStoreLoading ? "Loading…" : "No store" } as any);
+  const storeProducts = merchantStore ? products.filter((p) => p.storeId === merchantStore.id) : [];
 
-  const [liveProducts, setLiveProducts] = useState<any[]>(products);
+  // Menu sections (Rice dishes, Soups, Drinks...) in the merchant's chosen order.
+  const [sections, setSections] = useState<MenuSection[]>([]);
+  const loadSections = useCallback(async () => {
+    if (!merchantStore?.id) return;
+    try {
+      setSections(await apiService.getMenuSections(merchantStore.id));
+    } catch {}
+  }, [merchantStore?.id]);
+  useEffect(() => {
+    loadSections();
+  }, [loadSections]);
+  const sectionKey = (name?: string) => (name || "").trim().toLowerCase();
+  const itemCounts = Object.fromEntries(
+    sections.map((sec) => [sec.id, storeProducts.filter((p) => sectionKey(p.category) === sectionKey(sec.name)).length])
+  );
+  const sectionNames = new Set(sections.map((sec) => sectionKey(sec.name)));
+  const groupedProducts = [
+    ...sections.map((sec) => ({ key: sec.id, title: sec.name, items: storeProducts.filter((p) => sectionKey(p.category) === sectionKey(sec.name)) })),
+    { key: "other", title: sections.length ? "Not in a section" : "", items: storeProducts.filter((p) => !sectionNames.has(sectionKey(p.category))) },
+  ].filter((g) => g.items.length > 0);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [pageError, setPageError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  // Sync products from backend on mount and when myStore changes
-  React.useEffect(() => {
-    async function loadBackendProducts() {
-      try {
-        const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-        const res = await apiService.getProducts(undefined, token || undefined);
-        if (Array.isArray(res) && res.length > 0) {
-          setLiveProducts(res);
-          return;
-        }
-      } catch (e) { }
-      setLiveProducts(products);
+  const runItemAction = async (id: string, fn: () => Promise<unknown>) => {
+    setBusyId(id);
+    setPageError(null);
+    try {
+      await fn();
+    } catch (e: any) {
+      setPageError(e?.message || "That action failed. Please try again.");
+    } finally {
+      setBusyId(null);
     }
-    loadBackendProducts();
-  }, [myStore?.id, products]);
+  };
 
-  const storeProducts = liveProducts.filter((p) => {
-    if (!myStore?.id) return true;
-    return p.storeId === myStore.id || p.store_id === myStore.id || !p.storeId;
-  });
+  const handleDelete = (p: any) => {
+    if (!window.confirm(`Remove "${p.name}" from your menu?`)) return;
+    runItemAction(p.id, () => deleteProduct(p.id));
+  };
 
   // Form State
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
-  const [category, setCategory] = useState("Mains");
+  const [category, setCategory] = useState("");
   const [image, setImage] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoPicked = async (file?: File) => {
+    if (!file) return;
+    setImageError(null);
+    setImageUploading(true);
+    try {
+      setImage(await apiService.uploadImage(file, "product-images", merchantStore?.id || ""));
+    } catch (err: any) {
+      setImageError(err?.message || "Couldn't upload that photo.");
+    } finally {
+      setImageUploading(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  };
   const [prepTime, setPrepTime] = useState("20");
 
   // Dynamic Options & Extras & Specs State
@@ -90,7 +113,7 @@ export default function MerchantMenuPage() {
     setName(p.name || "");
     setDescription(p.description || "");
     setPrice(String(p.price || ""));
-    setCategory(p.category || "Mains");
+    setCategory(p.category || "");
     setImage(p.image || "");
     setPrepTime(String(p.preparationTimeMinutes || p.specs?.prepTime || "20"));
 
@@ -149,15 +172,19 @@ export default function MerchantMenuPage() {
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !price) return;
+    if (!merchantStore) {
+      setFormError("Your store isn't set up yet.");
+      return;
+    }
+    if (!name.trim()) return setFormError("Item name is required.");
+    if (!(Number(price) >= 0) || price === "") return setFormError("Enter a valid price.");
 
     const productPayload = {
-      id: editingProduct ? editingProduct.id : undefined,
       storeId: myStore.id,
       name,
       description: description || `Freshly prepared dish from ${myStore.name}.`,
       price: Number(price),
-      category: category || "Mains",
+      category: category.trim() || undefined,
       image: image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
       inStock: editingProduct ? editingProduct.inStock : true,
       preparationTimeMinutes: Number(prepTime) || 20,
@@ -171,34 +198,18 @@ export default function MerchantMenuPage() {
       },
     };
 
-    let savedProduct: any = null;
+    setSaving(true);
+    setFormError(null);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-      if (editingProduct?.id) {
-        savedProduct = await apiService.updateProduct(editingProduct.id, productPayload, token || undefined);
-      } else {
-        savedProduct = await apiService.createProduct(productPayload, token || undefined);
-      }
-    } catch (err) {
-      console.warn("API product save warning:", err);
+      await saveProduct(productPayload as any, editingProduct?.id);
+      loadSections(); // a new section name creates the section
+    } catch (err: any) {
+      setFormError(err?.message || "Could not save this item.");
+      return;
+    } finally {
+      setSaving(false);
     }
 
-    const finalProd = savedProduct || {
-      ...productPayload,
-      id: editingProduct?.id || `prod-${Date.now()}`,
-    };
-
-    setLiveProducts((prev) => {
-      const idx = prev.findIndex((p) => p.id === finalProd.id);
-      if (idx !== -1) {
-        const copy = [...prev];
-        copy[idx] = finalProd;
-        return copy;
-      }
-      return [finalProd, ...prev];
-    });
-
-    addProduct(finalProd);
     setIsAddModalOpen(false);
     setEditingProduct(null);
     setName("");
@@ -215,43 +226,40 @@ export default function MerchantMenuPage() {
     try {
       const text = await csvFile.text();
       const lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
-      let count = 0;
+      let created = 0;
+      const failures: string[] = [];
 
       for (let i = 0; i < lines.length; i++) {
-        if (i === 0 && (lines[i].toLowerCase().includes("name") || lines[i].toLowerCase().includes("product_id"))) {
+        if (i === 0 && lines[i].toLowerCase().includes("name")) continue; // header
+        const parts = lines[i].split(",").map((p) => p.trim().replace(/^["']|["']$/g, ""));
+        const [itemName, itemPrice, itemCat, itemDesc, itemImg] = parts;
+        if (!itemName || itemPrice === undefined || Number.isNaN(Number(itemPrice))) {
+          failures.push(`Line ${i + 1}: needs a name and a numeric price`);
           continue;
         }
-        const parts = lines[i].split(",").map((p) => p.trim().replace(/^["']|["']$/g, ""));
-        if (parts.length >= 2) {
-          const itemName = parts[0];
-          const itemPrice = Number(parts[1]) || 2000;
-          const itemCat = parts[2] || "Mains";
-          const itemDesc = parts[3] || `Delicious dish from ${myStore.name}`;
-          const itemImg = parts[4] || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80";
-
-          if (itemName) {
-            addProduct({
-              storeId: myStore.id,
-              name: itemName,
-              price: itemPrice,
-              category: itemCat,
-              description: itemDesc,
-              image: itemImg,
-              inStock: true,
-              preparationTimeMinutes: 20,
-            });
-            count++;
-          }
+        try {
+          await saveProduct({
+            storeId: myStore.id,
+            name: itemName,
+            price: Number(itemPrice),
+            category: itemCat || undefined,
+            description: itemDesc || "",
+            image: itemImg || "",
+            inStock: true,
+            preparationTimeMinutes: 20,
+          });
+          created++;
+        } catch (e: any) {
+          failures.push(`Line ${i + 1} (${itemName}): ${e?.message || "failed"}`);
         }
       }
 
-      try {
-        await apiService.importInventoryCSV(csvFile);
-      } catch (e) { }
-
-      setCsvResult(`Successfully imported ${count > 0 ? count : "CSV"} menu items for ${myStore.name}!`);
+      setCsvResult(
+        `Imported ${created} item${created === 1 ? "" : "s"} into ${myStore.name}.` +
+          (failures.length ? ` ${failures.length} line(s) skipped — ${failures.slice(0, 3).join("; ")}` : "")
+      );
     } catch (e: any) {
-      setCsvResult(`CSV Import processed for ${myStore.name}.`);
+      setCsvResult(`Could not read the CSV file: ${e?.message || "unknown error"}`);
     } finally {
       setCsvLoading(false);
     }
@@ -299,6 +307,16 @@ export default function MerchantMenuPage() {
         </div>
       </div>
 
+      {pageError && (
+        <p role="alert" className="text-xs font-semibold text-rose-700 bg-rose-50 dark:bg-rose-950/40 rounded-2xl p-3">
+          {pageError}
+        </p>
+      )}
+
+      {merchantStore && (
+        <MenuSectionsManager storeId={merchantStore.id} sections={sections} itemCounts={itemCounts} onChange={loadSections} />
+      )}
+
       {/* PRODUCTS LIST GRID */}
       {storeProducts.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-10 border border-dashed border-slate-300 dark:border-slate-800 text-center flex flex-col items-center gap-4">
@@ -308,13 +326,14 @@ export default function MerchantMenuPage() {
           <div className="max-w-md">
             <h3 className="text-base font-black text-slate-900 dark:text-white">Your Menu Catalogue is Empty</h3>
             <p className="text-xs text-[#66736E] dark:text-slate-400 font-medium mt-1">
-              Add your store's first product or upload a CSV file with your entire menu to get started.
+              Add your store&apos;s first product or upload a CSV file with your entire menu to get started.
             </p>
           </div>
           <div className="flex items-center gap-3 mt-2">
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="px-5 py-2.5 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-[#087F5B]/20"
+              disabled={!merchantStore}
+              className="disabled:opacity-50 px-5 py-2.5 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-[#087F5B]/20"
             >
               <Plus className="w-4 h-4" />
               <span>Add Your First Item</span>
@@ -329,11 +348,15 @@ export default function MerchantMenuPage() {
           </div>
         </div>
       ) : (
+        <div className="flex flex-col gap-6">
+        {groupedProducts.map((group) => (
+        <section key={group.key} className="flex flex-col gap-3">
+          {group.title && <h3 className="text-sm font-black text-slate-900 dark:text-white">{group.title} <span className="text-xs font-normal text-slate-400">{group.items.length}</span></h3>}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {storeProducts.map((p) => (
+          {group.items.map((p) => (
             <div
               key={p.id}
-              className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4 transition-all hover:border-[#087F5B]"
+              className="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm flex items-center gap-4 transition-all"
             >
               <img src={p.image} alt={p.name} className="w-20 h-20 rounded-2xl object-cover shrink-0 bg-slate-100" />
 
@@ -346,8 +369,9 @@ export default function MerchantMenuPage() {
 
                 <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                   <button
-                    onClick={() => toggleProductStock(p.id)}
-                    className={`px-3 py-1 rounded-xl text-[10px] font-black transition-all cursor-pointer ${p.inStock
+                    onClick={() => runItemAction(p.id, () => toggleProductStock(p.id))}
+                    disabled={busyId === p.id}
+                    className={`disabled:opacity-50 px-3 py-1 rounded-xl text-[10px] font-black transition-all cursor-pointer ${p.inStock
                         ? "bg-emerald-100 text-[#087F5B]"
                         : "bg-rose-100 text-rose-700"
                       }`}
@@ -364,7 +388,8 @@ export default function MerchantMenuPage() {
                   </button>
 
                   <button
-                    onClick={() => deleteProduct(p.id)}
+                    onClick={() => handleDelete(p)}
+                    disabled={busyId === p.id}
                     className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                     title="Delete Item"
                   >
@@ -375,12 +400,15 @@ export default function MerchantMenuPage() {
             </div>
           ))}
         </div>
+        </section>
+        ))}
+        </div>
       )}
 
       {/* ADD / EDIT PRODUCT MODAL */}
       {(isAddModalOpen || editingProduct) && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-base font-black text-slate-900 dark:text-white">
                 {editingProduct ? "Edit Menu Item" : "Add Item to Menu"}
@@ -417,15 +445,20 @@ export default function MerchantMenuPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">Category</label>
+                    <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">Menu section</label>
                     <input
                       type="text"
+                      list="menu-sections"
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
-                      placeholder="Mains / Soups / Drinks"
-                      required
+                      placeholder={sections[0]?.name ? `e.g. ${sections[0].name}` : "e.g. Rice dishes"}
                       className="w-full mt-1 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold outline-none"
                     />
+                    <datalist id="menu-sections">
+                      {sections.map((sec) => (
+                        <option key={sec.id} value={sec.name} />
+                      ))}
+                    </datalist>
                   </div>
 
                   <div>
@@ -453,13 +486,53 @@ export default function MerchantMenuPage() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">Image URL</label>
+                  <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">Photo</label>
+                  <div className="mt-1 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      disabled={imageUploading}
+                      className="relative w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center cursor-pointer"
+                      aria-label={image ? "Replace photo" : "Add photo"}
+                    >
+                      {image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={image} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <ImagePlus className="w-6 h-6 text-slate-400" />
+                      )}
+                      {imageUploading && (
+                        <span className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <Loader2 className="w-5 h-5 text-white animate-spin" />
+                        </span>
+                      )}
+                    </button>
+                    <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                      <button
+                        type="button"
+                        onClick={() => photoInputRef.current?.click()}
+                        disabled={imageUploading}
+                        className="self-start px-3 py-2 rounded-xl bg-[#087F5B] text-white text-[11px] font-black cursor-pointer disabled:opacity-60"
+                      >
+                        {imageUploading ? "Uploading..." : image ? "Change photo" : "Upload photo"}
+                      </button>
+                      <span className="text-[10px] text-slate-400">JPG, PNG or WebP. We resize it for you.</span>
+                      {imageError && <span className="text-[10px] font-bold text-rose-500">{imageError}</span>}
+                    </div>
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handlePhotoPicked(e.target.files?.[0])}
+                      className="hidden"
+                    />
+                  </div>
                   <input
                     type="text"
                     value={image}
                     onChange={(e) => setImage(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full mt-1 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold outline-none"
+                    placeholder="…or paste an image link"
+                    className="w-full mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-[11px] font-medium outline-none"
                   />
                 </div>
               </div>
@@ -472,7 +545,7 @@ export default function MerchantMenuPage() {
 
                 <div className="flex flex-col gap-2">
                   {proteinOptions.map((prot) => (
-                    <div key={prot.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                    <div key={prot.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs">
                       <div className="flex items-center gap-2">
                         <img src={prot.image || "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=100&q=80"} className="w-8 h-8 rounded-lg object-cover" />
                         <span className="font-black text-slate-900 dark:text-white">{prot.name}</span>
@@ -526,7 +599,7 @@ export default function MerchantMenuPage() {
 
                 <div className="flex flex-col gap-2">
                   {extrasOptions.map((ext) => (
-                    <div key={ext.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                    <div key={ext.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs">
                       <span className="font-black text-slate-900 dark:text-white">{ext.name}</span>
                       <div className="flex items-center gap-2">
                         <span className="font-extrabold text-[#087F5B]">
@@ -625,11 +698,18 @@ export default function MerchantMenuPage() {
                 </div>
               </div>
 
+              {formError && (
+                <p role="alert" className="text-xs font-semibold text-rose-700 bg-rose-50 dark:bg-rose-950/40 rounded-xl p-3">
+                  {formError}
+                </p>
+              )}
+
               <button
                 type="submit"
-                className="w-full mt-3 py-3.5 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all cursor-pointer shadow-md shadow-[#087F5B]/20"
+                disabled={saving || imageUploading}
+                className="w-full mt-3 py-3.5 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all cursor-pointer shadow-md shadow-[#087F5B]/20 disabled:opacity-50"
               >
-                {editingProduct ? "Save Changes to Menu Item" : "Save & Add to Menu"}
+                {saving ? "Saving…" : editingProduct ? "Save Changes to Menu Item" : "Save & Add to Menu"}
               </button>
             </form>
           </div>
@@ -639,7 +719,7 @@ export default function MerchantMenuPage() {
       {/* CSV BULK IMPORT MODAL */}
       {isCsvModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-5">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl flex flex-col gap-5">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-base font-black text-slate-900 dark:text-white">CSV Bulk Inventory Import</h3>
               <button onClick={() => setIsCsvModalOpen(false)} className="p-1.5 rounded-xl text-slate-400">

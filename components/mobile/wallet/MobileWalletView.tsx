@@ -88,7 +88,7 @@ export function MobileWalletView() {
             {transactions.map((tx) => (
               <div
                 key={tx.id}
-                className="flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] dark:border-slate-800 shadow-xs"
+                className="flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 shadow-xs"
               >
                 <div className="flex items-center gap-3">
                   <div

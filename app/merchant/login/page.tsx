@@ -5,14 +5,47 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Lock, Mail, ArrowRight, ShieldCheck } from "lucide-react";
 import { apiService } from "@/services/api";
+import { usePlatform } from "@/store/PlatformContext";
 import { NovoLogo } from "@/components/shared/NovoLogo";
+import { OtpCodeStep, isUnverifiedEmailError } from "@/components/auth/OtpCodeStep";
 
 export default function MerchantLoginPage() {
   const router = useRouter();
+  const { loginUser } = usePlatform();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [otpNotice, setOtpNotice] = useState<string | null>(null);
+
+  const completeLogin = async (token: string) => {
+    const me = await apiService.getMe(token);
+    if (me?.role !== "merchant") {
+      throw new Error("This account isn't registered as a merchant. Create a merchant account first.");
+    }
+    localStorage.setItem("merchant_session", "true");
+    loginUser(token, me?.email || email, "merchant");
+
+    try {
+      const merchRes = await apiService.getMerchantMe(token);
+      if (merchRes) {
+        const merch = merchRes.merchant || merchRes;
+        const store = merchRes.stores?.[0];
+        const bName = store?.name || merch?.name;
+        if (bName) {
+          const profile = {
+            fullName: merch?.owner_name || merch?.full_name || bName,
+            businessName: bName,
+            address: store?.address || merch?.address || "Store Address",
+            businessType: store?.store_type || "Restaurant",
+          };
+          localStorage.setItem("merchant_profile", JSON.stringify(profile));
+        }
+      }
+    } catch (mErr) {}
+
+    router.push("/merchant");
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,37 +54,18 @@ export default function MerchantLoginPage() {
 
     try {
       const data = await apiService.login({ email, password });
-      if (data && (data.access_token || data.data?.access_token)) {
-        const token = data.access_token || data.data.access_token;
-        localStorage.setItem("access_token", token);
-        localStorage.setItem("merchant_session", "true");
-
-        try {
-          const merchRes = await apiService.getMerchantMe(token);
-          if (merchRes) {
-            const merch = merchRes.merchant || merchRes;
-            const store = merchRes.stores?.[0];
-            const bName = store?.name || merch?.name;
-            if (bName) {
-              const profile = {
-                fullName: merch?.owner_name || merch?.full_name || bName,
-                businessName: bName,
-                address: store?.address || merch?.address || "Store Address",
-                businessType: store?.store_type || "Restaurant",
-              };
-              localStorage.setItem("merchant_profile", JSON.stringify(profile));
-            }
-          }
-        } catch (mErr) {}
-
-        router.push("/merchant");
-        return;
-      }
+      const token = data?.access_token || data?.data?.access_token;
+      if (!token) throw new Error("Invalid email or password.");
+      await completeLogin(token);
     } catch (err: any) {
-      setError(
-        err?.message ||
-          "Invalid email or password. If you don't have an account yet, please register your store below!"
-      );
+      if (isUnverifiedEmailError(err?.message)) {
+        setOtpNotice(err.message);
+      } else {
+        setError(
+          err?.message ||
+            "Invalid email or password. If you don't have an account yet, please register your store below!"
+        );
+      }
       setLoading(false);
     }
   };
@@ -72,6 +86,27 @@ export default function MerchantLoginPage() {
           </div>
         )}
 
+        {otpNotice ? (
+          <OtpCodeStep
+            email={email}
+            password={password}
+            initialNotice={otpNotice}
+            onBack={() => setOtpNotice(null)}
+            onVerified={async (token) => {
+              if (!token) {
+                setOtpNotice(null);
+                setError("Email verified. Sign in to continue.");
+                return;
+              }
+              try {
+                await completeLogin(token);
+              } catch (err: any) {
+                setOtpNotice(null);
+                setError(err?.message || "Sign in failed.");
+              }
+            }}
+          />
+        ) : (
         <form onSubmit={handleLogin} className="flex flex-col gap-3">
           <div>
             <label className="text-xs font-black text-slate-700 dark:text-slate-300">Merchant Email</label>
@@ -101,6 +136,12 @@ export default function MerchantLoginPage() {
                 className="w-full pl-9 p-3 bg-slate-100 dark:bg-slate-800 text-xs font-bold outline-none text-slate-900 dark:text-white rounded-none"
               />
             </div>
+            <Link
+              href={`/auth/forgot-password?portal=merchant${email ? `&email=${encodeURIComponent(email)}` : ""}`}
+              className="block text-right mt-1.5 text-xs font-bold text-[#087F5B] dark:text-emerald-400 hover:underline"
+            >
+              Forgot password?
+            </Link>
           </div>
 
           <button
@@ -112,6 +153,7 @@ export default function MerchantLoginPage() {
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
+        )}
 
         <div className="text-center pt-2 flex items-center justify-between text-xs">
           <span className="text-slate-500 dark:text-slate-400">New Store Partner?</span>

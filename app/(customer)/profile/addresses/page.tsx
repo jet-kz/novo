@@ -220,7 +220,7 @@ export default function CustomerAddressesPage() {
       {/* ADD ADDRESS MODAL */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 flex flex-col gap-4 shadow-2xl border border-slate-200 dark:border-slate-800">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 flex flex-col gap-4 shadow-2xl">
             <h3 className="text-sm font-black text-[#101714] dark:text-white">Add Delivery Address</h3>
 
             <form onSubmit={handleAddAddress} className="flex flex-col gap-3">

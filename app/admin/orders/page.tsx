@@ -1,49 +1,27 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { usePlatform } from "@/store/PlatformContext";
 import { Table, Column } from "@/components/ui/Table";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Order, OrderStatus } from "@/types";
-import { apiService } from "@/services/api";
+import { adminNextSteps, statusLabel } from "@/utils/orderStatus";
 
 export default function AdminOrdersPage() {
-  const { orders: contextOrders, updateOrderStatus } = usePlatform();
-  const [ordersList, setOrdersList] = useState<Order[]>(contextOrders);
-  const [loading, setLoading] = useState(true);
-
-  const fetchBackendOrders = async () => {
-    setLoading(true);
-    try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-      const data = await apiService.getOrders(undefined, token || undefined);
-      if (Array.isArray(data) && data.length > 0) {
-        setOrdersList(data);
-      } else {
-        setOrdersList(contextOrders);
-      }
-    } catch (e) {
-      console.warn("Failed to fetch backend orders:", e);
-      setOrdersList(contextOrders);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchBackendOrders();
-  }, []);
+  const { orders: ordersList, ordersError, updateOrderStatus } = usePlatform();
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
-    updateOrderStatus(orderId, newStatus);
-    setOrdersList((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
-    );
+    if (newStatus === "cancelled" && !window.confirm(`Cancel order ${orderId}?`)) return;
+    setBusyId(orderId);
+    setActionError(null);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-      await apiService.updateOrderStatus(orderId, newStatus, token || undefined);
-    } catch (e) {
-      console.warn("Backend order status update note:", e);
+      await updateOrderStatus(orderId, newStatus, newStatus === "cancelled" ? { reason: "Cancelled by admin" } : undefined);
+    } catch (e: any) {
+      setActionError(`${orderId}: ${e?.message || "update failed"}`);
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -57,20 +35,24 @@ export default function AdminOrdersPage() {
     {
       header: "Admin Action",
       cell: (o) => (
-        <select
-          value={o.status}
-          onChange={(e) => handleStatusChange(o.id, e.target.value as OrderStatus)}
-          className="text-xs font-semibold px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 cursor-pointer"
-        >
-          <option value="PENDING">PENDING</option>
-          <option value="PLACED">PLACED</option>
-          <option value="CONFIRMED">CONFIRMED</option>
-          <option value="PREPARING">PREPARING</option>
-          <option value="READY_FOR_PICKUP">READY FOR PICKUP</option>
-          <option value="ON_THE_WAY">ON THE WAY</option>
-          <option value="DELIVERED">DELIVERED</option>
-          <option value="CANCELLED">CANCELLED</option>
-        </select>
+        adminNextSteps(o.status).length === 0 ? (
+          <span className="text-xs text-slate-400">—</span>
+        ) : (
+          <select
+            value=""
+            disabled={busyId === o.id}
+            aria-label={`Change status of ${o.id}`}
+            onChange={(e) => e.target.value && handleStatusChange(o.id, e.target.value as OrderStatus)}
+            className="text-xs font-semibold px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 cursor-pointer disabled:opacity-50"
+          >
+            <option value="">{busyId === o.id ? "Saving…" : "Move to…"}</option>
+            {adminNextSteps(o.status).map((next) => (
+              <option key={next} value={next}>
+                {statusLabel(next)}
+              </option>
+            ))}
+          </select>
+        )
       ),
     },
   ];
@@ -85,6 +67,11 @@ export default function AdminOrdersPage() {
           {ordersList.length} Total Orders
         </span>
       </div>
+      {(actionError || ordersError) && (
+        <p role="alert" className="text-xs font-semibold text-rose-700 bg-rose-50 dark:bg-rose-950/40 rounded-xl p-3">
+          {actionError || ordersError}
+        </p>
+      )}
       <Table columns={columns} data={ordersList} keyExtractor={(o) => o.id} />
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, Suspense } from "react";
+import { sectionOf, useSectionTabs } from "@/components/shared/useSectionTabs";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Star, Clock, Bike, ShieldCheck, Search, ArrowLeft, Store as StoreIcon } from "lucide-react";
@@ -32,14 +33,18 @@ function ShopContent() {
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const sectionTabs = useSectionTabs(
+    selectedStore?.id,
+    selectedStore ? products.filter((p) => p.storeId === selectedStore.id) : []
+  );
 
   // If a specific store is selected
   if (selectedStore) {
     const storeProducts = products.filter((p) => p.storeId === selectedStore.id);
-    const categories = ["All", ...Array.from(new Set(storeProducts.map((p) => p.category)))];
+    const categories = sectionTabs;
 
     const filteredProducts = storeProducts.filter((p) => {
-      const matchesCat = activeCategory === "All" || p.category === activeCategory;
+      const matchesCat = activeCategory === "All" || sectionOf(p) === activeCategory;
       const matchesQuery =
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -130,7 +135,7 @@ function ShopContent() {
         {/* Product Catalog Grid */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 w-full">
           {filteredProducts.length === 0 ? (
-            <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 text-slate-500 font-medium">
+            <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl text-slate-500 font-medium">
               {storeProducts.length === 0
                 ? `No menu items have been added to ${selectedStore.name} yet. Check back soon!`
                 : `No products found matching "${searchQuery}".`}
@@ -240,7 +245,7 @@ function ShopContent() {
 
         {/* Stores Grid */}
         {filteredStores.length === 0 ? (
-          <div className="p-16 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col items-center gap-3">
+          <div className="p-16 text-center bg-white dark:bg-slate-900 rounded-3xl flex flex-col items-center gap-3">
             <StoreIcon className="w-12 h-12 text-slate-400" />
             <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">No Merchants Found</h3>
             <p className="text-xs text-slate-500 max-w-sm">

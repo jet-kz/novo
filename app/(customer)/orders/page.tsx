@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Clock,
@@ -13,18 +13,55 @@ import {
 } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
 import { OrderCard } from "@/components/cards/OrderCard";
+import { customerCanCancel } from "@/utils/orderStatus";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { MobileOrdersView } from "@/components/mobile/orders/MobileOrdersView";
+import { GuestOrdersList } from "@/components/checkout/GuestOrdersList";
+import { usePaymentReturn } from "@/components/checkout/usePaymentReturn";
 
 function OrderTrackerContent() {
   const searchParams = useSearchParams();
   const highlightOrderId = searchParams.get("orderId");
-  const { orders, rateOrder, updateOrderStatus, isAuthenticated } = usePlatform();
+  const { orders, rateOrder, cancelOrder, isAuthenticated, refreshOrders } = usePlatform();
+  const payment = usePaymentReturn(isAuthenticated ? highlightOrderId : null, searchParams, undefined, refreshOrders);
+  // Abandoned online payment: drop the unpaid order (the cart is still saved for another try).
+  useEffect(() => {
+    if (payment === "cancelled" && isAuthenticated && highlightOrderId) {
+      cancelOrder(highlightOrderId, "Online payment not completed").catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payment, isAuthenticated, highlightOrderId]);
+  const paymentBanner =
+    payment === "idle" ? null : (
+      <div role="status" className={`mx-4 md:mx-auto md:max-w-5xl mt-4 rounded-2xl p-3.5 text-sm font-semibold ${
+        payment === "paid" ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200"
+        : payment === "confirming" ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+        : "bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+      }`}>
+        {payment === "paid" && "Payment received. The store has your order."}
+        {payment === "confirming" && "Confirming your payment…"}
+        {payment === "pending" && "We haven't received payment confirmation yet. If you were charged, it will show here shortly."}
+        {payment === "cancelled" && "Payment wasn't completed, so the store hasn't received this order. Your cart is still saved."}
+      </div>
+    );
+  const isLogged = isAuthenticated;
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-  const isLogged = isAuthenticated || !!token;
+  const handleCancel = async () => {
+    if (!currentOrder || !window.confirm("Cancel this order?")) return;
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      await cancelOrder(currentOrder.id, "Cancelled by customer");
+    } catch (e: any) {
+      setCancelError(e?.message || "Could not cancel this order.");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const currentOrder = orders.find((o) => o.id === highlightOrderId) || orders[0];
 
@@ -37,6 +74,7 @@ function OrderTrackerContent() {
     switch (status) {
       case "pending_merchant":
         return 1;
+      case "accepted":
       case "preparing":
         return 2;
       case "ready_for_pickup":
@@ -62,28 +100,13 @@ function OrderTrackerContent() {
   const currentStep = currentOrder ? getStepIndex(currentOrder.status) : 1;
 
   if (!isLogged) {
-    return (
-      <>
-        <MobileOrdersView />
-        <div className="hidden md:flex max-w-xl mx-auto px-4 py-20 text-center flex-col items-center justify-center min-h-[60vh]">
-          <div className="w-16 h-16 rounded-full bg-[#E8F7EF] text-[#008A4C] dark:bg-emerald-950 dark:text-emerald-400 flex items-center justify-center mb-4">
-            <Clock className="w-8 h-8" />
-          </div>
-          <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100">Sign In to View Orders</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 mb-6 max-w-sm">
-            Please log in or create a Novo account to view active orders, live tracking, and your order history.
-          </p>
-          <Button variant="primary" onClick={() => window.location.href = "/auth"}>
-            Sign In / Register
-          </Button>
-        </div>
-      </>
-    );
+    return <GuestOrdersList />;
   }
 
   if (orders.length === 0) {
     return (
       <>
+        {paymentBanner}
         <MobileOrdersView />
         <div className="hidden md:flex max-w-xl mx-auto px-4 py-20 text-center flex-col items-center justify-center min-h-[60vh]">
           <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mb-4">
@@ -103,6 +126,7 @@ function OrderTrackerContent() {
 
   return (
     <>
+      {paymentBanner}
       <MobileOrdersView />
       <div className="hidden md:block max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full min-h-screen">
       <div className="flex items-center justify-between mb-8">
@@ -120,7 +144,7 @@ function OrderTrackerContent() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
           {/* Active Tracker Main Panel */}
           <div className="lg:col-span-8 flex flex-col gap-6">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-6">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm flex flex-col gap-6">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div>
                   <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
@@ -172,12 +196,12 @@ function OrderTrackerContent() {
               </div>
 
               {/* MOCK LIVE MAP ROUTE VISUALIZER */}
-              <div className="relative w-full h-56 rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center">
+              <div className="relative w-full h-56 rounded-2xl overflow-hidden bg-slate-900 flex items-center justify-center">
                 <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:16px_16px]" />
 
                 <div className="relative z-10 flex items-center justify-around w-full px-12">
                   <div className="flex flex-col items-center gap-1 text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-black shadow-lg">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black shadow-lg">
                       <Store className="w-6 h-6" />
                     </div>
                     <span className="text-xs font-bold text-white mt-1">{currentOrder.storeName}</span>
@@ -195,7 +219,7 @@ function OrderTrackerContent() {
                   </div>
 
                   <div className="flex flex-col items-center gap-1 text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black shadow-lg">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black shadow-lg">
                       <MapPin className="w-6 h-6" />
                     </div>
                     <span className="text-xs font-bold text-white mt-1">Delivery Address</span>
@@ -205,7 +229,7 @@ function OrderTrackerContent() {
 
               {/* RIDER ASSIGNED CARD */}
               {currentOrder.riderName && (
-                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                   <div className="flex items-center gap-3">
                     <img
                       src={currentOrder.riderPhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
@@ -235,6 +259,19 @@ function OrderTrackerContent() {
               )}
 
 
+
+              {currentOrder.status === "cancelled" && (
+                <p className="text-sm font-bold text-rose-600">This order was cancelled.</p>
+              )}
+
+              {customerCanCancel(currentOrder.status) && (
+                <div className="flex flex-col gap-2">
+                  <Button variant="outline" size="sm" onClick={handleCancel} isLoading={cancelling}>
+                    Cancel order
+                  </Button>
+                  {cancelError && <p role="alert" className="text-xs font-semibold text-rose-600">{cancelError}</p>}
+                </div>
+              )}
 
               {currentOrder.status === "delivered" && (
                 <Button

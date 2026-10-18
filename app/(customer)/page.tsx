@@ -16,30 +16,15 @@ import {
   ShoppingBasket,
   AlertCircle,
 } from "lucide-react";
-import {
-  ForkKnife,
-  ShoppingCartSimple,
-  Pill,
-  Coffee,
-  Sparkle,
-  DeviceMobile,
-  SquaresFour,
-} from "@phosphor-icons/react";
 import { MobileHomeView } from "@/components/mobile/home/MobileHomeView";
+import { CategoryIcon, useCatalog } from "@/components/shared/useCatalog";
+import { HomeCollections } from "@/components/shared/HomeCollections";
 import { MobileSplashOnboarding } from "@/components/mobile/navigation/MobileSplashOnboarding";
 import { Product, Store } from "@/types";
 import { usePlatform } from "@/store/PlatformContext";
-import { NovoLogo } from "@/components/shared/NovoLogo";
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { ProductCard } from "@/components/cards/ProductCard";
 import { Modal } from "@/components/ui/Modal";
 import { reverseGeocode } from "@/utils/locationUtils";
-
-interface CategoryItem {
-  id: string;
-  label: string;
-  icon: React.ComponentType<{ size?: number; weight?: "duotone" | "fill" | "bold" | "light" | "thin" | "regular"; className?: string }>;
-}
 
 export default function CustomerHomePage() {
   const router = useRouter();
@@ -47,8 +32,6 @@ export default function CustomerHomePage() {
     stores,
     products,
     addToCart,
-    isAuthenticated,
-    currentUser,
     userLocationAddress,
     setUserLocation,
     getStoreDeliveryDetails,
@@ -131,15 +114,10 @@ export default function CustomerHomePage() {
     }
   };
 
-  // Categories with Phosphor Duotone Icons
-  const categories: CategoryItem[] = [
-    { id: "all", label: "All Categories", icon: SquaresFour },
-    { id: "restaurant", label: "Food", icon: ForkKnife },
-    { id: "supermarket", label: "Groceries", icon: ShoppingCartSimple },
-    { id: "pharmacy", label: "Pharmacy", icon: Pill },
-    { id: "drinks", label: "Drinks", icon: Coffee },
-    { id: "beauty", label: "Beauty", icon: Sparkle },
-    { id: "electronics", label: "Electronics", icon: DeviceMobile },
+  const { categories: platformCategories } = useCatalog();
+  const categories = [
+    { id: "all", label: "All", category: { slug: "all", name: "All", icon: null } },
+    ...platformCategories.map((c) => ({ id: c.slug, label: c.name, category: c })),
   ];
 
   const targetCities = [
@@ -199,54 +177,8 @@ export default function CustomerHomePage() {
           <div className="absolute top-0 left-1/3 w-[500px] h-[500px] bg-white/15 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-teal-300/20 rounded-full blur-3xl pointer-events-none" />
 
-          {/* INTEGRATED HEADER */}
-          <header className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between relative z-30">
-            <NovoLogo variant="white" subtitle="Delivery Express" size="md" />
-
-            <nav className="hidden md:flex items-center gap-1 bg-white/15 backdrop-blur-lg px-4 py-1.5 rounded-2xl border border-white/20 shadow-inner">
-              {[
-                { label: "Home", href: "/" },
-                { label: "Shop", href: "/shop" },
-                { label: "Orders", href: "/orders" },
-                { label: "Profile", href: "/profile" },
-              ].map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                    item.href === "/"
-                      ? "bg-white text-[#087F5B] shadow-lg font-black"
-                      : "text-white hover:bg-white/20"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-
-            <div className="flex items-center gap-3">
-              <ThemeToggle />
-
-              {!isAuthenticated ? (
-                <Link
-                  href="/auth"
-                  className="px-4 py-2 rounded-xl text-xs font-black bg-white text-[#087F5B] hover:bg-emerald-50 transition-all active:scale-95 cursor-pointer shadow-md"
-                >
-                  Sign In
-                </Link>
-              ) : (
-                <Link
-                  href="/profile"
-                  className="px-4 py-2 rounded-xl text-xs font-black bg-white/20 hover:bg-white/30 text-white border border-white/30 transition-all active:scale-95 cursor-pointer shadow-md"
-                >
-                  {currentUser?.name || "Account"}
-                </Link>
-              )}
-            </div>
-          </header>
-
           {/* HERO CONTENT GRID */}
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 mt-4 sm:mt-8 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 pt-10 lg:pt-14 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             {/* Left Column - Chowdeck Central Location & Search Widget */}
             <div className="lg:col-span-6 flex flex-col items-center lg:items-start text-center lg:text-left gap-6">
               <div className="flex flex-col gap-3 items-center lg:items-start">
@@ -264,7 +196,7 @@ export default function CustomerHomePage() {
               </div>
 
               {/* CHOWDECK LOCATION & SEARCH WIDGET */}
-              <div className="w-full max-w-lg bg-white text-slate-900 rounded-3xl p-3 sm:p-4 shadow-2xl border border-white/30 flex flex-col gap-3">
+              <div className="w-full max-w-lg bg-white text-slate-900 rounded-3xl p-3 sm:p-4 shadow-2xl flex flex-col gap-3">
                 {/* Delivery Location Bar */}
                 <button
                   type="button"
@@ -321,7 +253,7 @@ export default function CustomerHomePage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#043324]/90 via-transparent to-transparent" />
                 
                 {/* Slide Caption Card */}
-                <div className="absolute bottom-4 left-4 right-4 p-4 rounded-2xl bg-[#087F5B]/85 backdrop-blur-md border border-white/20 flex items-center justify-between shadow-lg">
+                <div className="absolute bottom-4 left-4 right-4 p-4 rounded-2xl bg-[#087F5B]/85 backdrop-blur-md flex items-center justify-between shadow-lg">
                   <div>
                     <h4 className="text-sm font-black text-white">{currentSlide.text}</h4>
                     <span className="text-[11px] font-semibold text-emerald-200">{currentSlide.caption}</span>
@@ -354,7 +286,6 @@ export default function CustomerHomePage() {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 w-full relative z-20">
           <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
             {categories.map((cat) => {
-              const IconComp = cat.icon;
               const isSelected = selectedCategory === cat.id;
               return (
                 <button
@@ -366,7 +297,7 @@ export default function CustomerHomePage() {
                       : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
                   }`}
                 >
-                  <IconComp size={24} weight="duotone" className="shrink-0" />
+                  <CategoryIcon category={cat.category} size={24} />
                   <span>{cat.label}</span>
                 </button>
               );
@@ -374,9 +305,14 @@ export default function CustomerHomePage() {
           </div>
         </section>
 
+        {/* ADMIN-CURATED COLLECTIONS */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 w-full">
+          <HomeCollections stores={stores} />
+        </section>
+
         {/* 3. TOP FEATURED MERCHANTS WITH GEOFENCING PRICING & ETA */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 w-full">
-          <div className="p-6 sm:p-8 bg-gradient-to-r from-[#087F5B]/10 via-emerald-500/5 to-[#087F5B]/10 dark:from-emerald-950/40 dark:via-slate-900 dark:to-emerald-950/40 border border-[#087F5B]/20 rounded-3xl shadow-xs">
+          <div className="p-6 sm:p-8 bg-gradient-to-r from-[#087F5B]/10 via-emerald-500/5 to-[#087F5B]/10 dark:from-emerald-950/40 dark:via-slate-900 dark:to-emerald-950/40 rounded-3xl shadow-xs">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">

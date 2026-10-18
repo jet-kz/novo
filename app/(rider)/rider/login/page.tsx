@@ -9,16 +9,28 @@ import { NovoLogo } from "@/components/shared/NovoLogo";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { apiService } from "@/services/api";
+import { OtpCodeStep, isUnverifiedEmailError } from "@/components/auth/OtpCodeStep";
 
 export default function RiderLoginPage() {
   const router = useRouter();
-  const { setCurrentRole, loginUser } = usePlatform();
+  const { loginUser } = usePlatform();
 
-  const [email, setEmail] = useState("rider@novo.ng");
-  const [password, setPassword] = useState("Password123!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [otpNotice, setOtpNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const completeLogin = async (token: string) => {
+    const me = await apiService.getMe(token);
+    if (me?.role !== "rider" && !(me?.roles || []).includes("rider")) {
+      throw new Error("This account isn't registered as a rider. Register as a rider partner first.");
+    }
+    loginUser(token, me?.email || email, "rider");
+    setSuccessMsg("Signed in! Opening Rider Hub...");
+    router.push("/rider");
+  };
 
   const handleRiderLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,18 +40,11 @@ export default function RiderLoginPage() {
 
     try {
       const result = await apiService.login({ email, password });
-      if (result && result.access_token) {
-        loginUser(result.access_token, email);
-        setCurrentRole("rider");
-        setSuccessMsg("Authenticated successfully! Opening Rider Hub...");
-        setTimeout(() => {
-          router.push("/rider");
-        }, 800);
-      } else {
-        throw new Error("Invalid rider email or password.");
-      }
+      if (!result?.access_token) throw new Error("Invalid rider email or password.");
+      await completeLogin(result.access_token);
     } catch (err: any) {
-      setErrorMsg(err.message || "Invalid credentials or account not registered as a rider.");
+      if (isUnverifiedEmailError(err?.message)) setOtpNotice(err.message);
+      else setErrorMsg(err.message || "Invalid credentials or account not registered as a rider.");
     } finally {
       setIsLoading(false);
     }
@@ -47,7 +52,7 @@ export default function RiderLoginPage() {
 
   return (
     <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-950 px-4 overflow-hidden select-none text-white">
-      <div className="w-full max-w-sm sm:max-w-md flex flex-col gap-5 py-4 bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl">
+      <div className="w-full max-w-sm sm:max-w-md flex flex-col gap-5 py-4 bg-slate-900 p-8 rounded-3xl shadow-2xl">
         {/* LOGO & BRAND */}
         <div className="flex flex-col items-center text-center gap-2">
           <NovoLogo variant="rider" subtitle="Courier Partner Portal" size="md" />
@@ -61,20 +66,38 @@ export default function RiderLoginPage() {
 
         {/* FEEDBACK ALERTS */}
         {errorMsg && (
-          <div className="p-3 bg-rose-950/80 text-rose-300 text-xs font-semibold rounded-2xl border border-rose-800 flex items-center gap-2">
+          <div className="p-3 bg-rose-950/80 text-rose-300 text-xs font-semibold rounded-2xl flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-3 bg-emerald-950/80 text-emerald-300 text-xs font-semibold rounded-2xl border border-emerald-800 flex items-center gap-2">
+          <div className="p-3 bg-emerald-950/80 text-emerald-300 text-xs font-semibold rounded-2xl flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>{successMsg}</span>
           </div>
         )}
 
         {/* FORM */}
+        {otpNotice ? (
+          <OtpCodeStep
+            email={email}
+            password={password}
+            tone="dark"
+            initialNotice={otpNotice}
+            onBack={() => setOtpNotice(null)}
+            onVerified={async (token) => {
+              setOtpNotice(null);
+              if (!token) return setSuccessMsg("Email verified. Sign in to continue.");
+              try {
+                await completeLogin(token);
+              } catch (err: any) {
+                setErrorMsg(err?.message || "Sign in failed.");
+              }
+            }}
+          />
+        ) : (
         <form onSubmit={handleRiderLogin} className="flex flex-col gap-3">
           <Input
             label="Courier Email Address *"
@@ -95,6 +118,12 @@ export default function RiderLoginPage() {
             required
             className="bg-slate-950 border-slate-700 text-white"
           />
+          <Link
+            href={`/auth/forgot-password?portal=rider${email ? `&email=${encodeURIComponent(email)}` : ""}`}
+            className="self-end -mt-1 text-xs font-bold text-emerald-400 hover:underline"
+          >
+            Forgot password?
+          </Link>
 
           <Button
             variant="primary"
@@ -113,6 +142,7 @@ export default function RiderLoginPage() {
             {isLoading ? "Authenticating Rider..." : "Sign In to Rider Hub"}
           </Button>
         </form>
+        )}
 
         {/* FOOTER LINKS */}
         <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">

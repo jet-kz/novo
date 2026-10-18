@@ -27,7 +27,7 @@ export const RestaurantCard: React.FC<RestaurantCardProps> = ({ store }) => {
   return (
     <Link
       href={`/shop?store=${store.id}`}
-      className="group flex flex-col bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-xs hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+      className="group flex flex-col bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-xs hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer"
     >
       {/* Banner & Badge */}
       <div className="relative h-44 w-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
