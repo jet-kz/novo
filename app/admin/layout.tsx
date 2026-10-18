@@ -1,258 +1,202 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  ShieldAlert,
+  Activity,
   BarChart3,
-  Store,
   Bike,
-  Users,
-  ShoppingBag,
-  LogOut,
-  Percent,
-  Layers,
   CreditCard,
+  Layers,
+  LogOut,
   Menu,
+  Percent,
+  ShoppingBag,
+  Store,
+  UserCog,
+  Users,
+  Wallet,
   X,
-  UserCheck,
 } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
 import { NovoLogo } from "@/components/shared/NovoLogo";
-import { Button } from "@/components/ui/Button";
+import { NotificationBell } from "@/components/shared/NotificationBell";
+import { apiService } from "@/services/api";
+
+type Badges = { orders: number; riders: number; stores: number; refunds: number };
+type NavItem = { label: string; href: string; icon: React.ReactNode; badge?: keyof Badges };
+
+const NAV: { group: string; items: NavItem[] }[] = [
+  {
+    group: "Operations",
+    items: [
+      { label: "Overview", href: "/admin", icon: <BarChart3 className="w-4 h-4" /> },
+      { label: "Orders", href: "/admin/orders", icon: <ShoppingBag className="w-4 h-4" />, badge: "orders" },
+      { label: "Riders", href: "/admin/riders", icon: <Bike className="w-4 h-4" />, badge: "riders" },
+      { label: "Stores & merchants", href: "/admin/stores", icon: <Store className="w-4 h-4" />, badge: "stores" },
+      { label: "Users", href: "/admin/users", icon: <Users className="w-4 h-4" /> },
+    ],
+  },
+  {
+    group: "Money",
+    items: [
+      { label: "Payments & refunds", href: "/admin/payments", icon: <CreditCard className="w-4 h-4" />, badge: "refunds" },
+      { label: "Settlements", href: "/admin/settlements", icon: <Wallet className="w-4 h-4" /> },
+      { label: "Pricing & promotions", href: "/admin/pricing", icon: <Percent className="w-4 h-4" /> },
+    ],
+  },
+  {
+    group: "Storefront",
+    items: [{ label: "Homepage categories", href: "/admin/categories", icon: <Layers className="w-4 h-4" /> }],
+  },
+  {
+    group: "Admin",
+    items: [
+      { label: "Activity log", href: "/admin/activity", icon: <Activity className="w-4 h-4" /> },
+      { label: "My account & admins", href: "/admin/account", icon: <UserCog className="w-4 h-4" /> },
+    ],
+  },
+];
+
+const TITLES: Record<string, string> = Object.fromEntries(NAV.flatMap((g) => g.items.map((i) => [i.href, i.label])));
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
   const router = useRouter();
-  const { currentRole, currentUser, authReady, isAuthenticated, setCurrentRole, logout } = usePlatform();
-  const [isChecking, setIsChecking] = useState(true);
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const { currentUser, currentRole, isAuthenticated, authReady, logout } = usePlatform();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [badges, setBadges] = useState<Badges>({ orders: 0, riders: 0, stores: 0, refunds: 0 });
+
+  const isAdmin = currentRole === "admin" || currentUser?.role === "admin";
+  const authorized = authReady && isAuthenticated && isAdmin;
 
   useEffect(() => {
-    if (!authReady) return;
+    if (authReady && !(isAuthenticated && isAdmin)) router.replace("/auth?next=/admin");
+  }, [authReady, isAuthenticated, isAdmin, router]);
 
-    const isAdmin = currentRole === "admin" || currentUser?.role === "admin";
-    if (!isAuthenticated || !isAdmin) {
-      router.replace("/auth?next=/admin");
-      setIsAuthorized(false);
-      setIsChecking(false);
-      return;
-    }
+  useEffect(() => setMenuOpen(false), [pathname]);
 
-    setIsAuthorized(true);
-    setIsChecking(false);
-  }, [authReady, isAuthenticated, currentRole, currentUser, router]);
-
-  // Close mobile drawer on route change
+  // Attention counts for the menu, refreshed every minute.
+  const loadBadges = useCallback(async () => {
+    try {
+      const o = await apiService.adminOverview();
+      setBadges({
+        orders: o.attention.orders_not_accepted + o.attention.orders_waiting_for_rider,
+        riders: o.attention.riders_to_review,
+        stores: o.attention.stores_to_approve,
+        refunds: o.attention.refunds_to_handle,
+      });
+    } catch {}
+  }, []);
   useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [pathname]);
+    if (!authorized) return;
+    loadBadges();
+    const t = setInterval(() => document.visibilityState === "visible" && loadBadges(), 60000);
+    return () => clearInterval(t);
+  }, [authorized, loadBadges, pathname]);
 
-  const handleLogout = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("novo_role");
-      localStorage.removeItem("user_email");
-      localStorage.removeItem("user_id");
-    }
-    logout();
-    router.push("/auth");
-  };
-
-  const navItems = [
-    { label: "Executive Overview", href: "/admin", icon: <BarChart3 className="w-5 h-5" /> },
-    { label: "Financial Settlements", href: "/admin/settlements", icon: <CreditCard className="w-5 h-5" /> },
-    { label: "Pricing & Commissions", href: "/admin/pricing", icon: <Percent className="w-5 h-5" /> },
-    { label: "Categories & Highlights", href: "/admin/categories", icon: <Layers className="w-5 h-5" /> },
-    { label: "Store Approvals", href: "/admin/stores", icon: <Store className="w-5 h-5" /> },
-    { label: "Rider Fleet Verification", href: "/admin/riders", icon: <Bike className="w-5 h-5" /> },
-    { label: "Live Orders Monitor", href: "/admin/orders", icon: <ShoppingBag className="w-5 h-5" /> },
-    { label: "User Management", href: "/admin/users", icon: <Users className="w-5 h-5" /> },
-  ];
-
-  if (isChecking) {
+  if (!authorized) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-950 text-white p-6 font-sans">
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-950 text-white p-6">
         <div className="w-10 h-10 border-4 border-[#087F5B] border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-xs font-bold text-slate-400">Verifying Platform Admin Permissions...</p>
+        <p className="text-xs font-bold text-slate-400">Checking admin access…</p>
       </div>
     );
   }
 
-  if (!isAuthorized) {
-    return null;
-  }
+  const signOut = () => {
+    logout();
+    router.push("/auth");
+  };
 
-  return (
-    <div className="min-h-screen w-full flex bg-[#F8FAF9] dark:bg-slate-950 font-sans">
-      {/* DESKTOP ADMIN SIDEBAR */}
-      <aside className="hidden lg:flex flex-col w-64 bg-slate-950 text-white shrink-0">
-        <div className="p-6 flex items-center justify-between">
-          <NovoLogo variant="white" subtitle="Admin Control" size="md" href="/admin" />
-        </div>
+  const title =
+    TITLES[pathname] ||
+    Object.entries(TITLES).find(([href]) => href !== "/admin" && pathname.startsWith(href))?.[1] ||
+    "Admin";
 
-        <nav className="flex-1 p-4 flex flex-col gap-1">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
+  const nav = (
+    <nav className="flex-1 overflow-y-auto px-3 py-2 flex flex-col gap-5">
+      {NAV.map((group) => (
+        <div key={group.group} className="flex flex-col gap-0.5">
+          <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{group.group}</p>
+          {group.items.map((item) => {
+            const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+            const count = item.badge ? badges[item.badge] : 0;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 text-xs font-bold rounded-none ${
-                  isActive
-                    ? "bg-[#087F5B] text-white"
-                    : "text-slate-400 hover:text-white hover:bg-slate-900"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold ${
+                  active ? "bg-[#087F5B] text-white" : "text-slate-300 hover:text-white hover:bg-slate-900"
                 }`}
               >
                 {item.icon}
-                <span>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
+                {count > 0 && (
+                  <span className={`min-w-5 h-5 px-1.5 rounded-full text-[11px] font-black flex items-center justify-center ${active ? "bg-white text-[#087F5B]" : "bg-amber-500 text-slate-950"}`}>
+                    {count}
+                  </span>
+                )}
               </Link>
             );
           })}
-        </nav>
-
-        <div className="p-4 flex flex-col gap-2 border-t border-slate-900">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setCurrentRole("customer");
-              router.push("/shop");
-            }}
-            className="w-full justify-start text-xs text-slate-400 hover:text-white rounded-none"
-          >
-            <UserCheck className="w-4 h-4 mr-2 text-emerald-400" />
-            Switch to Customer View
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLogout}
-            className="w-full justify-start text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-none font-bold"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Log Out Admin Account
-          </Button>
         </div>
+      ))}
+    </nav>
+  );
+
+  const footer = (
+    <div className="p-3 border-t border-slate-900 flex flex-col gap-1">
+      <Link href="/admin/account" className="px-3 py-2 rounded-xl hover:bg-slate-900">
+        <p className="text-sm font-semibold text-white truncate">{currentUser.name || "Admin"}</p>
+        <p className="text-xs text-slate-500 truncate">{currentUser.email}</p>
+      </Link>
+      <button onClick={signOut} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-rose-300 hover:bg-rose-950/40 cursor-pointer">
+        <LogOut className="w-4 h-4" /> Sign out
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen w-full flex bg-[#F4F6F5] dark:bg-slate-950">
+      <aside className="hidden lg:flex flex-col w-64 bg-slate-950 text-white shrink-0 sticky top-0 h-screen">
+        <div className="px-6 py-5">
+          <NovoLogo variant="white" subtitle="Admin" size="md" href="/admin" />
+        </div>
+        {nav}
+        {footer}
       </aside>
 
-      {/* MOBILE SLIDE-OVER DRAWER MENU */}
-      {isMobileMenuOpen && (
+      {menuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
-          {/* Dark Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-
-          {/* Slide Drawer Content */}
-          <div className="relative flex-1 max-w-xs w-full bg-slate-950 text-white flex flex-col justify-between h-full p-6 shadow-2xl z-10 animate-in slide-in-from-left duration-200">
-            <div className="flex flex-col gap-6">
-              <div className="flex items-center justify-between">
-                <NovoLogo variant="white" subtitle="Admin Mobile" size="sm" href="/admin" />
-                <button
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-2 text-slate-400 hover:text-white cursor-pointer"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <nav className="flex flex-col gap-1.5">
-                {navItems.map((item) => {
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 text-xs font-bold rounded-none ${
-                        isActive
-                          ? "bg-[#087F5B] text-white"
-                          : "text-slate-400 hover:text-white hover:bg-slate-900"
-                      }`}
-                    >
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </nav>
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMenuOpen(false)} />
+          <div className="relative w-72 max-w-[85%] h-full bg-slate-950 text-white flex flex-col">
+            <div className="px-5 py-4 flex items-center justify-between">
+              <NovoLogo variant="white" subtitle="Admin" size="sm" href="/admin" />
+              <button onClick={() => setMenuOpen(false)} aria-label="Close menu" className="p-2 text-slate-400 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-
-            <div className="pt-4 border-t border-slate-900 flex flex-col gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  setCurrentRole("customer");
-                  router.push("/shop");
-                }}
-                className="w-full justify-start text-xs text-slate-400 hover:text-white rounded-none"
-              >
-                <UserCheck className="w-4 h-4 mr-2 text-emerald-400" />
-                Switch to Customer View
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                className="w-full justify-start text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-none font-bold"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Log Out Admin Account
-              </Button>
-            </div>
+            {nav}
+            {footer}
           </div>
         </div>
       )}
 
-      {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* HEADER BAR */}
-        <header className="h-16 bg-white dark:bg-slate-900 px-4 sm:px-6 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            {/* Mobile Hamburger Toggle Button */}
-            <button
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden p-2 -ml-1 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-              title="Open Navigation Menu"
-            >
-              <Menu className="w-6 h-6" />
+        <header className="sticky top-0 z-30 h-16 bg-white dark:bg-slate-900 px-4 sm:px-6 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={() => setMenuOpen(true)} aria-label="Open menu" className="lg:hidden p-2 -ml-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <Menu className="w-5 h-5" />
             </button>
-
-            <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 truncate">
-              Platform Master Administration
-            </span>
-            <span className="hidden sm:inline-block px-2.5 py-0.5 text-[10px] font-black bg-emerald-100 dark:bg-emerald-950/60 text-[#087F5B] dark:text-emerald-300">
-              SUPERADMIN
-            </span>
+            <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white truncate">{title}</h1>
           </div>
-
-          <div className="flex items-center gap-3 text-xs">
-            <span className="text-slate-500 font-medium text-[11px] sm:text-xs">
-              {currentUser.name || "Admin"}
-            </span>
-
-            {/* Quick Header Logout Button */}
-            <button
-              onClick={handleLogout}
-              className="px-3 py-1.5 rounded-none bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-300 font-bold hover:bg-rose-100 transition-colors flex items-center gap-1.5 cursor-pointer"
-              title="Log Out Admin"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Log Out</span>
-            </button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
           </div>
         </header>
-
-        {/* MAIN BODY CONTENT */}
-        <main className="flex-1 p-4 sm:p-8 overflow-y-auto">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">{children}</main>
       </div>
     </div>
   );

@@ -82,7 +82,6 @@ export default function AdminSettlementsPage() {
   return (
     <div className="flex flex-col gap-6 w-full max-w-6xl">
       <div>
-        <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100">Settlements</h1>
         <p className="text-xs text-slate-500 mt-1">
           Customers pay into Novo&apos;s Bachs account. Settling sends a merchant&apos;s or rider&apos;s share to their Bachs payout account, and they withdraw it to their bank.
         </p>

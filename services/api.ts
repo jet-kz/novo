@@ -1,7 +1,7 @@
 import {
   Store, Product, Order, OrderStatus, RiderProfile, PlatformAnalytics, Review,
   PlatformCategory, HomeCollection, MenuSection, AppNotification,
-  MyPayouts, PayoutAccountView, PayoutsOverview,
+  MyPayouts, PayoutAccountView, PayoutsOverview, AdminUserRow,
 } from "@/types";
 import { shrinkImageForUpload } from "@/utils/imageUpload";
 
@@ -44,7 +44,7 @@ async function request<T = any>(path: string, init: RequestInit & { token?: stri
 }
 
 /** Backend lifecycle (UPPER_CASE) -> frontend OrderStatus. Keep in sync with app/modules/orders/status.py. */
-const ORDER_STATUS_FROM_API: Record<string, OrderStatus> = {
+export const ORDER_STATUS_FROM_API: Record<string, OrderStatus> = {
   CART: "pending_merchant",
   PENDING: "pending_merchant",
   PLACED: "pending_merchant",
@@ -717,6 +717,38 @@ export const apiService = {
   getPayoutsOverview: () => request<PayoutsOverview>("/payouts/admin/overview", {}, "Could not load settlements"),
   settlePayee: (payload: { payee_type: "merchant" | "rider"; payee_id: string; amount: number; note?: string }) =>
     request("/payouts/admin/settle", { method: "POST", body: JSON.stringify(payload) }, "Settlement failed"),
+
+  // 10.1c ADMIN CONSOLE (/api/v1/admin)
+  adminOverview: () => request<any>("/admin/overview", {}, "Could not load overview"),
+  adminUsers: (params: { q?: string; role?: string; status?: string; limit?: number; offset?: number } = {}) =>
+    request<{ total: number; items: AdminUserRow[] }>(
+      `/admin/users?${new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)]))}`,
+      {},
+      "Could not load users"
+    ),
+  suspendUser: (id: string, reason?: string) =>
+    request(`/admin/users/${id}/suspend`, { method: "POST", body: JSON.stringify({ reason }) }, "Could not suspend account"),
+  reactivateUser: (id: string) => request(`/admin/users/${id}/reactivate`, { method: "POST" }, "Could not reactivate account"),
+  sendUserPasswordReset: (id: string) =>
+    request<any>(`/admin/users/${id}/password-reset`, { method: "POST" }, "Could not send reset code"),
+  setUserAdmin: (id: string, grant: boolean) =>
+    request(`/admin/users/${id}/admin`, { method: "PUT", body: JSON.stringify({ grant }) }, "Could not update admin access"),
+  inviteAdmin: (email: string, full_name: string) =>
+    request<any>("/admin/admins", { method: "POST", body: JSON.stringify({ email, full_name }) }, "Could not add admin"),
+  adminOrders: (params: { view?: string; q?: string; limit?: number; offset?: number } = {}) =>
+    request<{ total: number; items: any[] }>(
+      `/admin/orders?${new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)]))}`,
+      {},
+      "Could not load orders"
+    ),
+  adminOrder: (id: string) => request<any>(`/admin/orders/${encodeURIComponent(id)}`, {}, "Could not load order"),
+  recordRefund: (id: string, reference: string, note?: string) =>
+    request<any>(`/admin/orders/${encodeURIComponent(id)}/refund`, { method: "POST", body: JSON.stringify({ reference, note }) }, "Could not record refund"),
+  adminMerchants: () => request<any[]>("/admin/merchants", {}, "Could not load merchants"),
+  adminPayments: (offset = 0) => request<any>(`/admin/payments?offset=${offset}`, {}, "Could not load payments"),
+  adminActivity: (offset = 0) => request<any>(`/admin/activity?offset=${offset}`, {}, "Could not load activity"),
+  changePassword: (current_password: string, new_password: string) =>
+    request("/auth/change-password", { method: "POST", body: JSON.stringify({ current_password, new_password }) }, "Could not change password"),
 
   // 10.2 GUEST CHECKOUT (/api/v1/orders/guest) — no account needed; the token is the guest's key.
   quoteGuestOrder: (payload: any) =>

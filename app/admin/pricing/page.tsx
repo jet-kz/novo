@@ -257,10 +257,7 @@ export default function AdminPricingPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Pricing Engine & Promotions
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Configure platform commission rates, dynamic delivery pricing, service fees, and promotion campaigns.
           </p>
         </div>

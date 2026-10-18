@@ -142,7 +142,6 @@ export default function AdminRidersPage() {
     <div className="flex flex-col gap-6 w-full max-w-6xl">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100">Riders</h1>
           <p className="text-xs text-slate-500 mt-1">
             {counts.approved} approved · {counts.online} online now · {counts.pending} waiting for review
           </p>

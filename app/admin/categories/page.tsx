@@ -101,7 +101,6 @@ export default function AdminCategoriesPage() {
   return (
     <div className="flex flex-col gap-8 w-full max-w-5xl">
       <div>
-        <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100">Homepage categories &amp; collections</h1>
         <p className="text-xs text-slate-500 mt-1">
           Categories are the shortcuts at the top of the homepage; merchants pick one for their store. Collections are the featured rows below them.
         </p>

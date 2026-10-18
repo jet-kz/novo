@@ -355,3 +355,17 @@ export interface GeoPoint {
   lat: number;
   lon: number;
 }
+
+/** Row in the admin user directory. */
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  roles: string[];
+  is_active: boolean;
+  created_at: string | null;
+  last_sign_in_at: string | null;
+  email_verified: boolean;
+  orders: number;
+}
