@@ -7,6 +7,8 @@ import { AlertCircle, Check, Loader2, MapPin, Phone, Store as StoreIcon } from "
 import { apiService } from "@/services/api";
 import { Order, OrderStatus } from "@/types";
 import { usePaymentReturn } from "@/components/checkout/usePaymentReturn";
+import { LiveOrderMap } from "@/components/map/LiveOrderMap";
+import { EnableAlertsCard } from "@/components/notifications/EnableAlertsCard";
 import { saveGuestOrder } from "@/utils/guestOrders";
 
 const STEPS: { status: OrderStatus; label: string; hint: string }[] = [
@@ -18,7 +20,7 @@ const STEPS: { status: OrderStatus; label: string; hint: string }[] = [
   { status: "picked_up", label: "On the way to you", hint: "Keep your phone close" },
   { status: "delivered", label: "Delivered", hint: "Enjoy!" },
 ];
-const REFRESH_MS = 15000;
+const REFRESH_MS = 10000;
 const naira = (n: number) => `₦${Math.round(n).toLocaleString()}`;
 
 function TrackContent() {
@@ -93,6 +95,14 @@ function TrackContent() {
         </h1>
       </div>
 
+      {!cancelled && order.status !== "delivered" && (
+        <EnableAlertsCard
+          storageKey={`track-${order.id}`}
+          title="Get updates on this order"
+          body="We'll notify you when the store accepts it, when the rider picks it up and when it arrives."
+          guest={{ orderId: order.id, token, openUrl: `/track/${encodeURIComponent(order.id)}?t=${encodeURIComponent(token)}` }}
+        />
+      )}
       {payment === "confirming" && <Banner tone="info" icon={<Loader2 className="w-4 h-4 animate-spin" />} text="Confirming your payment…" />}
       {payment === "paid" && <Banner tone="ok" icon={<Check className="w-4 h-4" />} text="Payment received. The store has your order." />}
       {payment === "pending" && (
@@ -114,6 +124,8 @@ function TrackContent() {
         </div>
       )}
       {error && <Banner tone="warn" icon={<AlertCircle className="w-4 h-4" />} text={error} />}
+
+      {!cancelled && order.status !== "delivered" && <LiveOrderMap order={order} className="h-56" />}
 
       {!cancelled && (
         <ol className="rounded-2xl bg-white dark:bg-slate-900 p-5 flex flex-col gap-4">

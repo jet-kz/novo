@@ -28,8 +28,10 @@ import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Modal } from "@/components/ui/Modal";
 import { NovoLogo } from "@/components/shared/NovoLogo";
-import { DeliveryMap } from "@/components/rider/DeliveryMap";
+import { LiveOrderMap } from "@/components/map/LiveOrderMap";
+import { useRiderGps } from "@/components/rider/useRiderGps";
 import { RiderOnboardingStatus } from "@/components/rider/RiderOnboardingStatus";
+import { EnableAlertsCard } from "@/components/notifications/EnableAlertsCard";
 import type { Order } from "@/types";
 
 export default function RiderHubPage() {
@@ -38,6 +40,7 @@ export default function RiderHubPage() {
 
   const me = riderProfile.id || currentUser.id;
   // The backend scopes /orders for riders: jobs ready for pickup with no rider, plus jobs assigned to me.
+  const gps = useRiderGps(riderProfile.isOnline);
   const activeOrder = orders.find((o) => o.riderId === me && (o.status === "rider_assigned" || o.status === "picked_up"));
   const availableJobs = riderProfile.isOnline ? orders.filter((o) => o.status === "ready_for_pickup" && !o.riderId) : [];
   const earningsFor = (o?: Order) => (o ? o.riderEarnings ?? Math.round(o.deliveryFee * 0.85 + (o.tip || 0)) : 0);
@@ -145,6 +148,15 @@ export default function RiderHubPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex flex-col gap-6">
+      <EnableAlertsCard
+        storageKey="rider"
+        tone="dark"
+        title="Get job alerts"
+        body="We'll ping you when a new delivery is ready near you, even with the app closed. First to accept gets it."
+      />
+      {riderProfile.isOnline && gps.problem && (
+        <p role="status" className="rounded-2xl bg-amber-500/15 text-amber-200 text-sm font-semibold p-3">{gps.problem}</p>
+      )}
 
       {/* RIDER PROFILE HEADER */}
       <div className="bg-slate-950 text-white rounded-3xl p-6 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-6">
@@ -231,14 +243,7 @@ export default function RiderHubPage() {
           </div>
 
           {/* EMBEDDED INTERACTIVE ROUTE MAP */}
-          <DeliveryMap
-            storeName={activeOrder.storeName}
-            storeAddress={activeOrder.storeAddress}
-            customerName={activeOrder.customerName}
-            customerAddress={activeOrder.deliveryAddress}
-            riderName={riderProfile.name || "You"}
-            status={activeOrder.status}
-          />
+          <LiveOrderMap order={activeOrder} riderPosition={gps.position} forRider className="h-72" />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* STEP 1: PICKUP MERCHANT */}

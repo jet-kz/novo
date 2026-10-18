@@ -1,25 +1,49 @@
 "use client";
 
-import React, { useState } from "react";
-import { Bell, Check, Package, Sparkles, Bike } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
+import { Bell, Check } from "lucide-react";
+import { apiService } from "@/services/api";
+import { usePlatform } from "@/store/PlatformContext";
+import { AppNotification } from "@/types";
 
-interface NotificationItem {
-  id: string;
-  title: string;
-  message: string;
-  time: string;
-  unread: boolean;
-  type: "order" | "promo" | "delivery";
-}
+const POLL_MS = 30000;
 
+const timeAgo = (iso: string) => {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  return hours < 24 ? `${hours}h ago` : new Date(iso).toLocaleDateString();
+};
+
+/** Header bell: the signed-in user's alerts (order updates, messages, payouts). */
 export function NotificationBell() {
+  const { isAuthenticated } = usePlatform();
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [items, setItems] = useState<AppNotification[]>([]);
+  const [unread, setUnread] = useState(0);
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const load = useCallback(async () => {
+    try {
+      const res = await apiService.getMyNotifications();
+      setItems(res.items);
+      setUnread(res.unread);
+    } catch {}
+  }, []);
 
-  const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    load();
+    const t = setInterval(() => document.visibilityState === "visible" && load(), POLL_MS);
+    return () => clearInterval(t);
+  }, [isAuthenticated, load]);
+
+  if (!isAuthenticated) return null;
+
+  const markAllRead = async () => {
+    setUnread(0);
+    setItems((prev) => prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
+    apiService.markAllNotificationsRead().catch(() => {});
   };
 
   return (
@@ -27,76 +51,45 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
         className="relative p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-        title="Notifications"
       >
         <Bell className="w-5 h-5" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 animate-pulse">
-            {unreadCount}
+        {unread > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">
+            {unread > 9 ? "9+" : unread}
           </span>
         )}
       </button>
 
       {isOpen && (
         <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl z-50 p-4 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <Bell className="w-4 h-4 text-emerald-500" />
-                <h4 className="font-black text-sm text-slate-900 dark:text-slate-100">Notifications</h4>
-              </div>
-              {unreadCount > 0 && (
-                <button
-                  type="button"
-                  onClick={markAllRead}
-                  className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer flex items-center gap-1"
-                >
-                  <Check className="w-3 h-3" />
-                  <span>Mark all read</span>
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+          <div className="absolute right-0 mt-3 w-80 sm:w-96 max-h-[70vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-3xl shadow-2xl z-50 p-4 flex flex-col gap-2">
+            <div className="flex items-center justify-between pb-2">
+              <h4 className="font-black text-sm text-slate-900 dark:text-slate-100">Notifications</h4>
+              {unread > 0 && (
+                <button type="button" onClick={markAllRead} className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 cursor-pointer">
+                  <Check className="w-3 h-3" /> Mark all read
                 </button>
               )}
             </div>
-
-            <div className="flex flex-col gap-2 max-h-80 overflow-y-auto">
-              {notifications.length === 0 ? (
-                <div className="p-6 text-center text-xs font-semibold text-slate-400">
-                  No notifications yet
-                </div>
-              ) : (
-                notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className={`p-3 rounded-2xl flex gap-3 text-xs transition-colors ${
-                      n.unread
-                        ? "bg-emerald-50/60 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900"
-                        : "bg-slate-50 dark:bg-slate-800/40"
-                    }`}
-                  >
-                    <div className="p-2 rounded-xl bg-white dark:bg-slate-800 shadow-xs h-fit text-emerald-600 dark:text-emerald-400">
-                      {n.type === "delivery" ? (
-                        <Bike className="w-4 h-4" />
-                      ) : n.type === "promo" ? (
-                        <Sparkles className="w-4 h-4 text-amber-500" />
-                      ) : (
-                        <Package className="w-4 h-4" />
-                      )}
+            {items.length === 0 ? (
+              <p className="text-xs text-slate-500 py-6 text-center">No notifications yet. Order updates will show up here.</p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
+                {items.map((n) => (
+                  <li key={n.id} className="py-2.5 flex gap-2.5">
+                    <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${n.read_at ? "bg-transparent" : "bg-emerald-500"}`} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">{n.title}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">{n.body}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{timeAgo(n.created_at)}</p>
                     </div>
-                    <div className="flex-1 flex flex-col gap-0.5">
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-slate-900 dark:text-slate-100">{n.title}</span>
-                        <span className="text-[10px] text-slate-400">{n.time}</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">{n.message}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </>
       )}

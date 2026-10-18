@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { usePlatform } from "@/store/PlatformContext";
 import { Store as StoreIcon, Clock, MapPin, Phone, Upload, Check, Loader2, Image as ImageIcon, Sparkles } from "lucide-react";
 import { apiService } from "@/services/api";
+import { StoreLocationField } from "@/components/location/StoreLocationField";
 import { useCatalog } from "@/components/shared/useCatalog";
 
 const BANNER_PRESETS = [
@@ -27,6 +28,7 @@ export default function MerchantProfilePage() {
 
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
+  const [storeCoords, setStoreCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [cuisineType, setCuisineType] = useState("");
@@ -53,6 +55,11 @@ export default function MerchantProfilePage() {
           setStoreId(backendStore.id);
           setName(backendStore.name || "");
           setAddress(backendStore.address || "");
+          const loc = backendStore.location;
+          // Stores created before the map picker sit on a placeholder Lagos point; treat that as unset.
+          if (loc?.latitude != null && !(Math.abs(loc.latitude - 6.5244) < 0.0001 && Math.abs(loc.longitude - 3.3792) < 0.0001)) {
+            setStoreCoords({ lat: loc.latitude, lon: loc.longitude });
+          }
           setPhone(backendStore.phone || "");
           setStoreCategory(backendStore.store_type || "restaurant");
           setCuisineType(backendStore.settings?.cuisine_type || "");
@@ -127,6 +134,7 @@ export default function MerchantProfilePage() {
         logo,
         banner,
         store_type: storeCategory,
+        ...(storeCoords ? { location: { latitude: storeCoords.lat, longitude: storeCoords.lon } } : {}),
         settings: { email, cuisine_type: cuisineType, delivery_fee: fee, min_order: min },
       });
       await refreshMerchantStore();
@@ -330,6 +338,14 @@ export default function MerchantProfilePage() {
                 className="w-full mt-1 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold outline-none text-slate-900 dark:text-white"
               />
             </div>
+
+            <StoreLocationField
+              coords={storeCoords}
+              onChange={({ address: picked, coords }) => {
+                setStoreCoords(coords);
+                if (!address.trim()) setAddress(picked);
+              }}
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

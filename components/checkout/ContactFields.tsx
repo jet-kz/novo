@@ -47,7 +47,7 @@ export function ContactFields({ checkout }: { checkout: Checkout }) {
         className={fieldClass}
         value={checkout.contactEmail}
         onChange={(e) => checkout.setContactEmail(e.target.value)}
-        placeholder="Email for your receipt (optional)"
+        placeholder={checkout.paymentMethod === "card" ? "Email for your receipt" : "Email for your receipt (optional)"}
         type="email"
         inputMode="email"
         autoComplete="email"

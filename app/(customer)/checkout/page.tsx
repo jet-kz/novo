@@ -2,12 +2,13 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { CreditCard, Banknote, Landmark, MapPin, ArrowRight, Heart, AlertCircle, Info } from "lucide-react";
+import { CreditCard, Banknote, Landmark, ArrowRight, Heart, AlertCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useCheckout, PaymentMethod } from "@/components/checkout/useCheckout";
 import { MobileCheckoutView } from "@/components/mobile/checkout/MobileCheckoutView";
 import { ContactFields } from "@/components/checkout/ContactFields";
+import { DeliveryLocationField } from "@/components/checkout/DeliveryLocationField";
 
 const PAYMENT_OPTIONS: { id: PaymentMethod; label: string; icon: React.ReactNode }[] = [
   { id: "card", label: "Pay online now", icon: <CreditCard className="w-5 h-5" /> },
@@ -47,17 +48,8 @@ export default function CheckoutPage() {
                 <ContactFields checkout={checkout} />
               </div>
 
-              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xs flex flex-col gap-4">
-                <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                  <MapPin className="w-5 h-5 text-emerald-500" />
-                  <h3 className="font-black text-base">Delivery Address</h3>
-                </div>
-                <Input
-                  value={checkout.address}
-                  onChange={(e) => checkout.setAddress(e.target.value)}
-                  placeholder="Full street address, building & apartment..."
-                  aria-label="Delivery address"
-                />
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xs">
+                <DeliveryLocationField checkout={checkout} />
               </div>
 
               <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xs flex flex-col gap-4">

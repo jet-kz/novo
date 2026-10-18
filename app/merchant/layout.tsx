@@ -22,7 +22,10 @@ import {
 } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
 import { apiService } from "@/services/api";
+import { EnableAlertsCard } from "@/components/notifications/EnableAlertsCard";
 import { NovoLogo } from "@/components/shared/NovoLogo";
+import { NotificationBell } from "@/components/shared/NotificationBell";
+import { NewOrderAlert } from "@/components/merchant/NewOrderAlert";
 
 export default function MerchantLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -248,6 +251,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
 
           {/* TOP RIGHT PROFILE & NOTIFICATIONS & LOGOUT */}
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+            <NotificationBell />
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#087F5B] text-white font-black text-xs flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
                 {(merchantProfile?.fullName || "M").charAt(0).toUpperCase()}
@@ -273,7 +277,17 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
         </header>
 
         {/* MAIN BODY DASHBOARD ROUTE VIEWS */}
-        <main className="flex-1 p-4 sm:p-8 overflow-y-auto">{children}</main>
+        <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
+          <NewOrderAlert />
+          <div className="mb-4 empty:hidden">
+            <EnableAlertsCard
+              storageKey="merchant"
+              title="Never miss an order"
+              body="Get a notification on this phone or computer the moment a customer orders, even when Novo isn't open."
+            />
+          </div>
+          {children}
+        </main>
       </div>
     </div>
   );

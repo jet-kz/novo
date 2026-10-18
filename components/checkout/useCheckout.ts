@@ -4,20 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePlatform } from "@/store/PlatformContext";
 import { apiService } from "@/services/api";
+import { CheckoutQuote, useOrderLines, useOrderQuote } from "@/components/checkout/useOrderQuote";
+
+export type { CheckoutQuote };
 import { guestTrackingPath, saveGuestOrder } from "@/utils/guestOrders";
 
 export type PaymentMethod = "card" | "cash" | "transfer";
 
-export interface CheckoutQuote {
-  subtotal: number;
-  delivery_fee: number;
-  service_fee: number;
-  discount: number;
-  tip: number;
-  total: number;
-  applied_promo_code: string | null;
-  promo_valid: boolean | null;
-}
 
 /** Set before redirecting to Bachs so the cart is cleared only once payment succeeds. */
 export const PENDING_PAYMENT_KEY = "novo_pending_payment";
@@ -32,7 +25,7 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
  */
 export function useCheckout() {
   const router = useRouter();
-  const { cart, cartSubtotal, cartDeliveryFee, currentUser, isAuthenticated, userLocationAddress, userLocationCoords, placeOrder, cancelOrder, clearCart, stores } =
+  const { cart, cartSubtotal, currentUser, isAuthenticated, userLocationAddress, userLocationCoords, userLocationDetails, hasPickedLocation, setUserLocation, placeOrder, cancelOrder, clearCart, stores } =
     usePlatform();
 
   // Contact details. Signed-in customers get theirs prefilled; guests must give name + phone.
@@ -45,66 +38,37 @@ export function useCheckout() {
     setContactEmail((prev) => prev || currentUser.email || "");
   }, [currentUser.name, currentUser.phone, currentUser.email]);
 
-  const [address, setAddress] = useState("");
+  // The delivery address is the map-picked location plus the customer's house number / landmark.
+  const address = [userLocationDetails, userLocationAddress].map((p) => (p || "").trim()).filter(Boolean).join(", ");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [tip, setTip] = useState(0);
   const [promoInput, setPromoInput] = useState("");
   const [promoCode, setPromoCode] = useState<string | null>(null);
-  const [quote, setQuote] = useState<CheckoutQuote | null>(null);
-  const [quoteLoading, setQuoteLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submittingRef = useRef(false);
 
-  useEffect(() => {
-    setAddress((prev) => prev || currentUser.address || "");
-  }, [currentUser.address]);
-
-  const storeId = cart[0]?.product?.storeId || "";
-  const orderLines = cart.map((item) => ({
-    product_id: item.product.id,
-    quantity: item.quantity,
-    addons: (item.selectedOptions || []).map((o) => ({ id: o.id, name: o.name })),
-  }));
-  const linesKey = JSON.stringify(orderLines);
-
+  const lines = useOrderLines();
   const baseRequest = () => ({
-    store_id: storeId,
-    items: orderLines,
+    store_id: lines.storeId,
+    items: lines.items,
     tip,
     promo_code: promoCode || undefined,
-    ...(userLocationCoords ? { delivery_latitude: userLocationCoords.lat, delivery_longitude: userLocationCoords.lon } : {}),
+    ...lines.coords,
   });
 
-  // Re-quote whenever anything that affects price changes.
+  // Same server quote the cart shows, plus this screen's tip and promo.
+  const { quote, loading: quoteLoading, error: quoteError } = useOrderQuote({ tip, promoCode });
   useEffect(() => {
-    if (cart.length === 0 || !storeId) {
-      setQuote(null);
-      return;
+    if (quoteError) setError(quoteError);
+  }, [quoteError]);
+  useEffect(() => {
+    if (promoCode && quote?.promo_valid === false) {
+      setNotice(`Promo code ${promoCode} can't be used on this order.`);
+      setPromoCode(null);
     }
-    let cancelled = false;
-    setQuoteLoading(true);
-    const timer = setTimeout(() => {
-      (isAuthenticated ? apiService.quoteOrder(baseRequest()) : apiService.quoteGuestOrder(baseRequest()))
-        .then((q) => {
-          if (cancelled) return;
-          setQuote(q);
-          setError(null);
-          if (promoCode && q.promo_valid === false) {
-            setNotice(`Promo code ${promoCode} can't be used on this order.`);
-            setPromoCode(null);
-          }
-        })
-        .catch((e) => !cancelled && setError(e.message))
-        .finally(() => !cancelled && setQuoteLoading(false));
-    }, 300);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, linesKey, storeId, tip, promoCode, userLocationCoords?.lat, userLocationCoords?.lon]);
+  }, [quote, promoCode]);
 
   const applyPromo = () => {
     const code = promoInput.trim().toUpperCase();
@@ -138,11 +102,16 @@ export function useCheckout() {
     setError(null);
     setNotice(null);
     if (cart.length === 0) return setError("Your cart is empty.");
-    const deliveryAddress = (address || userLocationAddress || "").trim();
-    if (deliveryAddress.length < 5) return setError("Please enter your delivery address.");
+    const deliveryAddress = address.trim();
+    if (!hasPickedLocation || !userLocationCoords || deliveryAddress.length < 5) {
+      return setError("Set your delivery location on the map so the rider can find you.");
+    }
     if (contactName.trim().length < 2) return setError("Please enter your name.");
     if (phoneDigits(contactPhone).length < 10) return setError("Please enter a phone number the rider can call.");
     if (contactEmail.trim() && !EMAIL_RE.test(contactEmail.trim())) return setError("That email address doesn't look right.");
+    if (paymentMethod === "card" && !contactEmail.trim()) {
+      return setError("Add your email to pay online. Your receipt goes there.");
+    }
 
     submittingRef.current = true;
     setIsSubmitting(true);
@@ -204,17 +173,21 @@ export function useCheckout() {
 
   const estimate = {
     subtotal: cartSubtotal,
-    delivery_fee: cartDeliveryFee,
+    delivery_fee: 0,
     service_fee: 0,
     discount: 0,
     tip,
-    total: cartSubtotal + cartDeliveryFee + tip,
+    total: cartSubtotal + tip, // fees appear once the server quote arrives
   };
 
   return {
     cart,
     address,
-    setAddress,
+    hasPickedLocation,
+    locationTitle: userLocationAddress,
+    locationDetails: userLocationDetails,
+    locationCoords: userLocationCoords,
+    setLocation: setUserLocation,
     contactName,
     setContactName,
     contactPhone,

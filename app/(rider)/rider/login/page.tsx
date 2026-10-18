@@ -29,7 +29,9 @@ export default function RiderLoginPage() {
     }
     loginUser(token, me?.email || email, "rider");
     setSuccessMsg("Signed in! Opening Rider Hub...");
-    router.push("/rider");
+    const next = new URLSearchParams(window.location.search).get("next");
+    // Only follow in-app rider paths.
+    router.push(next && next.startsWith("/rider") && !next.startsWith("//") ? next : "/rider");
   };
 
   const handleRiderLogin = async (e: React.FormEvent) => {

@@ -25,6 +25,10 @@ const getAuthHeaders = (token?: string) => {
   };
 };
 
+/** {latitude, longitude} from the API -> {lat, lon}, or null. */
+const toPoint = (p: any) =>
+  p && p.latitude != null && p.longitude != null ? { lat: Number(p.latitude), lon: Number(p.longitude) } : null;
+
 /** JSON request that unwraps `{ data }` and throws an Error carrying the server's message on failure. */
 async function request<T = any>(path: string, init: RequestInit & { token?: string } = {}, fallback = "Request failed"): Promise<T> {
   const { token, headers, ...rest } = init;
@@ -496,6 +500,9 @@ export const apiService = {
       paymentMethod: raw.payment_method || raw.paymentMethod || "card",
       paymentStatus: raw.payment_status === "paid" || raw.paymentStatus === "paid" ? "paid" : raw.payment_status === "failed" ? "failed" : "pending",
       pickupCode: raw.pickup_code || raw.pickupCode,
+      storeLocation: toPoint(raw.store_location),
+      dropoffLocation: toPoint(raw.dropoff_location),
+      riderLocation: raw.rider_location ? { ...toPoint(raw.rider_location)!, updatedAt: raw.rider_location.updated_at } : null,
       estimatedDeliveryMinutes: raw.estimated_delivery_minutes || raw.estimatedDeliveryMinutes || 30,
       riderId: raw.rider_id || raw.riderId,
       riderName: raw.rider_name || raw.riderName,

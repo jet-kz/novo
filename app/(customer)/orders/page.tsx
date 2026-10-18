@@ -19,6 +19,8 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { MobileOrdersView } from "@/components/mobile/orders/MobileOrdersView";
 import { GuestOrdersList } from "@/components/checkout/GuestOrdersList";
+import { LiveOrderMap } from "@/components/map/LiveOrderMap";
+import { EnableAlertsCard } from "@/components/notifications/EnableAlertsCard";
 import { usePaymentReturn } from "@/components/checkout/usePaymentReturn";
 
 function OrderTrackerContent() {
@@ -127,6 +129,15 @@ function OrderTrackerContent() {
   return (
     <>
       {paymentBanner}
+      {currentOrder && !["delivered", "cancelled"].includes(currentOrder.status) && (
+        <div className="mx-4 md:mx-auto md:max-w-5xl mt-4">
+          <EnableAlertsCard
+            storageKey="customer-orders"
+            title="Know the moment your order moves"
+            body="Turn on alerts for when the store accepts your order, the rider picks it up and it arrives."
+          />
+        </div>
+      )}
       <MobileOrdersView />
       <div className="hidden md:block max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full min-h-screen">
       <div className="flex items-center justify-between mb-8">
@@ -195,37 +206,10 @@ function OrderTrackerContent() {
                 ))}
               </div>
 
-              {/* MOCK LIVE MAP ROUTE VISUALIZER */}
-              <div className="relative w-full h-56 rounded-2xl overflow-hidden bg-slate-900 flex items-center justify-center">
-                <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:16px_16px]" />
-
-                <div className="relative z-10 flex items-center justify-around w-full px-12">
-                  <div className="flex flex-col items-center gap-1 text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black shadow-lg">
-                      <Store className="w-6 h-6" />
-                    </div>
-                    <span className="text-xs font-bold text-white mt-1">{currentOrder.storeName}</span>
-                  </div>
-
-                  <div className="flex-1 flex flex-col items-center px-4">
-                    <div className="w-full border-t-2 border-dashed border-emerald-500/60 relative flex items-center justify-center">
-                      <div className="absolute -top-3 bg-emerald-500 text-white p-1.5 rounded-full shadow-lg animate-bounce">
-                        <Bike className="w-4 h-4" />
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-mono text-emerald-400 font-bold mt-3">
-                      ETA ~{currentOrder.estimatedDeliveryMinutes} min
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col items-center gap-1 text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black shadow-lg">
-                      <MapPin className="w-6 h-6" />
-                    </div>
-                    <span className="text-xs font-bold text-white mt-1">Delivery Address</span>
-                  </div>
-                </div>
-              </div>
+              {/* LIVE MAP: store, delivery point and the rider's position */}
+              {currentOrder.status !== "delivered" && currentOrder.status !== "cancelled" && (
+                <LiveOrderMap order={currentOrder} className="h-64" />
+              )}
 
               {/* RIDER ASSIGNED CARD */}
               {currentOrder.riderName && (

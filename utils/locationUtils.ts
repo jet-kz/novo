@@ -5,30 +5,103 @@ export interface Coordinates {
   lon: number;
 }
 
-// Reverse Geocoding helper to turn GPS coordinates into readable address
-export async function reverseGeocode(lat: number, lon: number): Promise<string> {
+/** A place from search or reverse geocoding. */
+export interface PlaceResult {
+  /** Short line, e.g. "12 Okumagba Avenue". */
+  title: string;
+  /** Area / city / state line. */
+  subtitle: string;
+  /** Full single-line address. */
+  address: string;
+  coords: Coordinates;
+}
+
+// Nigeria bounding box (minLon, minLat, maxLon, maxLat) keeps search results local.
+const NG_BBOX = "2.67,4.27,14.68,13.89";
+
+const join = (...parts: (string | undefined | null)[]) =>
+  parts.map((p) => (p || "").trim()).filter((p, i, arr) => p && arr.indexOf(p) === i).join(", ");
+
+/**
+ * Search-as-you-type for addresses and places (OpenStreetMap data via Photon), restricted to
+ * Nigeria and biased towards `near`.
+ */
+export async function searchPlaces(query: string, near?: Coordinates | null, signal?: AbortSignal): Promise<PlaceResult[]> {
+  const q = query.trim();
+  if (q.length < 3) return [];
+  const params = new URLSearchParams({ q, limit: "7", lang: "en", bbox: NG_BBOX });
+  if (near) {
+    params.set("lat", String(near.lat));
+    params.set("lon", String(near.lon));
+  }
+  const res = await fetch(`https://photon.komoot.io/api/?${params}`, { signal });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.features || []).map((f: any): PlaceResult => {
+    const p = f.properties || {};
+    const street = join(p.housenumber && p.street ? `${p.housenumber} ${p.street}` : p.street);
+    const title = p.name && p.name !== p.street ? p.name : street || p.name || p.district || p.city || "Unnamed place";
+    const subtitle = join(p.name && p.name !== p.street ? street : "", p.district || p.locality, p.city || p.county, p.state);
+    return {
+      title,
+      subtitle,
+      address: join(title, subtitle),
+      coords: { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] },
+    };
+  });
+}
+
+/** Coordinates -> readable address (OpenStreetMap Nominatim). Falls back to rounded coordinates. */
+export async function reverseGeocodePlace(lat: number, lon: number, signal?: AbortSignal): Promise<PlaceResult> {
+  const coords = { lat, lon };
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=en`,
+      { signal }
     );
     if (res.ok) {
       const data = await res.json();
-      if (data && data.address) {
-        const road = data.address.road || data.address.suburb || data.address.neighbourhood || "";
-        const city = data.address.city || data.address.town || data.address.state_district || "Warri";
-        const state = data.address.state || "Delta State";
-        const formatted = [road, city, state].filter(Boolean).join(", ");
-        if (formatted.length > 5) return formatted;
-      }
-      if (data && data.display_name) {
-        const parts = data.display_name.split(",");
-        return parts.slice(0, 3).join(",").trim();
-      }
+      const a = data.address || {};
+      const street = join(a.house_number && a.road ? `${a.house_number} ${a.road}` : a.road);
+      const named = data.name && data.name !== a.road ? data.name : "";
+      const title = named || street || a.neighbourhood || a.suburb || a.quarter || "Pinned location";
+      const subtitle = join(named ? street : "", a.neighbourhood || a.suburb || a.quarter, a.city || a.town || a.village || a.county, a.state);
+      return { title, subtitle, address: join(title, subtitle), coords };
     }
-  } catch (e) {
-    console.warn("Reverse geocoding request failed:", e);
+  } catch (e: any) {
+    if (e?.name === "AbortError") throw e;
   }
-  return "Current Location, Warri, Delta State";
+  const fallback = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+  return { title: "Pinned location", subtitle: fallback, address: fallback, coords };
+}
+
+/** Kept for existing callers: coordinates -> one-line address. */
+export async function reverseGeocode(lat: number, lon: number): Promise<string> {
+  return (await reverseGeocodePlace(lat, lon)).address;
+}
+
+/** Current GPS position with readable errors. */
+export function getCurrentPosition(): Promise<Coordinates> {
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      reject(new Error("Your browser can't share location. Search for your address instead."));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      (err) =>
+        reject(
+          new Error(
+            err.code === err.PERMISSION_DENIED
+              ? "Location is blocked for this site. Allow it in your browser settings, or search for your address."
+              : err.code === err.TIMEOUT
+                ? "Couldn't get a GPS fix in time. Try again near a window, or search for your address."
+                : "Couldn't find your location. Search for your address instead."
+          )
+        ),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+    );
+  });
 }
 
 // Preset GPS Coordinates for Target Cities & Regions
@@ -131,16 +204,17 @@ export function isStoreInDeliveryRange(
   const userCity = extractCityFromAddress(userAddress);
   
   const userPos = getCoordinatesForAddress(userAddress, userCoords);
-  const storePos = store.latitude && store.longitude 
-    ? { lat: store.latitude, lon: store.longitude }
+  const storePinned = hasRealStoreLocation(store);
+  const storePos = storePinned
+    ? { lat: store.latitude as number, lon: store.longitude as number }
     : (TARGET_CITY_COORDINATES[storeCity] || TARGET_CITY_COORDINATES.warri);
 
   const distanceKm = calculateHaversineDistance(userPos.lat, userPos.lon, storePos.lat, storePos.lon);
-  
-  // Geofence Rule: City match OR distance within radius
+
+  // With a real pin on both sides, distance decides. Otherwise fall back to matching city names.
   const maxAllowedRadius = store.deliveryRadiusKm || maxRadiusKm;
   const cityMatches = storeCity === userCity || (storeCity === "warri" && userCity === "effurun") || (storeCity === "effurun" && userCity === "warri");
-  const inRange = cityMatches && distanceKm <= maxAllowedRadius;
+  const inRange = storePinned && userCoords ? distanceKm <= maxAllowedRadius : cityMatches && distanceKm <= maxAllowedRadius;
 
   const deliveryFee = calculateDynamicDeliveryFee(distanceKm, store.deliveryFee || 300);
   const deliveryTime = estimateDeliveryTime(distanceKm);
@@ -151,4 +225,10 @@ export function isStoreInDeliveryRange(
     deliveryFee,
     deliveryTime,
   };
+}
+
+/** Stores created before the map picker were saved on a placeholder point in Lagos. */
+export function hasRealStoreLocation(store: Pick<Store, "latitude" | "longitude">): boolean {
+  if (store.latitude == null || store.longitude == null) return false;
+  return !(Math.abs(store.latitude - 6.5244) < 0.0001 && Math.abs(store.longitude - 3.3792) < 0.0001);
 }

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { useCheckout, PaymentMethod } from "@/components/checkout/useCheckout";
 import { ContactFields } from "@/components/checkout/ContactFields";
+import { DeliveryLocationField } from "@/components/checkout/DeliveryLocationField";
 
 const naira = (n: number) => `₦${Math.round(n).toLocaleString()}`;
 
@@ -40,21 +41,9 @@ export function MobileCheckoutView({ checkout }: { checkout: ReturnType<typeof u
           <ContactFields checkout={checkout} />
         </div>
 
-        {/* 2. DELIVERY ADDRESS */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 flex flex-col gap-2.5 shadow-xs">
-          <label htmlFor="m-address" className="flex items-center gap-2 text-xs font-black text-[#101714] dark:text-white uppercase tracking-wider">
-            <MapPin className="w-4 h-4 text-[#008A4C]" />
-            Delivery address
-          </label>
-          <textarea
-            id="m-address"
-            value={checkout.address}
-            onChange={(e) => checkout.setAddress(e.target.value)}
-            rows={2}
-            autoComplete="street-address"
-            placeholder="House number, street, area, landmark"
-            className="w-full p-3 rounded-xl bg-[#F7FAF8] dark:bg-slate-800 text-sm text-[#101714] dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-emerald-500/40 resize-none"
-          />
+        {/* 2. DELIVERY LOCATION */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 shadow-xs">
+          <DeliveryLocationField checkout={checkout} />
         </div>
 
         {/* 3. PAYMENT METHOD SECTION */}

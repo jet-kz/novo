@@ -174,6 +174,11 @@ export interface Order {
   riderEarnings?: number;
   /** Shown to merchants/admins only; the rider must enter it at pickup. */
   pickupCode?: string;
+  /** Map points. storeLocation is missing until the merchant pins their store. */
+  storeLocation?: GeoPoint | null;
+  dropoffLocation?: GeoPoint | null;
+  /** Rider's last GPS fix, only while they're on this job. */
+  riderLocation?: (GeoPoint & { updatedAt?: string | null }) | null;
   estimatedDeliveryMinutes: number;
   createdAt: string;
   updatedAt: string;
@@ -344,4 +349,9 @@ export interface PayoutsOverview {
   available_balance: number | null;
   payees: { payee_type: "merchant" | "rider"; payee_id: string; name: string; earnings: PayeeEarnings; account: PayoutAccountView | null }[];
   settlements: SettlementRow[];
+}
+
+export interface GeoPoint {
+  lat: number;
+  lon: number;
 }

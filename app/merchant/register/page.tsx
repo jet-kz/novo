@@ -9,6 +9,7 @@ import { usePlatform } from "@/store/PlatformContext";
 import { getUniqueStoreBanner, getUniqueStoreLogo } from "@/utils/storeImageUtils";
 import { NovoLogo } from "@/components/shared/NovoLogo";
 import { useCatalog } from "@/components/shared/useCatalog";
+import { StoreLocationField } from "@/components/location/StoreLocationField";
 import { OtpCodeStep } from "@/components/auth/OtpCodeStep";
 
 export default function MerchantRegisterPage() {
@@ -29,6 +30,7 @@ export default function MerchantRegisterPage() {
   const [businessName, setBusinessName] = useState("");
   const [businessType, setBusinessType] = useState("restaurant");
   const [address, setAddress] = useState("");
+  const [storeCoords, setStoreCoords] = useState<{ lat: number; lon: number } | null>(null);
 
   // Email verification
   const [otpNotice, setOtpNotice] = useState<string | null>(null);
@@ -64,6 +66,7 @@ export default function MerchantRegisterPage() {
             category: businessType as any,
             address,
             phone,
+            ...(storeCoords ? { location: { latitude: storeCoords.lat, longitude: storeCoords.lon } } : {}),
             banner: uniqueBanner,
             logo: uniqueLogo,
           } as any,
@@ -93,6 +96,10 @@ export default function MerchantRegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!storeCoords) {
+      setError("Pin your store on the map so riders can find it.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -270,6 +277,14 @@ export default function MerchantRegisterPage() {
                   className="w-full mt-1 p-3 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none rounded-none"
                 />
               </div>
+
+              <StoreLocationField
+                coords={storeCoords}
+                onChange={({ address: picked, coords }) => {
+                  setStoreCoords(coords);
+                  if (!address.trim()) setAddress(picked);
+                }}
+              />
 
               <div className="flex gap-3 mt-2">
                 <button

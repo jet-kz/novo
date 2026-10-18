@@ -4,12 +4,14 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Trash2, Plus, Minus, ShoppingBag, ArrowRight } from "lucide-react";
+import { CartTotals, useCartPricing } from "@/components/cart/CartTotals";
 import { usePlatform } from "@/store/PlatformContext";
 
 export function MobileCartView() {
   const router = useRouter();
-  const { cart, updateCartQuantity, removeFromCart, clearCart, cartSubtotal, cartDeliveryFee, cartTotal } =
+  const { cart, updateCartQuantity, removeFromCart, clearCart, } =
     usePlatform();
+  const pricing = useCartPricing();
 
   if (cart.length === 0) {
     return (
@@ -111,19 +113,8 @@ export function MobileCartView() {
 
       {/* Bill Breakdown */}
       <div className="px-4 mt-2">
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 flex flex-col gap-2.5 text-xs font-semibold text-[#101714] dark:text-slate-200">
-          <div className="flex items-center justify-between text-[#66736D]">
-            <span>Subtotal</span>
-            <span className="font-bold text-[#101714] dark:text-white">₦{cartSubtotal.toLocaleString()}</span>
-          </div>
-          <div className="flex items-center justify-between text-[#66736D]">
-            <span>Delivery Fee</span>
-            <span className="font-bold text-[#101714] dark:text-white">₦{cartDeliveryFee.toLocaleString()}</span>
-          </div>
-          <div className="flex items-center justify-between pt-2 border-t border-[#E3EAE6] dark:border-slate-800 text-sm font-black">
-            <span>Total</span>
-            <span className="text-[#008A4C]">₦{cartTotal.toLocaleString()}</span>
-          </div>
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900">
+          <CartTotals pricing={pricing} />
         </div>
       </div>
 
@@ -135,7 +126,7 @@ export function MobileCartView() {
         >
           <span>Proceed to Checkout</span>
           <div className="flex items-center gap-1">
-            <span>₦{cartTotal.toLocaleString()}</span>
+            <span>₦{Math.round(pricing.total).toLocaleString()}</span>
             <ArrowRight className="w-4 h-4" />
           </div>
         </button>

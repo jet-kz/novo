@@ -15,6 +15,7 @@ import {
 } from "@/types";
 import { apiService } from "@/services/api";
 import { getUniqueStoreBanner, getUniqueStoreLogo } from "@/utils/storeImageUtils";
+import { relinkPushIfGranted } from "@/utils/push";
 import { Coordinates, isStoreInDeliveryRange, getCoordinatesForAddress } from "@/utils/locationUtils";
 
 interface PlatformContextType {
@@ -34,7 +35,10 @@ interface PlatformContextType {
   // Location & Geofencing
   userLocationAddress: string;
   userLocationCoords: Coordinates | null;
-  setUserLocation: (address: string, coords?: Coordinates | null) => void;
+  userLocationDetails: string;
+  /** False until the customer has chosen a location (we're still on the Warri default). */
+  hasPickedLocation: boolean;
+  setUserLocation: (address: string, coords?: Coordinates | null, details?: string) => void;
   getStoreDeliveryDetails: (store: Store) => { inRange: boolean; distanceKm: number; deliveryFee: number; deliveryTime: string };
 
   // Stores
@@ -108,7 +112,8 @@ interface PlatformContextType {
 const PlatformContext = createContext<PlatformContextType | undefined>(undefined);
 
 const CART_STORAGE_KEY = "novo_cart_v1";
-const ORDER_POLL_MS = 20_000;
+const LOCATION_STORAGE_KEY = "novo_delivery_location";
+const ORDER_POLL_MS = 12_000;
 
 const EMPTY_USER: User = { id: "", name: "", email: "", phone: "", role: "customer", address: "", createdAt: "" };
 
@@ -214,10 +219,36 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [userLocationAddress, setUserLocationAddress] = useState<string>("Warri, Delta State");
   const [userLocationCoords, setUserLocationCoords] = useState<Coordinates | null>({ lat: 5.5544, lon: 5.7932 });
 
-  const setUserLocation = (address: string, coords?: Coordinates | null) => {
+  // House/flat number or landmark the rider needs, kept separate from the map address.
+  const [userLocationDetails, setUserLocationDetails] = useState<string>("");
+  const [hasPickedLocation, setHasPickedLocation] = useState(false);
+
+  const setUserLocation = (address: string, coords?: Coordinates | null, details?: string) => {
+    const resolved = coords || getCoordinatesForAddress(address);
     setUserLocationAddress(address);
-    setUserLocationCoords(coords || getCoordinatesForAddress(address));
+    setUserLocationCoords(resolved);
+    if (details !== undefined) setUserLocationDetails(details);
+    setHasPickedLocation(true);
+    try {
+      localStorage.setItem(
+        LOCATION_STORAGE_KEY,
+        JSON.stringify({ address, coords: resolved, details: details ?? userLocationDetails })
+      );
+    } catch {}
   };
+
+  // Restore the last delivery location on this device.
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(LOCATION_STORAGE_KEY) || "null");
+      if (saved?.address && saved?.coords?.lat != null) {
+        setUserLocationAddress(saved.address);
+        setUserLocationCoords(saved.coords);
+        setUserLocationDetails(saved.details || "");
+        setHasPickedLocation(true);
+      }
+    } catch {}
+  }, []);
 
   const getStoreDeliveryDetails = (store: Store) => isStoreInDeliveryRange(store, userLocationAddress, userLocationCoords);
 
@@ -363,6 +394,11 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setOrdersLoading(false);
     }
   }, []);
+
+  // A device that already allowed alerts gets linked to whoever signs in on it.
+  useEffect(() => {
+    if (authReady && isAuthenticated) relinkPushIfGranted();
+  }, [authReady, isAuthenticated]);
 
   useEffect(() => {
     if (!authReady || !isAuthenticated) return;
@@ -656,6 +692,8 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         userLocationAddress,
         userLocationCoords,
+        userLocationDetails,
+        hasPickedLocation,
         setUserLocation,
         getStoreDeliveryDetails,
 

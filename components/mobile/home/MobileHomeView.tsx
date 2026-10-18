@@ -10,19 +10,16 @@ import {
   Star,
   ShieldCheck,
   ArrowRight,
-  Navigation,
-  Check,
   AlertCircle,
 } from "lucide-react";
 import {
   SquaresFour,
 } from "@phosphor-icons/react";
 import { usePlatform } from "@/store/PlatformContext";
+import { LocationPicker } from "@/components/location/LocationPicker";
 import { CategoryIcon, useCatalog } from "@/components/shared/useCatalog";
 import { HomeCollections } from "@/components/shared/HomeCollections";
 import { Store, Product } from "@/types";
-import { Modal } from "@/components/ui/Modal";
-import { reverseGeocode, getCoordinatesForAddress } from "@/utils/locationUtils";
 
 
 export function MobileHomeView() {
@@ -32,6 +29,8 @@ export function MobileHomeView() {
     products,
     addToCart,
     userLocationAddress,
+    userLocationCoords,
+    userLocationDetails,
     setUserLocation,
     getStoreDeliveryDetails,
   } = usePlatform();
@@ -39,8 +38,6 @@ export function MobileHomeView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [customAddressInput, setCustomAddressInput] = useState("");
-  const [isLocating, setIsLocating] = useState(false);
 
 
   const { categories: platformCategories } = useCatalog();
@@ -54,36 +51,6 @@ export function MobileHomeView() {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/shop?q=${encodeURIComponent(searchQuery)}`);
-    }
-  };
-
-  const handleUseMyLocation = () => {
-    setIsLocating(true);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const readableAddress = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-          setUserLocation(readableAddress, { lat: pos.coords.latitude, lon: pos.coords.longitude });
-          setIsLocating(false);
-          setIsLocationModalOpen(false);
-        },
-        () => {
-          setUserLocation("Current Location, Warri, Delta State", { lat: 5.5544, lon: 5.7932 });
-          setIsLocating(false);
-          setIsLocationModalOpen(false);
-        }
-      );
-    } else {
-      setIsLocating(false);
-    }
-  };
-
-  const handleSaveCustomAddress = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (customAddressInput.trim()) {
-      setUserLocation(customAddressInput.trim());
-      setCustomAddressInput("");
-      setIsLocationModalOpen(false);
     }
   };
 
@@ -104,14 +71,6 @@ export function MobileHomeView() {
 
   const featuredStores = (inRangeStores.length > 0 ? inRangeStores : annotatedStores).slice(0, 6);
   const featuredProducts = products.slice(0, 6);
-
-  const targetCities = [
-    "Warri, Delta State",
-    "Asaba, Delta State",
-    "Sapele, Delta State",
-    "Effurun, Delta State",
-    "Ughelli, Delta State",
-  ];
 
   return (
     <div className="md:hidden flex flex-col w-full min-h-screen bg-white dark:bg-slate-950 text-[#0F172A] dark:text-slate-100 pb-24 font-sans">
@@ -387,84 +346,16 @@ export function MobileHomeView() {
       </div>
 
       {/* LOCATION PICKER MODAL */}
-      <Modal
-        isOpen={isLocationModalOpen}
+      <LocationPicker
+        open={isLocationModalOpen}
         onClose={() => setIsLocationModalOpen(false)}
-        title="Delivery Address"
-        subtitle="Where should we deliver your order?"
-      >
-        <div className="flex flex-col gap-4">
-          <button
-            type="button"
-            onClick={handleUseMyLocation}
-            disabled={isLocating}
-            className="w-full p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 flex items-center gap-3 text-xs font-extrabold text-[#008A4C] dark:text-emerald-300 hover:bg-emerald-100 transition-colors cursor-pointer"
-          >
-            <div className="w-8 h-8 rounded-full bg-[#008A4C] text-white flex items-center justify-center shrink-0">
-              <Navigation className={`w-4 h-4 ${isLocating ? "animate-spin" : ""}`} />
-            </div>
-            <div className="flex flex-col items-start text-left">
-              <span>{isLocating ? "Detecting Address..." : "Use Current Geolocation"}</span>
-              <span className="text-[10px] font-normal text-emerald-700 dark:text-emerald-400">
-                Converts GPS coordinates into a street delivery address
-              </span>
-            </div>
-          </button>
-
-          <div className="relative flex items-center my-1">
-            <div className="flex-grow border-t border-slate-200 dark:border-slate-800" />
-            <span className="flex-shrink mx-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Or type custom address
-            </span>
-            <div className="flex-grow border-t border-slate-200 dark:border-slate-800" />
-          </div>
-
-          <form onSubmit={handleSaveCustomAddress} className="flex flex-col gap-3">
-            <div className="relative">
-              <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-              <input
-                type="text"
-                value={customAddressInput}
-                onChange={(e) => setCustomAddressInput(e.target.value)}
-                placeholder="e.g. Airport Road, Effurun, Warri"
-                className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none focus:ring-2 focus:ring-[#008A4C]"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={!customAddressInput.trim()}
-              className="w-full py-3 rounded-2xl bg-[#008A4C] hover:bg-[#006B3C] text-white text-xs font-black disabled:opacity-50 transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Check className="w-4 h-4" />
-              <span>Confirm Location</span>
-            </button>
-          </form>
-
-          {/* Target Delta State Cities & Hubs */}
-          <div className="flex flex-col gap-1.5 mt-2">
-            <span className="text-[10px] font-extrabold uppercase text-slate-400">
-              Target Delivery Cities (Delta State)
-            </span>
-            {targetCities.map((city) => (
-              <button
-                key={city}
-                type="button"
-                onClick={() => {
-                  setUserLocation(city);
-                  setIsLocationModalOpen(false);
-                }}
-                className="p-2.5 rounded-xl text-left text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-between cursor-pointer"
-              >
-                <span>{city}</span>
-                {userLocationAddress === city && (
-                  <Check className="w-3.5 h-3.5 text-[#008A4C]" />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      </Modal>
+        initialCoords={userLocationCoords}
+        initialDetails={userLocationDetails}
+        onConfirm={(loc) => {
+          setUserLocation(loc.address, loc.coords, loc.details);
+          setIsLocationModalOpen(false);
+        }}
+      />
     </div>
   );
 }

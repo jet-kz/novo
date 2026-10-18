@@ -4,10 +4,12 @@ import React, { Suspense } from "react";
 import { MobileCartView } from "@/components/mobile/cart/MobileCartView";
 import { usePlatform } from "@/store/PlatformContext";
 import Link from "next/link";
+import { CartTotals, useCartPricing } from "@/components/cart/CartTotals";
 import { ArrowLeft, Trash2, Plus, Minus, ShoppingBag, ArrowRight } from "lucide-react";
 
 function DesktopCartContent() {
-  const { cart, updateCartQuantity, removeFromCart, clearCart, cartSubtotal, cartDeliveryFee, cartTotal } = usePlatform();
+  const { cart, updateCartQuantity, removeFromCart, clearCart } = usePlatform();
+  const pricing = useCartPricing();
 
   if (cart.length === 0) {
     return (
@@ -54,9 +56,7 @@ function DesktopCartContent() {
 
         <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 flex flex-col gap-4 h-fit">
           <h2 className="text-lg font-bold">Summary</h2>
-          <div className="flex justify-between text-sm"><span>Subtotal</span><span>₦{cartSubtotal.toLocaleString()}</span></div>
-          <div className="flex justify-between text-sm"><span>Delivery Fee</span><span>₦{cartDeliveryFee.toLocaleString()}</span></div>
-          <div className="flex justify-between text-base font-black pt-3 border-t"><span>Total</span><span className="text-emerald-600">₦{cartTotal.toLocaleString()}</span></div>
+          <CartTotals pricing={pricing} />
           <Link href="/checkout" className="w-full py-3 bg-emerald-600 text-white font-bold rounded-xl text-center">Proceed to Checkout</Link>
         </div>
       </div>

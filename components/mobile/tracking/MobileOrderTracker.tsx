@@ -14,6 +14,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Order } from "@/types";
+import { LiveOrderMap } from "@/components/map/LiveOrderMap";
 
 interface MobileOrderTrackerProps {
   order: Order;
@@ -88,30 +89,14 @@ export function MobileOrderTracker({ order, onBack }: MobileOrderTrackerProps) {
           </h2>
         </div>
 
-        {/* Visual Map Graphic Path */}
-        <div className="relative w-full h-24 rounded-2xl bg-emerald-900/40 backdrop-blur-md p-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-white text-[#008A4C] flex items-center justify-center shadow-md animate-bounce">
-              <Bike className="w-5 h-5" />
-            </div>
-            <div className="flex flex-col text-left">
-              <span className="text-xs font-bold text-white">{order.storeName || "Merchant Store"}</span>
-              <span className="text-[10px] text-emerald-200 uppercase tracking-wider font-extrabold">
-                {order.status.replace("_", " ")}
-              </span>
-            </div>
-          </div>
-
-          {/* Dotted Route Line */}
-          <div className="flex-1 mx-3 border-b-2 border-dashed border-emerald-300/60" />
-
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-emerald-400 text-[#004D2C] flex items-center justify-center font-black text-xs shadow-md">
-              <MapPin className="w-4 h-4" />
-            </div>
-          </div>
-        </div>
       </div>
+
+      {/* Live map: store, delivery point and the rider's position */}
+      {!isDelivered && order.status !== "cancelled" && (
+        <div className="px-5 -mt-2 pt-4">
+          <LiveOrderMap order={order} className="h-56" />
+        </div>
+      )}
 
       {/* 2. TIMELINE STEPS PROGRESSION */}
       <div className="p-5 flex flex-col gap-4">

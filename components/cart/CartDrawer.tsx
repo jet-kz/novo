@@ -17,6 +17,7 @@ import {
   Store as StoreIcon,
 } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
+import { CartTotals, useCartPricing } from "@/components/cart/CartTotals";
 
 export function CartDrawer() {
   const router = useRouter();
@@ -27,12 +28,11 @@ export function CartDrawer() {
     removeFromCart,
     updateCartQuantity,
     clearCart,
-    cartSubtotal,
-    cartDeliveryFee,
-    cartTotal,
     userLocationAddress,
     stores,
   } = usePlatform();
+
+  const pricing = useCartPricing(isCartOpen);
 
   if (!isCartOpen) return null;
 
@@ -245,36 +245,13 @@ export function CartDrawer() {
           {/* 4. DRAWER FOOTER / BILL SUMMARY */}
           {cart.length > 0 && (
             <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 space-y-3">
-              <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-                <div className="flex justify-between">
-                  <span>Items Subtotal</span>
-                  <span className="font-bold text-slate-900 dark:text-white">
-                    ₦{cartSubtotal.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Estimated Delivery Fee</span>
-                  <span className="font-bold text-slate-900 dark:text-white">
-                    ₦{cartDeliveryFee.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Service &amp; Platform Fee</span>
-                  <span className="font-bold text-slate-900 dark:text-white">₦200</span>
-                </div>
-                <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between text-sm font-black text-slate-900 dark:text-white">
-                  <span>Total Payable</span>
-                  <span className="text-[#087F5B] dark:text-emerald-400 text-base">
-                    ₦{cartTotal.toLocaleString()}
-                  </span>
-                </div>
-              </div>
+              <CartTotals pricing={pricing} />
 
               <button
                 onClick={handleCheckout}
                 className="w-full py-3.5 bg-[#087F5B] hover:bg-[#066749] text-white text-xs font-black rounded-xl flex items-center justify-center gap-2 transition-transform active:scale-98 shadow-md cursor-pointer"
               >
-                <span>Proceed to Checkout • ₦{cartTotal.toLocaleString()}</span>
+                <span>Proceed to Checkout • ₦{Math.round(pricing.total).toLocaleString()}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
