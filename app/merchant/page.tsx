@@ -194,7 +194,7 @@ export default function MerchantDashboardPage() {
             </div>
 
             {/* STATUS TABS */}
-            <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3 overflow-x-auto">
+            <div className="flex items-center gap-2 border-slate-100 dark:border-slate-800 pb-3 overflow-x-auto">
               {(
                 [
                   { id: "new", label: "New", count: realOrders.filter((o) => inTab(o.status, "new")).length },
@@ -335,7 +335,7 @@ export default function MerchantDashboardPage() {
             </div>
 
             {/* MENU TABS */}
-            <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex items-center gap-2 border-slate-100 dark:border-slate-800 pb-3">
               {(
                 [
                   { id: "all", label: "All Items", count: realProducts.length },
@@ -392,7 +392,7 @@ export default function MerchantDashboardPage() {
                       <span className="text-xs font-black text-slate-800 dark:text-slate-200">
                         ₦{(p.price || 0).toLocaleString()}
                       </span>
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                      <div className="flex items-center justify-between mt-2 pt-2 border-slate-200/60 dark:border-slate-700/60">
                         <span className={`text-[10px] font-extrabold flex items-center gap-1 ${p.inStock !== false ? "text-emerald-600" : "text-rose-500"}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${p.inStock !== false ? "bg-emerald-500" : "bg-rose-500"}`} />
                           {p.inStock !== false ? "Available" : "Out of Stock"}

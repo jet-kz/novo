@@ -4,6 +4,7 @@ import React, { Suspense, useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, Loader2, Mail, MapPin, Phone, Search, Store as StoreIcon, Bike, Undo2 } from "lucide-react";
 import { apiService } from "@/services/api";
+import { optionsLabel } from "@/utils/options";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -109,7 +110,7 @@ function OrdersContent() {
         ) : rows.length === 0 ? (
           <p className="text-sm text-slate-500 text-center py-12">{view === "attention" ? "No stuck orders. All good." : "No orders here."}</p>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="">
             {rows.map((raw) => {
               const o = apiService.normalizeOrder(raw);
               return (
@@ -137,7 +138,7 @@ function OrdersContent() {
           </ul>
         )}
         {rows.length < total && (
-          <div className="p-3 text-center border-t border-slate-100 dark:border-slate-800">
+          <div className="p-3 text-center border-slate-100 dark:border-slate-800">
             <button onClick={() => load(rows.length)} disabled={loading} className="text-sm font-bold text-[#087F5B] cursor-pointer">
               {loading ? "Loading…" : `Show more (${total - rows.length} left)`}
             </button>
@@ -274,6 +275,7 @@ function OrderDrawer({ orderId, onClose, onChanged }: { orderId: string; onClose
               <p className="font-semibold flex items-center gap-1.5"><StoreIcon className="w-3.5 h-3.5" />{o.storeName || "—"}</p>
               {raw.store_phone && <a href={`tel:${raw.store_phone}`} className="flex items-center gap-1.5 text-[#087F5B]"><Phone className="w-3.5 h-3.5" />{raw.store_phone}</a>}
               {o.pickupCode && <p className="text-xs text-slate-500">Pickup code <strong className="font-mono text-slate-900 dark:text-white">{o.pickupCode}</strong></p>}
+              {o.deliveryCode && <p className="text-xs text-slate-500">Delivery code <strong className="font-mono text-slate-900 dark:text-white">{o.deliveryCode}</strong> <span className="text-slate-400">(only give it to a rider after confirming with the customer)</span></p>}
             </Card>
             <Card title="Rider">
               {o.riderId ? (
@@ -292,12 +294,12 @@ function OrderDrawer({ orderId, onClose, onChanged }: { orderId: string; onClose
             <ul className="flex flex-col gap-1">
               {o.items.map((it, i) => (
                 <li key={i} className="flex justify-between">
-                  <span>{it.quantity}× {it.product.name}{it.selectedOptions?.length ? <span className="text-slate-500"> ({it.selectedOptions.map((x: any) => x.name).join(", ")})</span> : null}</span>
+                  <span>{it.quantity}× {it.product.name}{it.selectedOptions?.length ? <span className="text-slate-500"> ({optionsLabel(it.selectedOptions)})</span> : null}</span>
                   <span>{naira(it.product.price * it.quantity)}</span>
                 </li>
               ))}
             </ul>
-            <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 flex flex-col gap-0.5">
+            <div className="mt-2 pt-2 border-slate-100 dark:border-slate-800 text-xs text-slate-500 flex flex-col gap-0.5">
               <Line label="Subtotal" value={naira(o.subtotal)} />
               <Line label="Delivery fee" value={naira(o.deliveryFee)} />
               <Line label="Service fee" value={naira(o.serviceFee)} />

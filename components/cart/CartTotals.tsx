@@ -34,7 +34,7 @@ export function CartTotals({ pricing, className = "" }: { pricing: Pricing; clas
       <Row label="Delivery fee" value={fee(pricing.deliveryFee)} />
       <Row label="Service fee" value={fee(pricing.serviceFee)} />
       {pricing.discount > 0 && <Row label="Discount" value={`−${naira(pricing.discount)}`} accent />}
-      <div className="pt-2 mt-1 border-t border-slate-200 dark:border-slate-800 flex justify-between text-sm font-black text-slate-900 dark:text-white">
+      <div className="pt-2 mt-1 border-slate-200 dark:border-slate-800 flex justify-between text-sm font-black text-slate-900 dark:text-white">
         <span>{pricing.ready ? "Total" : "Items total"}</span>
         <span className="text-[#087F5B] dark:text-emerald-400 text-base">{naira(pricing.total)}</span>
       </div>

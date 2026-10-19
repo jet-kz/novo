@@ -26,7 +26,7 @@ export function RiderNavbar() {
   return (
     <>
       {/* GLOBAL RIDER TOP HEADER BAR */}
-      <header className="w-full bg-slate-900 border-b border-slate-800 sticky top-0 z-30 px-4 sm:px-6 py-3 shadow-md">
+      <header className="w-full bg-slate-900 border-slate-800 sticky top-0 z-30 px-4 sm:px-6 py-3 shadow-md">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <NovoLogo variant="rider" subtitle="Courier Partner Hub" size="md" href="/rider" />
 
@@ -88,7 +88,7 @@ export function RiderNavbar() {
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col justify-end p-4 animate-in fade-in duration-200 select-none">
           <div className="w-full max-w-md mx-auto bg-slate-900 rounded-3xl p-6 shadow-2xl flex flex-col gap-5 text-white">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center justify-between border-slate-800 pb-3">
               <NovoLogo variant="rider" subtitle="Partner Portal Nav" size="sm" href="/rider" />
               <button
                 onClick={() => setMobileMenuOpen(false)}

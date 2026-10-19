@@ -147,7 +147,7 @@ export default function RiderLoginPage() {
         )}
 
         {/* FOOTER LINKS */}
-        <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
+        <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-slate-800">
           <Link href="/auth" className="hover:text-white underline">
             ← Main Auth Portal
           </Link>

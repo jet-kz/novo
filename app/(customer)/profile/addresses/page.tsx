@@ -130,7 +130,7 @@ export default function CustomerAddressesPage() {
   return (
     <div className="w-full min-h-screen bg-[#F7FAF8] dark:bg-slate-950 text-[#101714] dark:text-slate-100 pb-24 font-sans">
       {/* Top Header */}
-      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-[#E3EAE6] dark:border-slate-800 px-4 py-3.5 flex items-center justify-between">
+      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-[#E3EAE6] dark:border-slate-800 px-4 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
@@ -163,11 +163,11 @@ export default function CustomerAddressesPage() {
           </div>
         ) : (
           /* FLAT BORDERLESS LIST LAYOUT WITH BOTTOM DIVIDERS (HERO UI STYLE) */
-          <div className="flex flex-col bg-white dark:bg-slate-900 border-b border-[#E3EAE6] dark:border-slate-800">
+          <div className="flex flex-col bg-white dark:bg-slate-900 border-[#E3EAE6] dark:border-slate-800">
             {addresses.map((addr) => (
               <div
                 key={addr.id}
-                className="py-4 px-3 flex items-start justify-between border-b border-[#E3EAE6]/70 dark:border-slate-800/70 last:border-b-0 hover:bg-[#F7FAF8] dark:hover:bg-slate-800/40 transition-colors"
+                className="py-4 px-3 flex items-start justify-between border-[#E3EAE6]/70 dark:border-slate-800/70 last:border-b-0 hover:bg-[#F7FAF8] dark:hover:bg-slate-800/40 transition-colors"
               >
                 <div className="flex items-start gap-3.5 min-w-0">
                   <div className="w-9 h-9 rounded-full bg-[#E8F7EF] dark:bg-slate-800 text-[#008A4C] flex items-center justify-center shrink-0 mt-0.5">
@@ -235,7 +235,7 @@ export default function CustomerAddressesPage() {
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all ${
                         title === tag
                           ? "bg-[#008A4C] text-white"
-                          : "bg-[#F7FAF8] dark:bg-slate-800 text-[#66736D] dark:text-slate-400 border border-[#E3EAE6]"
+                          : "bg-[#F7FAF8] dark:bg-slate-800 text-[#66736D] dark:text-slate-400"
                       }`}
                     >
                       {tag}
@@ -251,7 +251,7 @@ export default function CustomerAddressesPage() {
                   value={streetAddress}
                   onChange={(e) => setStreetAddress(e.target.value)}
                   placeholder="Street name, house/building number, landmark..."
-                  className="w-full h-20 p-3 rounded-xl bg-[#F7FAF8] dark:bg-slate-800 text-xs font-semibold border border-[#E3EAE6] dark:border-slate-700 outline-none text-[#101714] dark:text-white"
+                  className="w-full h-20 p-3 rounded-xl bg-[#F7FAF8] dark:bg-slate-800 text-xs font-semibold dark:border-slate-700 outline-none text-[#101714] dark:text-white"
                 />
               </div>
 
@@ -261,7 +261,7 @@ export default function CustomerAddressesPage() {
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  className="p-3 rounded-xl bg-[#F7FAF8] dark:bg-slate-800 text-xs font-semibold border border-[#E3EAE6] dark:border-slate-700 outline-none text-[#101714] dark:text-white"
+                  className="p-3 rounded-xl bg-[#F7FAF8] dark:bg-slate-800 text-xs font-semibold dark:border-slate-700 outline-none text-[#101714] dark:text-white"
                 />
               </div>
 
@@ -279,7 +279,7 @@ export default function CustomerAddressesPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-3 rounded-2xl border border-[#E3EAE6] text-xs font-bold text-[#66736D] cursor-pointer"
+                  className="flex-1 py-3 rounded-2xl text-xs font-bold text-[#66736D] cursor-pointer"
                 >
                   Cancel
                 </button>

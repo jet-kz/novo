@@ -3,11 +3,12 @@
 import React, { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { AlertCircle, Check, Loader2, MapPin, Phone, Store as StoreIcon } from "lucide-react";
+import { AlertCircle, Check, Loader2, MapPin, Store as StoreIcon } from "lucide-react";
 import { apiService } from "@/services/api";
 import { Order, OrderStatus } from "@/types";
 import { usePaymentReturn } from "@/components/checkout/usePaymentReturn";
-import { LiveOrderMap } from "@/components/map/LiveOrderMap";
+import { DeliveryTracker } from "@/components/tracking/DeliveryTracker";
+import { optionsLabel } from "@/utils/options";
 import { EnableAlertsCard } from "@/components/notifications/EnableAlertsCard";
 import { saveGuestOrder } from "@/utils/guestOrders";
 
@@ -125,7 +126,7 @@ function TrackContent() {
       )}
       {error && <Banner tone="warn" icon={<AlertCircle className="w-4 h-4" />} text={error} />}
 
-      {!cancelled && order.status !== "delivered" && <LiveOrderMap order={order} className="h-56" />}
+      {!cancelled && <DeliveryTracker order={order} mapClassName="h-64" />}
 
       {!cancelled && (
         <ol className="rounded-2xl bg-white dark:bg-slate-900 p-5 flex flex-col gap-4">
@@ -152,33 +153,22 @@ function TrackContent() {
         </ol>
       )}
 
-      {order.riderName && !cancelled && order.status !== "delivered" && (
-        <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-500">Your rider</p>
-            <p className="text-sm font-bold text-slate-900 dark:text-white">{order.riderName}</p>
-          </div>
-          {order.riderPhone && (
-            <a href={`tel:${order.riderPhone}`} className="px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#087F5B] dark:text-emerald-300 text-sm font-bold flex items-center gap-1.5">
-              <Phone className="w-4 h-4" /> Call
-            </a>
-          )}
-        </div>
-      )}
-
       <div className="rounded-2xl bg-white dark:bg-slate-900 p-5 flex flex-col gap-3 text-sm">
         <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
           <StoreIcon className="w-4 h-4 text-[#087F5B]" /> {order.storeName || "Store"}
         </div>
         <ul className="flex flex-col gap-1.5 text-slate-600 dark:text-slate-300">
           {order.items.map((item, i) => (
-            <li key={i} className="flex justify-between">
-              <span>{item.quantity}× {item.product.name}</span>
+            <li key={i} className="flex justify-between gap-3">
+              <span>
+                {item.quantity}× {item.product.name}
+                {item.selectedOptions?.length ? <span className="block text-xs text-slate-400">{optionsLabel(item.selectedOptions)}</span> : null}
+              </span>
               <span>{naira(item.product.price * item.quantity)}</span>
             </li>
           ))}
         </ul>
-        <div className="flex justify-between font-black text-slate-900 dark:text-white pt-2 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex justify-between font-black text-slate-900 dark:text-white pt-2">
           <span>Total</span>
           <span>{naira(order.total)}</span>
         </div>

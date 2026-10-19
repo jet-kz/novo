@@ -29,9 +29,9 @@ function chime() {
 }
 
 /**
- * While the merchant dashboard is open: chime, show a banner and badge the tab title when a new
- * order arrives (orders refresh every few seconds in the background).
- */
+  * While the merchant dashboard is open: chime, show a banner and badge the tab title when a new
+    * order arrives (orders refresh every few seconds in the background).
+      */
 export function NewOrderAlert() {
   const { orders, merchantStore } = usePlatform();
   const seen = useRef<Set<string> | null>(null);

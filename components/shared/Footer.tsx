@@ -24,7 +24,7 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-8 pb-28 md:pb-20 flex flex-col gap-14 relative z-10">
         
         {/* Brand Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-10 border-b border-emerald-900/40">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-10 border-emerald-900/40">
           <NovoLogo variant="white" subtitle="Delivery Express" size="lg" />
 
           {/* Language Picker Pill */}

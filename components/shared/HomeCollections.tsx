@@ -10,9 +10,9 @@ import { getUniqueStoreBanner } from "@/utils/storeImageUtils";
 const PER_ROW = 8;
 
 /**
- * Admin-curated homepage strips ("Popular near you", "Groceries & household", ...).
- * Each shows open stores from its target category; empty strips are hidden.
- */
+  * Admin-curated homepage strips ("Popular near you", "Groceries & household", ...).
+    * Each shows open stores from its target category; empty strips are hidden.
+      */
 export function HomeCollections({ stores }: { stores: Store[] }) {
   const { collections } = useCatalog();
   const rows = collections

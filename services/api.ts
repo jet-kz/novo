@@ -1,6 +1,6 @@
 import {
   Store, Product, Order, OrderStatus, RiderProfile, PlatformAnalytics, Review,
-  PlatformCategory, HomeCollection, MenuSection, AppNotification,
+  PlatformCategory, HomeCollection, MenuSection, AppNotification, PromoBanner,
   MyPayouts, PayoutAccountView, PayoutsOverview, AdminUserRow,
 } from "@/types";
 import { shrinkImageForUpload } from "@/utils/imageUpload";
@@ -500,6 +500,8 @@ export const apiService = {
       paymentMethod: raw.payment_method || raw.paymentMethod || "card",
       paymentStatus: raw.payment_status === "paid" || raw.paymentStatus === "paid" ? "paid" : raw.payment_status === "failed" ? "failed" : "pending",
       pickupCode: raw.pickup_code || raw.pickupCode,
+      deliveryCode: raw.delivery_code || raw.deliveryCode,
+      etaMinutes: raw.eta_minutes != null ? Number(raw.eta_minutes) : undefined,
       storeLocation: toPoint(raw.store_location),
       dropoffLocation: toPoint(raw.dropoff_location),
       riderLocation: raw.rider_location ? { ...toPoint(raw.rider_location)!, updatedAt: raw.rider_location.updated_at } : null,
@@ -795,6 +797,21 @@ export const apiService = {
   deleteHomeCollection: (id: string) =>
     request(`/catalog/collections/${id}`, { method: "DELETE" }, "Could not delete collection"),
 
+  // 10.3b PROMO BANNERS (homepage ad carousel)
+  getBanners: (placement: "home" | "shop" | "all" = "home", includeInactive = false) =>
+    request<PromoBanner[]>(
+      `/catalog/banners?placement=${placement}${includeInactive ? "&include_inactive=true" : ""}`,
+      {},
+      "Could not load banners"
+    ),
+  createBanner: (payload: Partial<PromoBanner>) =>
+    request<PromoBanner>("/catalog/banners", { method: "POST", body: JSON.stringify(payload) }, "Could not create banner"),
+  updateBanner: (id: string, payload: Partial<PromoBanner>) =>
+    request<PromoBanner>(`/catalog/banners/${id}`, { method: "PATCH", body: JSON.stringify(payload) }, "Could not save banner"),
+  deleteBanner: (id: string) => request(`/catalog/banners/${id}`, { method: "DELETE" }, "Could not delete banner"),
+  reorderBanners: (ids: string[]) =>
+    request("/catalog/banners/reorder", { method: "POST", body: JSON.stringify({ ids }) }, "Could not reorder banners"),
+
   // 10.4 MENU SECTIONS (per-store product categories)
   getMenuSections: (storeId: string) =>
     request<MenuSection[]>(`/products/categories?store_id=${encodeURIComponent(storeId)}`, {}, "Could not load menu sections"),
@@ -880,7 +897,7 @@ export const apiService = {
   /** Upload an image to storage and return its public URL. */
   uploadImage: async (
     file: File,
-    bucket: "avatars" | "store-logos" | "store-banners" | "product-images",
+    bucket: "avatars" | "store-logos" | "store-banners" | "product-images" | "promo-banners",
     folder = "",
     token?: string
   ): Promise<string> => {

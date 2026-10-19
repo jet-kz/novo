@@ -226,7 +226,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
       {/* RIGHT MAIN CONTAINER */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* TOP HEADER BAR */}
-        <header className="sticky top-0 z-30 h-16 bg-white dark:bg-slate-900 px-4 sm:px-6 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+        <header className="sticky top-0 z-30 h-16 bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl px-4 sm:px-6 flex items-center justify-between shadow-[0_8px_24px_-16px_rgba(15,23,42,0.25)]">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => setMobileMenuOpen(true)}

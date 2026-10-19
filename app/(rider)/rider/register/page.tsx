@@ -205,7 +205,7 @@ export default function RiderRegisterPage() {
         )}
 
         {/* FOOTER */}
-        <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
+        <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-slate-800">
           <Link href="/rider/login" className="hover:text-emerald-400 font-bold">
             Already a Partner? Sign In →
           </Link>

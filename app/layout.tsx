@@ -1,14 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Sora } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { PlatformProvider } from "@/store/PlatformContext";
 import ResponsiveLayout from "@/components/shared/ResponsiveLayout";
+import { ProductSheetHost } from "@/components/product/ProductSheetHost";
 
-const sora = Sora({
+// Variable font (200–800): one file covers every weight.
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-sora",
+  variable: "--font-jakarta",
   display: "swap",
-  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -42,11 +43,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={sora.variable}>
-      <body className={`${sora.className} antialiased bg-slate-50 dark:bg-slate-950`}>
+    <html lang="en" className={jakarta.variable}>
+      <body className={`${jakarta.className} antialiased bg-slate-50 dark:bg-slate-950`}>
         <HeroUIProviderWrapper>
           <PlatformProvider>
             <ResponsiveLayout>{children}</ResponsiveLayout>
+            <ProductSheetHost />
           </PlatformProvider>
         </HeroUIProviderWrapper>
       </body>

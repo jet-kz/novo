@@ -16,6 +16,7 @@ import {
 import { apiService } from "@/services/api";
 import { getUniqueStoreBanner, getUniqueStoreLogo } from "@/utils/storeImageUtils";
 import { relinkPushIfGranted } from "@/utils/push";
+import { cartLineKey, lineUnitPrice, needsChoices } from "@/utils/options";
 import { Coordinates, isStoreInDeliveryRange, getCoordinatesForAddress } from "@/utils/locationUtils";
 
 interface PlatformContextType {
@@ -67,8 +68,13 @@ interface PlatformContextType {
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
   addToCart: (product: Product, quantity?: number, selectedOptions?: any[], specialInstructions?: string) => boolean;
-  removeFromCart: (productId: string) => void;
-  updateCartQuantity: (productId: string, quantity: number) => void;
+  /** Pass cartLineKey(item); a bare product id still works and hits every line of that product. */
+  removeFromCart: (lineKey: string) => void;
+  updateCartQuantity: (lineKey: string, quantity: number) => void;
+  /** Opens the item sheet (photo, options, quantity). */
+  openProduct: (product: Product) => void;
+  closeProduct: () => void;
+  viewingProduct: Product | null;
   clearCart: () => void;
   cartSubtotal: number;
   /** Estimate only — the checkout shows the server quote. */
@@ -98,7 +104,8 @@ interface PlatformContextType {
   toggleRiderOnline: () => Promise<void>;
   acceptDeliveryJob: (orderId: string) => Promise<Order>;
   confirmPickup: (orderId: string, pickupCode: string) => Promise<Order>;
-  completeDelivery: (orderId: string) => Promise<Order>;
+  completeDelivery: (orderId: string, deliveryCode: string) => Promise<Order>;
+  reportDeliveryProblem: (orderId: string, reason: string) => Promise<Order>;
 
   // Admin Analytics
   analytics: PlatformAnalytics;
@@ -518,11 +525,20 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // ── Cart ────────────────────────────────────────────────────────────────
-  const sameOptions = (a: any[] = [], b: any[] = []) =>
-    a.map((o) => o.id).sort().join("|") === b.map((o) => o.id).sort().join("|");
+  const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
+  const openProduct = useCallback((product: Product) => setViewingProduct(product), []);
+  const closeProduct = useCallback(() => setViewingProduct(null), []);
 
-  /** Returns false when the shopper declines to replace a cart from another store. */
+  /**
+   * Returns false when nothing was added: the shopper declined to replace a cart from another
+   * store, or the item has required choices and we opened its sheet instead.
+   */
   const addToCart = (product: Product, quantity = 1, selectedOptions: any[] = [], specialInstructions = "") => {
+    if (selectedOptions.length === 0 && needsChoices(product)) {
+      setViewingProduct(product);
+      return false;
+    }
+    const lineKey = cartLineKey({ product, selectedOptions });
     const cartStore = cart[0]?.product?.storeId;
     if (cartStore && product.storeId && cartStore !== product.storeId) {
       const ok = window.confirm("Your cart has items from another store. Start a new cart with this item?");
@@ -531,7 +547,7 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return true;
     }
     setCart((prev) => {
-      const idx = prev.findIndex((item) => item.product.id === product.id && sameOptions(item.selectedOptions, selectedOptions));
+      const idx = prev.findIndex((item) => cartLineKey(item) === lineKey);
       if (idx > -1) {
         return prev.map((item, i) => (i === idx ? { ...item, quantity: item.quantity + quantity } : item));
       }
@@ -540,18 +556,19 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return true;
   };
 
-  const removeFromCart = (productId: string) => setCart((prev) => prev.filter((item) => item.product.id !== productId));
+  const isLine = (item: CartItem, key: string) => cartLineKey(item) === key || item.product.id === key;
 
-  const updateCartQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) return removeFromCart(productId);
-    setCart((prev) => prev.map((item) => (item.product.id === productId ? { ...item, quantity } : item)));
+  const removeFromCart = (lineKey: string) => setCart((prev) => prev.filter((item) => !isLine(item, lineKey)));
+
+  const updateCartQuantity = (lineKey: string, quantity: number) => {
+    if (quantity <= 0) return removeFromCart(lineKey);
+    setCart((prev) => prev.map((item) => (isLine(item, lineKey) ? { ...item, quantity } : item)));
   };
 
   const clearCart = () => setCart([]);
 
   const cartSubtotal = cart.reduce((acc, item) => {
-    const optionsPrice = (item.selectedOptions || []).reduce((oAcc, opt) => oAcc + (Number(opt.price) || 0), 0);
-    return acc + (item.product.price + optionsPrice) * item.quantity;
+    return acc + lineUnitPrice(item) * item.quantity;
   }, 0);
 
   const cartDeliveryFee = useMemo(() => {
@@ -635,8 +652,15 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const confirmPickup = (orderId: string, pickupCode: string) =>
     updateOrderStatus(orderId, "picked_up", { pickup_code: pickupCode });
 
-  const completeDelivery = async (orderId: string) => {
-    const order = await updateOrderStatus(orderId, "delivered");
+  const completeDelivery = async (orderId: string, deliveryCode: string) => {
+    const order = await updateOrderStatus(orderId, "delivered", { delivery_code: deliveryCode });
+    setRiderProfile((prev) => ({ ...prev, currentOrderId: undefined }));
+    refreshRider();
+    return order;
+  };
+
+  const reportDeliveryProblem = async (orderId: string, reason: string) => {
+    const order = await updateOrderStatus(orderId, "failed" as OrderStatus, { reason });
     setRiderProfile((prev) => ({ ...prev, currentOrderId: undefined }));
     refreshRider();
     return order;
@@ -721,6 +745,9 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addToCart,
         removeFromCart,
         updateCartQuantity,
+        openProduct,
+        closeProduct,
+        viewingProduct,
         clearCart,
         cartSubtotal,
         cartDeliveryFee,
@@ -742,6 +769,7 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         acceptDeliveryJob,
         confirmPickup,
         completeDelivery,
+        reportDeliveryProblem,
 
         analytics,
         approveStore,

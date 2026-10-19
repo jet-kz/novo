@@ -43,7 +43,7 @@ export function MobileSupportView() {
   return (
     <div className="md:hidden flex flex-col w-full min-h-screen bg-[#F7FAF8] dark:bg-slate-950 text-[#101714] dark:text-slate-100 pb-28">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-[#E3EAE6] dark:border-slate-800 px-4 py-3 flex items-center gap-3 shadow-xs">
+      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-[#E3EAE6] dark:border-slate-800 px-4 py-3 flex items-center gap-3 shadow-xs">
         <button
           onClick={() => router.back()}
           className="p-1.5 rounded-full bg-[#F7FAF8] dark:bg-slate-800 text-[#101714] dark:text-white"
@@ -58,7 +58,7 @@ export function MobileSupportView() {
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => alert("Initiating Live Chat with Novo Support...")}
-            className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] dark:border-slate-800 flex flex-col gap-2 shadow-xs cursor-pointer hover:border-[#008A4C] text-left"
+            className="p-4 rounded-2xl bg-white dark:bg-slate-900 dark:border-slate-800 flex flex-col gap-2 shadow-xs cursor-pointer  text-left"
           >
             <div className="w-9 h-9 rounded-xl bg-[#E8F7EF] text-[#008A4C] flex items-center justify-center">
               <MessageSquare className="w-5 h-5" />
@@ -91,7 +91,7 @@ export function MobileSupportView() {
               return (
                 <div
                   key={idx}
-                  className="rounded-xl border border-[#E3EAE6] dark:border-slate-800 overflow-hidden"
+                  className="rounded-xl dark:border-slate-800 overflow-hidden"
                 >
                   <button
                     onClick={() => setOpenFaq(isOpen ? null : idx)}
@@ -101,7 +101,7 @@ export function MobileSupportView() {
                     <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180 text-[#008A4C]" : "text-slate-400"}`} />
                   </button>
                   {isOpen && (
-                    <div className="p-3 text-[11px] font-medium text-[#66736D] dark:text-slate-300 leading-relaxed border-t border-[#E3EAE6] dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <div className="p-3 text-[11px] font-medium text-[#66736D] dark:text-slate-300 leading-relaxed border-[#E3EAE6] dark:border-slate-800 bg-white dark:bg-slate-900">
                       {faq.a}
                     </div>
                   )}

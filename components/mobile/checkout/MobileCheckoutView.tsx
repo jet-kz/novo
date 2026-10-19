@@ -25,7 +25,7 @@ export function MobileCheckoutView({ checkout }: { checkout: ReturnType<typeof u
   return (
     <div className="md:hidden flex flex-col w-full min-h-screen bg-[#F7FAF8] dark:bg-slate-950 text-[#101714] dark:text-slate-100 pb-44">
       {/* Top Header */}
-      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-[#E3EAE6] dark:border-slate-800 px-4 py-3 flex items-center gap-3 shadow-xs">
+      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-[#E3EAE6] dark:border-slate-800 px-4 py-3 flex items-center gap-3 shadow-xs">
         <button
           onClick={() => router.back()}
           className="p-1.5 rounded-full bg-[#F7FAF8] dark:bg-slate-800 text-[#101714] dark:text-white"
@@ -111,7 +111,7 @@ export function MobileCheckoutView({ checkout }: { checkout: ReturnType<typeof u
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-2 border-t border-[#E3EAE6] dark:border-slate-800 text-sm font-black text-[#101714] dark:text-white">
+          <div className="flex items-center justify-between pt-2 border-[#E3EAE6] dark:border-slate-800 text-sm font-black text-[#101714] dark:text-white">
             <span>{isQuote ? "Total" : "Estimated total"}</span>
             <span className="text-[#008A4C]">{checkout.quoteLoading ? "Calculating…" : naira(summary.total)}</span>
           </div>
@@ -128,7 +128,7 @@ export function MobileCheckoutView({ checkout }: { checkout: ReturnType<typeof u
       </div>
 
       {/* Sticky Place Order CTA */}
-      <div className="fixed bottom-14 left-0 right-0 p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-[#E3EAE6] dark:border-slate-800 z-30">
+      <div className="fixed bottom-14 left-0 right-0 p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-[#E3EAE6] dark:border-slate-800 z-30">
         <button
           onClick={checkout.submit}
           disabled={isSubmitting || checkout.quoteLoading || cart.length === 0}

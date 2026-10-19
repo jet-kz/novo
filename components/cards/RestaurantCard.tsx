@@ -88,7 +88,7 @@ export const RestaurantCard: React.FC<RestaurantCardProps> = ({ store }) => {
           </p>
         </div>
 
-        <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 pt-3 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 pt-3 border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
             <Clock className="w-3.5 h-3.5 text-emerald-500" />
             <span>{store.deliveryTime}</span>

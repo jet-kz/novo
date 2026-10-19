@@ -19,7 +19,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { MobileOrdersView } from "@/components/mobile/orders/MobileOrdersView";
 import { GuestOrdersList } from "@/components/checkout/GuestOrdersList";
-import { LiveOrderMap } from "@/components/map/LiveOrderMap";
+import { DeliveryTracker } from "@/components/tracking/DeliveryTracker";
 import { EnableAlertsCard } from "@/components/notifications/EnableAlertsCard";
 import { usePaymentReturn } from "@/components/checkout/usePaymentReturn";
 
@@ -156,7 +156,7 @@ function OrderTrackerContent() {
           {/* Active Tracker Main Panel */}
           <div className="lg:col-span-8 flex flex-col gap-6">
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm flex flex-col gap-6">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex items-center justify-between border-slate-100 dark:border-slate-800 pb-4">
                 <div>
                   <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
                     Order Reference
@@ -207,12 +207,10 @@ function OrderTrackerContent() {
               </div>
 
               {/* LIVE MAP: store, delivery point and the rider's position */}
-              {currentOrder.status !== "delivered" && currentOrder.status !== "cancelled" && (
-                <LiveOrderMap order={currentOrder} className="h-64" />
-              )}
+              <DeliveryTracker order={currentOrder} mapClassName="h-72" />
 
-              {/* RIDER ASSIGNED CARD */}
-              {currentOrder.riderName && (
+              {/* RIDER CARD after the trip (during it the tracker shows the rider) */}
+              {currentOrder.riderName && !["rider_assigned", "picked_up"].includes(currentOrder.status) && (
                 <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                   <div className="flex items-center gap-3">
                     <img

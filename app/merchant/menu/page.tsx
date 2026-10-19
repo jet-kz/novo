@@ -4,8 +4,9 @@ import React, { useCallback, useEffect, useState, useRef } from "react";
 import { usePlatform } from "@/store/PlatformContext";
 import { Plus, Trash2, Upload, FileText, Check, X, Pencil, Search, ImagePlus, Loader2 } from "lucide-react";
 import { apiService } from "@/services/api";
-import { MenuSection } from "@/types";
+import { MenuSection, OptionGroup } from "@/types";
 import { MenuSectionsManager } from "@/components/merchant/MenuSectionsManager";
+import { OptionGroupsEditor, cleanGroups, groupsProblem } from "@/components/merchant/OptionGroupsEditor";
 
 export default function MerchantMenuPage() {
   const { products, merchantStore, merchantStoreLoading, saveProduct, toggleProductStock, deleteProduct } = usePlatform();
@@ -85,27 +86,28 @@ export default function MerchantMenuPage() {
   };
   const [prepTime, setPrepTime] = useState("20");
 
-  // Dynamic Options & Extras & Specs State
-  const [proteinOptions, setProteinOptions] = useState<any[]>([
-    { id: "p1", name: "Grilled Chicken", price: 0, image: "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=200&q=80" },
-    { id: "p2", name: "Succulent Beef", price: 800, image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=200&q=80" },
-  ]);
-  const [extrasOptions, setExtrasOptions] = useState<any[]>([
-    { id: "e1", name: "Fried Plantain (Dodo)", price: 500 },
-    { id: "e2", name: "Fresh Side Salad", price: 800 },
-  ]);
-  const [spicyLevel, setSpicyLevel] = useState("Medium 🌶️");
-  const [calories, setCalories] = useState("650 kcal");
-  const [serves, setServes] = useState("1 person");
+  // How the item can be customised (protein, swallow, size, drinks...) and optional details.
+  const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
+  const [spicyLevel, setSpicyLevel] = useState("");
+  const [calories, setCalories] = useState("");
+  const [serves, setServes] = useState("");
+  const isFoodStore = !/grocer|supermarket|pharma|shop|market|store/i.test(String((merchantStore as any)?.category || ""));
 
-  // Temporary inputs for adding new protein option
-  const [newProtName, setNewProtName] = useState("");
-  const [newProtPrice, setNewProtPrice] = useState("");
-  const [newProtImg, setNewProtImg] = useState("");
-
-  // Temporary inputs for adding new extra
-  const [newExtName, setNewExtName] = useState("");
-  const [newExtPrice, setNewExtPrice] = useState("");
+  const openNewModal = () => {
+    setEditingProduct(null);
+    setName("");
+    setDescription("");
+    setPrice("");
+    setCategory("");
+    setImage("");
+    setPrepTime("20");
+    setOptionGroups([]);
+    setSpicyLevel("");
+    setCalories("");
+    setServes("");
+    setFormError(null);
+    setIsAddModalOpen(true);
+  };
 
   // Open modal to edit existing product
   const openEditModal = (p: any) => {
@@ -117,51 +119,11 @@ export default function MerchantMenuPage() {
     setImage(p.image || "");
     setPrepTime(String(p.preparationTimeMinutes || p.specs?.prepTime || "20"));
 
-    setProteinOptions(p.proteinOptions || [
-      { id: "p1", name: "Grilled Chicken", price: 0, image: "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=200&q=80" },
-      { id: "p2", name: "Succulent Beef", price: 800, image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=200&q=80" },
-    ]);
-    setExtrasOptions(p.extrasOptions || [
-      { id: "e1", name: "Fried Plantain (Dodo)", price: 500 },
-      { id: "e2", name: "Fresh Side Salad", price: 800 },
-    ]);
-    setSpicyLevel(p.specs?.spicyLevel || "Medium 🌶️");
-    setCalories(p.specs?.calories || "650 kcal");
-    setServes(p.specs?.serves || "1 person");
-  };
-
-  const addProteinItem = () => {
-    if (!newProtName) return;
-    const newItem = {
-      id: "prot-" + Date.now(),
-      name: newProtName,
-      price: Number(newProtPrice) || 0,
-      image: newProtImg || "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=200&q=80",
-    };
-    setProteinOptions([...proteinOptions, newItem]);
-    setNewProtName("");
-    setNewProtPrice("");
-    setNewProtImg("");
-  };
-
-  const removeProteinItem = (id: string) => {
-    setProteinOptions(proteinOptions.filter((p) => p.id !== id));
-  };
-
-  const addExtraItem = () => {
-    if (!newExtName) return;
-    const newItem = {
-      id: "ext-" + Date.now(),
-      name: newExtName,
-      price: Number(newExtPrice) || 0,
-    };
-    setExtrasOptions([...extrasOptions, newItem]);
-    setNewExtName("");
-    setNewExtPrice("");
-  };
-
-  const removeExtraItem = (id: string) => {
-    setExtrasOptions(extrasOptions.filter((e) => e.id !== id));
+    setOptionGroups(JSON.parse(JSON.stringify(p.optionGroups || [])));
+    setSpicyLevel(p.specs?.spicyLevel || "");
+    setCalories(p.specs?.calories || "");
+    setServes(p.specs?.serves || "");
+    setFormError(null);
   };
 
   // CSV Import State
@@ -178,6 +140,8 @@ export default function MerchantMenuPage() {
     }
     if (!name.trim()) return setFormError("Item name is required.");
     if (!(Number(price) >= 0) || price === "") return setFormError("Enter a valid price.");
+    const optionsProblem = groupsProblem(optionGroups);
+    if (optionsProblem) return setFormError(optionsProblem);
 
     const productPayload = {
       storeId: myStore.id,
@@ -188,13 +152,12 @@ export default function MerchantMenuPage() {
       image: image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
       inStock: editingProduct ? editingProduct.inStock : true,
       preparationTimeMinutes: Number(prepTime) || 20,
-      proteinOptions,
-      extrasOptions,
+      optionGroups: cleanGroups(optionGroups),
       specs: {
         prepTime: `${prepTime} min`,
-        spicyLevel,
-        calories,
-        serves,
+        ...(spicyLevel ? { spicyLevel } : {}),
+        ...(calories.trim() ? { calories: calories.trim() } : {}),
+        ...(serves.trim() ? { serves: serves.trim() } : {}),
       },
     };
 
@@ -277,7 +240,7 @@ export default function MerchantMenuPage() {
             </span>
           </div>
           <p className="text-xs font-semibold text-[#66736E] dark:text-slate-400 mt-1">
-            Manage menu items for <strong className="text-slate-800 dark:text-slate-200">{myStore.name}</strong>. Add, edit, or remove food items, options (proteins), add-ons (extras), and nutritional specs.
+            Manage menu items for <strong className="text-slate-800 dark:text-slate-200">{myStore.name}</strong>. Add items, set what customers can choose (protein, size, extras…), and mark things sold out.
           </p>
         </div>
 
@@ -291,14 +254,7 @@ export default function MerchantMenuPage() {
           </button>
 
           <button
-            onClick={() => {
-              setEditingProduct(null);
-              setName("");
-              setDescription("");
-              setPrice("");
-              setImage("");
-              setIsAddModalOpen(true);
-            }}
+            onClick={openNewModal}
             className="px-5 py-2.5 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-[#087F5B]/20"
           >
             <Plus className="w-4 h-4" />
@@ -331,7 +287,7 @@ export default function MerchantMenuPage() {
           </div>
           <div className="flex items-center gap-3 mt-2">
             <button
-              onClick={() => setIsAddModalOpen(true)}
+              onClick={openNewModal}
               disabled={!merchantStore}
               className="disabled:opacity-50 px-5 py-2.5 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-[#087F5B]/20"
             >
@@ -364,10 +320,13 @@ export default function MerchantMenuPage() {
                 <div>
                   <h4 className="font-black text-slate-900 dark:text-white text-xs truncate">{p.name}</h4>
                   <span className="text-xs font-black text-[#087F5B]">₦{p.price.toLocaleString()}</span>
-                  <span className="text-[10px] text-[#66736E] font-medium block mt-0.5">{p.category}</span>
+                  <span className="text-[10px] text-[#66736E] font-medium block mt-0.5">
+                    {p.category}
+                    {(p.optionGroups || []).length > 0 && ` · ${(p.optionGroups || []).map((g) => g.name).join(", ")}`}
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2 mt-2">
                   <button
                     onClick={() => runItemAction(p.id, () => toggleProductStock(p.id))}
                     disabled={busyId === p.id}
@@ -408,8 +367,8 @@ export default function MerchantMenuPage() {
       {/* ADD / EDIT PRODUCT MODAL */}
       {(isAddModalOpen || editingProduct) && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl flex flex-col gap-5 max-h-[92vh] overflow-y-auto scrollbar-thin">
+            <div className="flex items-center justify-between">
               <h3 className="text-base font-black text-slate-900 dark:text-white">
                 {editingProduct ? "Edit Menu Item" : "Add Item to Menu"}
               </h3>
@@ -537,115 +496,26 @@ export default function MerchantMenuPage() {
                 </div>
               </div>
 
-              {/* CHOOSE PROTEIN / BASE OPTIONS BUILDER */}
-              <div className="flex flex-col gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <span className="text-xs font-black text-[#087F5B] uppercase tracking-wider">
-                  Protein / Base Options (Choose Protein)
-                </span>
-
-                <div className="flex flex-col gap-2">
-                  {proteinOptions.map((prot) => (
-                    <div key={prot.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs">
-                      <div className="flex items-center gap-2">
-                        <img src={prot.image || "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=100&q=80"} className="w-8 h-8 rounded-lg object-cover" />
-                        <span className="font-black text-slate-900 dark:text-white">{prot.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-[#087F5B]">
-                          {prot.price === 0 ? "Included" : `+₦${prot.price}`}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeProteinItem(prot.id)}
-                          className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+              {/* CUSTOMER CHOICES */}
+              <div className="flex flex-col gap-3 pt-2">
+                <div>
+                  <span className="text-xs font-black text-[#087F5B] uppercase tracking-wider">Customer choices</span>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Groups like “Choose your protein” (required, pick 1) or “Extras” (optional, up to 3). Prices are added to the item.
+                  </p>
                 </div>
-
-                <div className="grid grid-cols-3 gap-2 mt-1">
-                  <input
-                    type="text"
-                    value={newProtName}
-                    onChange={(e) => setNewProtName(e.target.value)}
-                    placeholder="Option Name (e.g. Goat Meat)"
-                    className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold outline-none"
-                  />
-                  <input
-                    type="number"
-                    value={newProtPrice}
-                    onChange={(e) => setNewProtPrice(e.target.value)}
-                    placeholder="Price Delta (e.g. 1000)"
-                    className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={addProteinItem}
-                    className="p-2 rounded-xl bg-[#087F5B] text-white text-[11px] font-black hover:bg-[#065A43] cursor-pointer"
-                  >
-                    + Add Protein
-                  </button>
-                </div>
+                <OptionGroupsEditor
+                  groups={optionGroups}
+                  onChange={setOptionGroups}
+                  isFood={isFoodStore}
+                  otherProducts={storeProducts.filter((sp) => sp.id !== editingProduct?.id)}
+                />
               </div>
 
-              {/* ADD EXTRAS BUILDER */}
-              <div className="flex flex-col gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+              {/* PREP & DETAILS */}
+              <div className="flex flex-col gap-3 pt-2">
                 <span className="text-xs font-black text-[#087F5B] uppercase tracking-wider">
-                  Add-ons / Extras (Add Extras)
-                </span>
-
-                <div className="flex flex-col gap-2">
-                  {extrasOptions.map((ext) => (
-                    <div key={ext.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs">
-                      <span className="font-black text-slate-900 dark:text-white">{ext.name}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-[#087F5B]">
-                          +₦{ext.price}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeExtraItem(ext.id)}
-                          className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 mt-1">
-                  <input
-                    type="text"
-                    value={newExtName}
-                    onChange={(e) => setNewExtName(e.target.value)}
-                    placeholder="Extra Name (e.g. Extra Sauce)"
-                    className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold outline-none"
-                  />
-                  <input
-                    type="number"
-                    value={newExtPrice}
-                    onChange={(e) => setNewExtPrice(e.target.value)}
-                    placeholder="Price (e.g. 400)"
-                    className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={addExtraItem}
-                    className="p-2 rounded-xl bg-[#087F5B] text-white text-[11px] font-black hover:bg-[#065A43] cursor-pointer"
-                  >
-                    + Add Extra
-                  </button>
-                </div>
-              </div>
-
-              {/* NUTRITIONAL & PREP SPECS */}
-              <div className="flex flex-col gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <span className="text-xs font-black text-[#087F5B] uppercase tracking-wider">
-                  Nutritional Specs & Info
+                  More details <span className="normal-case font-semibold text-slate-400 tracking-normal">(optional)</span>
                 </span>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -667,6 +537,8 @@ export default function MerchantMenuPage() {
                       onChange={(e) => setSpicyLevel(e.target.value)}
                       className="w-full mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold outline-none"
                     >
+                      <option value="">Not shown</option>
+                      <option value="Not spicy">Not spicy</option>
                       <option value="Mild 🌶️">Mild 🌶️</option>
                       <option value="Medium 🌶️">Medium 🌶️</option>
                       <option value="Hot 🌶️🌶️">Hot 🌶️🌶️</option>
@@ -675,7 +547,7 @@ export default function MerchantMenuPage() {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">Calories</label>
+                    <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">Calories / size</label>
                     <input
                       type="text"
                       value={calories}
@@ -720,7 +592,7 @@ export default function MerchantMenuPage() {
       {isCsvModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl flex flex-col gap-5">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex items-center justify-between">
               <h3 className="text-base font-black text-slate-900 dark:text-white">CSV Bulk Inventory Import</h3>
               <button onClick={() => setIsCsvModalOpen(false)} className="p-1.5 rounded-xl text-slate-400">
                 <X className="w-5 h-5" />

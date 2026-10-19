@@ -77,7 +77,7 @@ export function NotificationBell() {
             {items.length === 0 ? (
               <p className="text-xs text-slate-500 py-6 text-center">No notifications yet. Order updates will show up here.</p>
             ) : (
-              <ul className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
+              <ul className="flex flex-col ">
                 {items.map((n) => (
                   <li key={n.id} className="py-2.5 flex gap-2.5">
                     <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${n.read_at ? "bg-transparent" : "bg-emerald-500"}`} />

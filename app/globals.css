@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -10,7 +9,7 @@
   --muted: #94a3b8; /* slate-400 */
   --border: #e2e8f0; /* slate-200 */
   --card-bg: #ffffff;
-  --font-sans: 'Sora', var(--font-sora), system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font-jakarta), system-ui, -apple-system, sans-serif;
 }
 
 @theme inline {
@@ -22,7 +21,7 @@
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-card-bg: var(--card-bg);
-  --font-sans: 'Sora', var(--font-sora), system-ui, sans-serif;
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
@@ -40,8 +39,49 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: 'Sora', var(--font-sora), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   min-height: 100vh;
+}
+
+/* Thin, quiet scrollbars everywhere instead of the chunky OS default. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 0.45) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(148 163 184 / 0.45);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
+}
+
+/* Dark sidebars: scrollbar only shows while hovering the list. */
+.scrollbar-thin-dark {
+  scrollbar-color: transparent transparent;
+}
+.scrollbar-thin-dark:hover {
+  scrollbar-color: rgb(255 255 255 / 0.18) transparent;
+}
+.scrollbar-thin-dark::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+.scrollbar-thin-dark:hover::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.18);
+  background-clip: content-box;
 }
 
 /* Custom Utilities */

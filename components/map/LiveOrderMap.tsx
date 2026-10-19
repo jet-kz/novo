@@ -18,13 +18,15 @@ interface Props {
   /** Show the "Navigate" button to the next stop (rider app). */
   forRider?: boolean;
   className?: string;
+  /** Road path from useOrderRoute, drawn under the markers. */
+  route?: GeoPoint[];
 }
 
 const directionsUrl = (to: GeoPoint, from?: GeoPoint | null) =>
   `https://www.google.com/maps/dir/?api=1&destination=${to.lat},${to.lon}&travelmode=driving${from ? `&origin=${from.lat},${from.lon}` : ""}`;
 
 /** Store, customer and live rider on one map. */
-export function LiveOrderMap({ order, riderPosition, forRider = false, className = "h-64" }: Props) {
+export function LiveOrderMap({ order, riderPosition, forRider = false, className = "h-64", route }: Props) {
   const rider = riderPosition || order.riderLocation || null;
   const markers: MapMarker[] = [];
   if (order.storeLocation) markers.push({ id: "store", kind: "store", ...order.storeLocation, label: order.storeName || "Store" });
@@ -40,7 +42,7 @@ export function LiveOrderMap({ order, riderPosition, forRider = false, className
 
   return (
     <div className={`relative rounded-2xl overflow-hidden ${className}`}>
-      <MapView center={center} zoom={14} markers={markers} fitMarkers />
+      <MapView center={center} zoom={14} markers={markers} fitMarkers route={route} />
       {forRider && nextStop && (
         <a
           href={directionsUrl(nextStop, rider)}

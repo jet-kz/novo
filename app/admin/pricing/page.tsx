@@ -14,8 +14,10 @@ import {
   X
 } from "lucide-react";
 import { api } from "@/services/api";
+import { usePlatform } from "@/store/PlatformContext";
 
 export default function AdminPricingPage() {
+  const { stores } = usePlatform();
   const [activeTab, setActiveTab] = useState<"commission" | "delivery" | "service" | "promotions">("commission");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -254,6 +256,12 @@ export default function AdminPricingPage() {
 
   return (
     <div className="space-y-6 font-sans text-gray-900 dark:text-gray-100">
+      {/* Merchant suggestions for the "Merchant ID" fields: type a store name, get its merchant. */}
+      <datalist id="pricing-merchants">
+        {stores.filter((st) => st.merchantId).map((st) => (
+          <option key={st.id} value={st.merchantId}>{st.name}</option>
+        ))}
+      </datalist>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4">
         <div>
@@ -339,7 +347,7 @@ export default function AdminPricingPage() {
           {/* 1. COMMISSION TAB - FLAT BORDERLESS CARDS */}
           {activeTab === "commission" && (
             <div className="space-y-6">
-              <div className="bg-white dark:bg-gray-900 rounded-xl p-6">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   Add New Commission Rule
                 </h3>
@@ -353,7 +361,7 @@ export default function AdminPricingPage() {
                         type="number"
                         value={newCommission.value}
                         onChange={(e) => setNewCommission({ ...newCommission, value: parseFloat(e.target.value) || 0 })}
-                        className="w-full pl-3 pr-8 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                        className="w-full pl-3 pr-8 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                         placeholder="10"
                       />
                       <Percent className="w-4 h-4 absolute right-3 top-2.5 text-gray-400" />
@@ -368,7 +376,7 @@ export default function AdminPricingPage() {
                       type="number"
                       value={newCommission.flat_fee}
                       onChange={(e) => setNewCommission({ ...newCommission, flat_fee: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                       placeholder="0"
                     />
                   </div>
@@ -381,7 +389,8 @@ export default function AdminPricingPage() {
                       type="text"
                       value={newCommission.merchant_id}
                       onChange={(e) => setNewCommission({ ...newCommission, merchant_id: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                      list="pricing-merchants"
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                       placeholder="Leave blank for global default"
                     />
                   </div>
@@ -400,7 +409,7 @@ export default function AdminPricingPage() {
               </div>
 
               {/* Commission Rules Table */}
-              <div className="bg-white dark:bg-gray-900 rounded-xl overflow-hidden p-6">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-x-auto p-6">
                 <div className="font-semibold text-gray-900 dark:text-white mb-4">
                   Active Commission Rules
                 </div>
@@ -415,7 +424,7 @@ export default function AdminPricingPage() {
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  <tbody className="">
                     {commissions.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="px-4 py-4 text-center text-gray-500">
@@ -424,7 +433,7 @@ export default function AdminPricingPage() {
                       </tr>
                     ) : (
                       commissions.map((rule) => (
-                        <tr key={rule.id}>
+                        <tr key={rule.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors">
                           <td className="px-4 py-4 font-medium">{rule.name}</td>
                           <td className="px-4 py-4">{rule.rule_type}</td>
                           <td className="px-4 py-4 font-semibold text-emerald-600">
@@ -458,7 +467,7 @@ export default function AdminPricingPage() {
 
           {/* 2. DELIVERY PRICING TAB - FLAT BORDERLESS CARDS */}
           {activeTab === "delivery" && (
-            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 space-y-6">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 space-y-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Dynamic Delivery Pricing Formula
               </h3>
@@ -477,7 +486,7 @@ export default function AdminPricingPage() {
                     type="number"
                     value={deliveryForm.base_fee}
                     onChange={(e) => setDeliveryForm({ ...deliveryForm, base_fee: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                   />
                 </div>
 
@@ -489,7 +498,7 @@ export default function AdminPricingPage() {
                     type="number"
                     value={deliveryForm.per_km_fee}
                     onChange={(e) => setDeliveryForm({ ...deliveryForm, per_km_fee: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                   />
                 </div>
 
@@ -501,7 +510,7 @@ export default function AdminPricingPage() {
                     type="number"
                     value={deliveryForm.minimum_fee}
                     onChange={(e) => setDeliveryForm({ ...deliveryForm, minimum_fee: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                   />
                 </div>
 
@@ -513,7 +522,7 @@ export default function AdminPricingPage() {
                     type="number"
                     value={deliveryForm.maximum_fee}
                     onChange={(e) => setDeliveryForm({ ...deliveryForm, maximum_fee: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                   />
                 </div>
 
@@ -526,7 +535,7 @@ export default function AdminPricingPage() {
                     step="0.1"
                     value={deliveryForm.surge_multiplier}
                     onChange={(e) => setDeliveryForm({ ...deliveryForm, surge_multiplier: parseFloat(e.target.value) || 1.0 })}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                   />
                 </div>
 
@@ -538,7 +547,7 @@ export default function AdminPricingPage() {
                     type="text"
                     value={deliveryForm.zone_name}
                     onChange={(e) => setDeliveryForm({ ...deliveryForm, zone_name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                   />
                 </div>
               </div>
@@ -558,7 +567,7 @@ export default function AdminPricingPage() {
 
           {/* 3. SERVICE FEE TAB - FLAT BORDERLESS CARDS */}
           {activeTab === "service" && (
-            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 space-y-6">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 space-y-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Platform Service Fee Rule
               </h3>
@@ -573,7 +582,7 @@ export default function AdminPricingPage() {
                     step="0.1"
                     value={serviceFeeForm.value}
                     onChange={(e) => setServiceFeeForm({ ...serviceFeeForm, value: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                   />
                 </div>
 
@@ -585,7 +594,7 @@ export default function AdminPricingPage() {
                     type="number"
                     value={serviceFeeForm.minimum_fee}
                     onChange={(e) => setServiceFeeForm({ ...serviceFeeForm, minimum_fee: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                   />
                 </div>
 
@@ -597,7 +606,7 @@ export default function AdminPricingPage() {
                     type="number"
                     value={serviceFeeForm.maximum_fee}
                     onChange={(e) => setServiceFeeForm({ ...serviceFeeForm, maximum_fee: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                   />
                 </div>
               </div>
@@ -619,7 +628,7 @@ export default function AdminPricingPage() {
           {activeTab === "promotions" && (
             <div className="space-y-6">
               {/* Create Promotion Form */}
-              <div className="bg-white dark:bg-gray-900 rounded-xl p-6 space-y-4">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                   <Plus className="w-5 h-5 text-emerald-600" />
                   Create Promotion Campaign
@@ -648,7 +657,7 @@ export default function AdminPricingPage() {
                       value={promoForm.name}
                       onChange={(e) => setPromoForm({ ...promoForm, name: e.target.value })}
                       placeholder="e.g. Weekend Free Delivery"
-                      className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                     />
                   </div>
 
@@ -659,7 +668,7 @@ export default function AdminPricingPage() {
                     <select
                       value={promoForm.promo_type}
                       onChange={(e) => setPromoForm({ ...promoForm, promo_type: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                     >
                       <option value="PERCENTAGE">PERCENTAGE (% OFF)</option>
                       <option value="FIXED">FIXED DISCOUNT (₦ OFF)</option>
@@ -675,7 +684,7 @@ export default function AdminPricingPage() {
                       type="number"
                       value={promoForm.discount_value}
                       onChange={(e) => setPromoForm({ ...promoForm, discount_value: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                     />
                   </div>
 
@@ -687,7 +696,7 @@ export default function AdminPricingPage() {
                       type="number"
                       value={promoForm.min_order_amount}
                       onChange={(e) => setPromoForm({ ...promoForm, min_order_amount: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                     />
                   </div>
 
@@ -698,7 +707,7 @@ export default function AdminPricingPage() {
                     <select
                       value={promoForm.funding_source}
                       onChange={(e) => setPromoForm({ ...promoForm, funding_source: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30"
                     >
                       <option value="PLATFORM">PLATFORM FUNDED</option>
                       <option value="RESTAURANT">RESTAURANT FUNDED</option>
@@ -720,7 +729,7 @@ export default function AdminPricingPage() {
               </div>
 
               {/* Promotions Table */}
-              <div className="bg-white dark:bg-gray-900 rounded-xl overflow-hidden p-6">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-x-auto p-6">
                 <div className="font-semibold text-gray-900 dark:text-white mb-4">
                   Active Promotion Campaigns
                 </div>
@@ -736,7 +745,7 @@ export default function AdminPricingPage() {
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  <tbody className="">
                     {promotions.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-4 py-4 text-center text-gray-500">
@@ -745,7 +754,7 @@ export default function AdminPricingPage() {
                       </tr>
                     ) : (
                       promotions.map((p) => (
-                        <tr key={p.id}>
+                        <tr key={p.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors">
                           <td className="px-4 py-4 font-mono font-bold text-emerald-600">{p.code}</td>
                           <td className="px-4 py-4 font-medium">{p.name}</td>
                           <td className="px-4 py-4 text-xs font-semibold">{p.promo_type}</td>
@@ -841,6 +850,7 @@ export default function AdminPricingPage() {
                       ...editingModal,
                       data: { ...editingModal.data, merchant_id: e.target.value }
                     })}
+                    list="pricing-merchants"
                     placeholder="Leave blank for global default"
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-900 dark:text-white outline-none"
                   />

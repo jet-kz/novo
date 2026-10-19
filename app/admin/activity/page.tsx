@@ -28,6 +28,9 @@ function describe(a: any): { text: string; href?: string } {
     case "user.password_reset_sent": return { text: "sent a password reset code", href: "/admin/users" };
     case "admin.grant": return { text: "gave someone admin access", href: "/admin/account" };
     case "admin.revoke": return { text: "removed someone's admin access", href: "/admin/account" };
+    case "banner.create": return { text: `added banner “${d.title || "untitled"}”`, href: "/admin/banners" };
+    case "banner.update": return { text: `updated banner “${d.title || "untitled"}”${d.active === false ? " (hidden)" : ""}`, href: "/admin/banners" };
+    case "banner.delete": return { text: `deleted banner “${d.title || "untitled"}”`, href: "/admin/banners" };
     case "merchant.removed": return { text: `removed a merchant${d.reason ? ` (${d.reason})` : ""}`, href: "/admin/stores" };
     default:
       if (a.action.startsWith("merchant.")) return { text: `set merchant ${d.name || ""} to ${a.action.split(".")[1]}`, href: "/admin/stores" };
@@ -67,7 +70,7 @@ export default function AdminActivityPage() {
         ) : items.length === 0 ? (
           <p className="text-sm text-slate-500 text-center py-12">Nothing recorded yet.</p>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="">
             {items.map((a) => {
               const { text, href } = describe(a);
               const body = (
@@ -86,7 +89,7 @@ export default function AdminActivityPage() {
           </ul>
         )}
         {items.length < total && (
-          <div className="p-3 text-center border-t border-slate-100 dark:border-slate-800">
+          <div className="p-3 text-center border-slate-100 dark:border-slate-800">
             <button onClick={() => load(items.length)} disabled={loading} className="text-sm font-bold text-[#087F5B] cursor-pointer">{loading ? "Loading…" : "Show more"}</button>
           </div>
         )}

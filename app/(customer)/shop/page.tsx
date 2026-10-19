@@ -8,18 +8,17 @@ import { Star, Clock, Bike, ShieldCheck, Search, ArrowLeft, Store as StoreIcon }
 import { usePlatform } from "@/store/PlatformContext";
 import { RestaurantCard } from "@/components/cards/RestaurantCard";
 import { ProductCard } from "@/components/cards/ProductCard";
-import { Modal } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
 import { Product } from "@/types";
 
 import { MobileStoreView } from "@/components/mobile/store/MobileStoreView";
 import { MobileStoresListView } from "@/components/mobile/store/MobileStoresListView";
+import { PromoCarousel } from "@/components/home/PromoCarousel";
 
 function ShopContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const storeParam = searchParams.get("store") || "";
-  const { stores, products, addToCart } = usePlatform();
+  const { stores, products, addToCart, openProduct } = usePlatform();
 
   const selectedStore = storeParam
     ? stores.find(
@@ -32,7 +31,6 @@ function ShopContent() {
 
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const sectionTabs = useSectionTabs(
     selectedStore?.id,
     selectedStore ? products.filter((p) => p.storeId === selectedStore.id) : []
@@ -99,7 +97,7 @@ function ShopContent() {
         </div>
 
         {/* Menu Navigation & Search */}
-        <div className="sticky top-16 z-30 bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md">
+        <div className="sticky top-16 z-30 bg-white/95 dark:bg-slate-900/95 border-slate-200 dark:border-slate-800 backdrop-blur-md">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row items-center justify-between gap-4">
             {/* Category Tabs */}
             <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto scrollbar-none">
@@ -147,64 +145,13 @@ function ShopContent() {
                   key={prod.id}
                   product={prod}
                   onAddToCart={addToCart}
-                  onSelectProduct={setSelectedProduct}
+                  onSelectProduct={openProduct}
                 />
               ))}
             </div>
           )}
         </div>
 
-        {/* PRODUCT DETAILS MODAL */}
-        <Modal
-          isOpen={!!selectedProduct}
-          onClose={() => setSelectedProduct(null)}
-          title={selectedProduct?.name}
-        >
-          {selectedProduct && (
-            <div className="flex flex-col gap-4">
-              <div className="relative w-full h-48 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800">
-                <img
-                  src={selectedProduct.image}
-                  alt={selectedProduct.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                {selectedProduct.description}
-              </p>
-              {selectedProduct.options && selectedProduct.options.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                    Select Add-ons
-                  </span>
-                  {selectedProduct.options.map((opt: any) => (
-                    <label
-                      key={opt.id}
-                      className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer text-xs font-semibold text-slate-800 dark:text-slate-200"
-                    >
-                      <span>{opt.name}</span>
-                      <span className="text-emerald-600 font-bold">+₦{opt.price}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800 mt-2">
-                <span className="text-lg font-black text-slate-900 dark:text-slate-100">
-                  ₦{selectedProduct.price.toLocaleString()}
-                </span>
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    addToCart(selectedProduct);
-                    setSelectedProduct(null);
-                  }}
-                >
-                  Add to Cart
-                </Button>
-              </div>
-            </div>
-          )}
-        </Modal>
       </div>
     </>
   );
@@ -241,6 +188,10 @@ function ShopContent() {
               className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 text-xs font-medium outline-none text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 focus:border-emerald-500 shadow-xs"
             />
           </div>
+        </div>
+
+        <div className="mb-8">
+          <PromoCarousel placement="shop" variant="hero" fallback={false} />
         </div>
 
         {/* Stores Grid */}

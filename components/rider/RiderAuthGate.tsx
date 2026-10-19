@@ -8,9 +8,9 @@ import { usePlatform } from "@/store/PlatformContext";
 const PUBLIC = new Set(["/rider/login", "/rider/register"]);
 
 /**
- * Rider pages need a signed-in rider. The route proxy already redirects when there's no token;
- * this also catches an expired session or a non-rider account.
- */
+  * Rider pages need a signed-in rider. The route proxy already redirects when there's no token;
+    * this also catches an expired session or a non-rider account.
+      */
 export function RiderAuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();

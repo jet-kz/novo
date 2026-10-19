@@ -6,6 +6,7 @@ import { usePlatform } from "@/store/PlatformContext";
 import Link from "next/link";
 import { CartTotals, useCartPricing } from "@/components/cart/CartTotals";
 import { ArrowLeft, Trash2, Plus, Minus, ShoppingBag, ArrowRight } from "lucide-react";
+import { cartLineKey, lineUnitPrice } from "@/utils/options";
 
 function DesktopCartContent() {
   const { cart, updateCartQuantity, removeFromCart, clearCart } = usePlatform();
@@ -35,20 +36,20 @@ function DesktopCartContent() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 flex flex-col gap-4">
           {cart.map((item) => (
-            <div key={item.product.id} className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-900">
+            <div key={cartLineKey(item)} className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-900">
               <div className="flex items-center gap-4">
                 <img src={item.product.image} alt={item.product.name} className="w-16 h-16 rounded-xl object-cover" />
                 <div className="flex flex-col">
                   <h3 className="font-bold text-sm">{item.product.name}</h3>
-                  <span className="text-emerald-600 font-bold text-sm">₦{item.product.price.toLocaleString()}</span>
+                  <span className="text-emerald-600 font-bold text-sm">₦{lineUnitPrice(item).toLocaleString()}</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <button onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)} className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 font-bold">-</button>
+                <button onClick={() => updateCartQuantity(cartLineKey(item), item.quantity - 1)} className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 font-bold">-</button>
                 <span className="font-bold text-sm">{item.quantity}</span>
-                <button onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)} className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 font-bold">+</button>
-                <button onClick={() => removeFromCart(item.product.id)} className="p-2 text-rose-500"><Trash2 className="w-4 h-4" /></button>
+                <button onClick={() => updateCartQuantity(cartLineKey(item), item.quantity + 1)} className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 font-bold">+</button>
+                <button onClick={() => removeFromCart(cartLineKey(item))} className="p-2 text-rose-500"><Trash2 className="w-4 h-4" /></button>
               </div>
             </div>
           ))}

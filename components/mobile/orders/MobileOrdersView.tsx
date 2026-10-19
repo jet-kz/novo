@@ -57,15 +57,15 @@ export function MobileOrdersView() {
   return (
     <div className="md:hidden flex flex-col w-full min-h-screen bg-[#F7FAF8] dark:bg-slate-950 text-[#101714] dark:text-slate-100 pb-24">
       {/* Top Header */}
-      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-[#E3EAE6] dark:border-slate-800 px-4 py-3.5 flex items-center justify-between shadow-2xs">
+      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-[#E3EAE6] dark:border-slate-800 px-4 py-3.5 flex items-center justify-between shadow-2xs">
         <h1 className="text-sm font-black text-[#101714] dark:text-white">My Orders</h1>
-        <span className="text-[10px] font-bold text-[#66736D] dark:text-slate-400 bg-[#F7FAF8] dark:bg-slate-800 px-2.5 py-1 rounded-full border border-[#E3EAE6] dark:border-slate-700">
+        <span className="text-[10px] font-bold text-[#66736D] dark:text-slate-400 bg-[#F7FAF8] dark:bg-slate-800 px-2.5 py-1 rounded-full dark:border-slate-700">
           {userOrders.length} {userOrders.length === 1 ? "Order" : "Orders"}
         </span>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-2 p-3 bg-white dark:bg-slate-900 border-b border-[#E3EAE6] dark:border-slate-800">
+      <div className="flex items-center gap-2 p-3 bg-white dark:bg-slate-900 border-[#E3EAE6] dark:border-slate-800">
         {(["all", "active", "completed"] as const).map((tab) => (
           <button
             key={tab}
@@ -73,7 +73,7 @@ export function MobileOrdersView() {
             className={`flex-1 py-2 rounded-xl text-xs font-black capitalize transition-all cursor-pointer ${
               activeTab === tab
                 ? "bg-[#008A4C] text-white shadow-2xs"
-                : "bg-[#F7FAF8] dark:bg-slate-800 text-[#66736D] dark:text-slate-400 border border-[#E3EAE6] dark:border-slate-800"
+                : "bg-[#F7FAF8] dark:bg-slate-800 text-[#66736D] dark:text-slate-400 dark:border-slate-800"
             }`}
           >
             {tab}
@@ -108,7 +108,7 @@ export function MobileOrdersView() {
                   key={ord.id}
                   onClick={() => router.push(`/orders?track=${ord.id}`)}
                   className={`flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-[#F7FAF8] dark:hover:bg-slate-800/50 transition-colors ${
-                    !isLast ? "border-b border-[#E3EAE6]/70 dark:border-slate-800/70" : ""
+                    !isLast ? " border-[#E3EAE6]/70 dark:border-slate-800/70" : ""
                   }`}
                 >
                   <div className="flex items-center gap-3.5">

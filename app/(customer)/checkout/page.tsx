@@ -9,6 +9,7 @@ import { useCheckout, PaymentMethod } from "@/components/checkout/useCheckout";
 import { MobileCheckoutView } from "@/components/mobile/checkout/MobileCheckoutView";
 import { ContactFields } from "@/components/checkout/ContactFields";
 import { DeliveryLocationField } from "@/components/checkout/DeliveryLocationField";
+import { cartLineKey, optionsUnitPrice } from "@/utils/options";
 
 const PAYMENT_OPTIONS: { id: PaymentMethod; label: string; icon: React.ReactNode }[] = [
   { id: "card", label: "Pay online now", icon: <CreditCard className="w-5 h-5" /> },
@@ -110,11 +111,11 @@ export default function CheckoutPage() {
               <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xs flex flex-col gap-4">
                 <h3 className="font-black text-base text-slate-900 dark:text-slate-100">Order Summary</h3>
 
-                <div className="flex flex-col gap-2 border-b border-slate-100 dark:border-slate-800 pb-4 text-xs">
+                <div className="flex flex-col gap-2 border-slate-100 dark:border-slate-800 pb-4 text-xs">
                   {cart.map((item) => {
-                    const unit = item.product.price + (item.selectedOptions || []).reduce((a, o) => a + (Number(o.price) || 0), 0);
+                    const unit = item.product.price + optionsUnitPrice(item.selectedOptions);
                     return (
-                      <div key={item.product.id} className="flex justify-between items-center text-slate-700 dark:text-slate-300">
+                      <div key={cartLineKey(item)} className="flex justify-between items-center text-slate-700 dark:text-slate-300">
                         <span className="font-semibold">
                           {item.quantity}x {item.product.name}
                         </span>
@@ -162,7 +163,7 @@ export default function CheckoutPage() {
                       <span>-{naira(summary.discount)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-base font-black text-slate-900 dark:text-slate-100 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex justify-between text-base font-black text-slate-900 dark:text-slate-100 pt-3 border-slate-100 dark:border-slate-800">
                     <span>{isQuote ? "Total" : "Estimated total"}</span>
                     <span className="text-emerald-600 dark:text-emerald-400">
                       {checkout.quoteLoading ? "Calculating…" : naira(summary.total)}

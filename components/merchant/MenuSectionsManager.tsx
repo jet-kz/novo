@@ -61,7 +61,7 @@ export function MenuSectionsManager({ storeId, sections, itemCounts, onChange }:
       {error && <p className="text-xs font-semibold text-rose-600">{error}</p>}
 
       {sections.length > 0 && (
-        <ul className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
+        <ul className="flex flex-col ">
           {sections.map((section, i) => (
             <li key={section.id} className="flex items-center gap-2 py-2">
               {editingId === section.id ? (

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
 import { CartTotals, useCartPricing } from "@/components/cart/CartTotals";
+import { cartLineKey, optionsLabel, optionsUnitPrice } from "@/utils/options";
 
 export function CartDrawer() {
   const router = useRouter();
@@ -69,7 +70,7 @@ export function CartDrawer() {
           </button>
           
           {/* 1. DRAWER HEADER */}
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-md">
+          <div className="p-4 border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-md">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-full bg-[#087F5B]/10 flex items-center justify-center text-[#087F5B] dark:text-emerald-400">
                 <ShoppingBag className="w-5 h-5" />
@@ -99,7 +100,7 @@ export function CartDrawer() {
           </div>
 
           {/* 2. DELIVERY LOCATION BANNER */}
-          <div className="px-4 py-2.5 bg-emerald-50/60 dark:bg-emerald-950/40 border-b border-emerald-100 dark:border-emerald-900/40 flex items-center justify-between text-xs">
+          <div className="px-4 py-2.5 bg-emerald-50/60 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900/40 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 min-w-0">
               <MapPin className="w-3.5 h-3.5 text-[#087F5B] dark:text-emerald-400 shrink-0" />
               <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 truncate">
@@ -162,21 +163,19 @@ export function CartDrawer() {
                 {/* Items List */}
                 <div className="space-y-3">
                   {cart.map((item) => {
-                    const optionsTotal = (item.selectedOptions || []).reduce(
-                      (acc, opt) => acc + opt.price,
-                      0
-                    );
+                    const optionsTotal = optionsUnitPrice(item.selectedOptions);
                     const itemPrice = (item.product.price + optionsTotal) * item.quantity;
 
                     return (
                       <div
-                        key={item.product.id}
+                        key={cartLineKey(item)}
                         className="p-3 bg-white dark:bg-slate-800/90 rounded-xl flex gap-3 shadow-2xs"
                       >
                         {/* Image */}
                         <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-900 shrink-0">
                           <Image
                             src={
+                              item.product.image ||
                               (item.product as any).imageUrl ||
                               (item.product as any).image_url ||
                               "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80"
@@ -196,7 +195,7 @@ export function CartDrawer() {
                                 {item.product.name}
                               </h4>
                               <button
-                                onClick={() => removeFromCart(item.product.id)}
+                                onClick={() => removeFromCart(cartLineKey(item))}
                                 className="text-slate-400 hover:text-rose-500 transition-colors p-0.5 cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -204,7 +203,7 @@ export function CartDrawer() {
                             </div>
                             {item.selectedOptions && item.selectedOptions.length > 0 && (
                               <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                                {item.selectedOptions.map((o) => o.name).join(", ")}
+                                {optionsLabel(item.selectedOptions)}
                               </p>
                             )}
                           </div>
@@ -217,7 +216,7 @@ export function CartDrawer() {
 
                             <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 rounded-lg p-1">
                               <button
-                                onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)}
+                                onClick={() => updateCartQuantity(cartLineKey(item), item.quantity - 1)}
                                 className="w-5 h-5 rounded flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 cursor-pointer"
                               >
                                 <Minus className="w-3 h-3" />
@@ -226,7 +225,7 @@ export function CartDrawer() {
                                 {item.quantity}
                               </span>
                               <button
-                                onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)}
+                                onClick={() => updateCartQuantity(cartLineKey(item), item.quantity + 1)}
                                 className="w-5 h-5 rounded flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 cursor-pointer"
                               >
                                 <Plus className="w-3 h-3" />
@@ -244,7 +243,7 @@ export function CartDrawer() {
 
           {/* 4. DRAWER FOOTER / BILL SUMMARY */}
           {cart.length > 0 && (
-            <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 space-y-3">
+            <div className="p-4 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 space-y-3">
               <CartTotals pricing={pricing} />
 
               <button

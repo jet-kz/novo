@@ -8,9 +8,9 @@ import { MyPayouts } from "@/types";
 const naira = (n: number) => `₦${(Math.round(n * 100) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
 /**
- * Earnings + payouts for a merchant or rider. Money flow: Novo collects payments -> admin settles
- * what's owed into the payee's Bachs payout account -> the payee withdraws to their bank.
- */
+  * Earnings + payouts for a merchant or rider. Money flow: Novo collects payments -> admin settles
+    * what's owed into the payee's Bachs payout account -> the payee withdraws to their bank.
+      */
 export function PayoutsPanel({ tone = "light" }: { tone?: "light" | "dark" }) {
   const dark = tone === "dark";
   const card = dark ? "bg-slate-900 text-white" : "bg-white dark:bg-slate-900 text-slate-900 dark:text-white";
@@ -235,7 +235,7 @@ export function PayoutsPanel({ tone = "light" }: { tone?: "light" | "dark" }) {
       {(data.settlements.length > 0 || data.withdrawals.length > 0) && (
         <div className={`rounded-2xl p-5 flex flex-col gap-2 ${card}`}>
           <h2 className="text-sm font-black">History</h2>
-          <ul className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="flex flex-col ">
             {[
               ...data.settlements.map((s) => ({ id: s.id, date: s.created_at, label: "Settled by Novo", amount: s.amount, status: s.status })),
               ...data.withdrawals.map((w) => ({ id: w.id, date: w.created_at, label: "Withdrawn to bank", amount: -w.amount, status: w.status })),

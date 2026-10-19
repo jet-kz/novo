@@ -14,7 +14,7 @@ export default function CustomerSettingsPage() {
   return (
     <div className="w-full min-h-screen bg-[#F7FAF8] dark:bg-slate-950 text-[#101714] dark:text-slate-100 pb-24 font-sans">
       {/* Top Header */}
-      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-[#E3EAE6] dark:border-slate-800 px-4 py-3.5 flex items-center justify-between">
+      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-[#E3EAE6] dark:border-slate-800 px-4 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
@@ -33,8 +33,8 @@ export default function CustomerSettingsPage() {
         </div>
 
         {/* FLAT BORDERLESS HERO UI LIST */}
-        <div className="flex flex-col bg-white dark:bg-slate-900 border-b border-[#E3EAE6] dark:border-slate-800">
-          <div className="py-4 px-3 flex items-center justify-between border-b border-[#E3EAE6]/70 dark:border-slate-800/70">
+        <div className="flex flex-col bg-white dark:bg-slate-900 border-[#E3EAE6] dark:border-slate-800">
+          <div className="py-4 px-3 flex items-center justify-between border-[#E3EAE6]/70 dark:border-slate-800/70">
             <div className="flex items-center gap-3.5">
               <div className="w-9 h-9 rounded-full bg-[#E8F7EF] dark:bg-slate-800 text-[#008A4C] flex items-center justify-center shrink-0">
                 <Moon className="w-4 h-4" />
@@ -58,7 +58,7 @@ export default function CustomerSettingsPage() {
             </button>
           </div>
 
-          <div className="py-4 px-3 flex items-center justify-between border-b border-[#E3EAE6]/70 dark:border-slate-800/70">
+          <div className="py-4 px-3 flex items-center justify-between border-[#E3EAE6]/70 dark:border-slate-800/70">
             <div className="flex items-center gap-3.5">
               <div className="w-9 h-9 rounded-full bg-[#E8F7EF] dark:bg-slate-800 text-[#008A4C] flex items-center justify-center shrink-0">
                 <Bell className="w-4 h-4" />
@@ -82,7 +82,7 @@ export default function CustomerSettingsPage() {
             </button>
           </div>
 
-          <div className="py-4 px-3 flex items-center justify-between border-b border-[#E3EAE6]/70 dark:border-slate-800/70">
+          <div className="py-4 px-3 flex items-center justify-between border-[#E3EAE6]/70 dark:border-slate-800/70">
             <div className="flex items-center gap-3.5">
               <div className="w-9 h-9 rounded-full bg-[#E8F7EF] dark:bg-slate-800 text-[#008A4C] flex items-center justify-center shrink-0">
                 <Smartphone className="w-4 h-4" />

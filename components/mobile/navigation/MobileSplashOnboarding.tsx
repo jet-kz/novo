@@ -9,9 +9,9 @@ import foodSpread from "@/public/hero1.png";
 const SEEN_KEY = "novo_mobile_onboarding_done";
 
 /**
- * One-time welcome for first visits on mobile. Renders nothing until we know the visitor
- * hasn't seen it, so returning visitors never get a flash of it.
- */
+  * One-time welcome for first visits on mobile. Renders nothing until we know the visitor
+    * hasn't seen it, so returning visitors never get a flash of it.
+      */
 export function MobileSplashOnboarding() {
   const [open, setOpen] = useState(false);
 

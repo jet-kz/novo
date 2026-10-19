@@ -7,10 +7,10 @@ import { apiService } from "@/services/api";
 import { usePlatform } from "@/store/PlatformContext";
 
 /**
- * Shown in the Rider Hub until an admin approves the rider. Lets them upload an ID (driver's
- * licence, NIN slip, voter's card...) and fix vehicle details. Updating after a rejection
- * puts them back in the review queue.
- */
+  * Shown in the Rider Hub until an admin approves the rider. Lets them upload an ID (driver's
+    * licence, NIN slip, voter's card...) and fix vehicle details. Updating after a rejection
+      * puts them back in the review queue.
+        */
 export function RiderOnboardingStatus() {
   const { riderProfile, refreshRider } = usePlatform();
   const rejected = riderProfile.approvalStatus === "rejected";

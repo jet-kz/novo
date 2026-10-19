@@ -54,7 +54,7 @@ export const Modal: React.FC<ModalProps> = ({
         className={`relative w-full ${widthClasses[maxWidth]} h-[100dvh] sm:h-auto sm:max-h-[90vh] bg-white dark:bg-slate-900 sm:rounded-3xl shadow-2xl overflow-hidden z-10 flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200`}
       >
         {/* Full screen on phones, centred card from sm up */}
-        <div className="flex items-center justify-between px-5 sm:px-6 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:pt-4 border-b border-slate-100 dark:border-slate-800/80">
+        <div className="flex items-center justify-between px-5 sm:px-6 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:pt-4 border-slate-100 dark:border-slate-800/80">
           <div>
             {title && (
               <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">

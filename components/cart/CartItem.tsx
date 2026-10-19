@@ -3,6 +3,7 @@
 import React from "react";
 import { Plus, Minus, Trash2 } from "lucide-react";
 import { CartItem as CartItemType } from "@/types";
+import { cartLineKey, optionsLabel, optionsUnitPrice } from "@/utils/options";
 
 interface CartItemProps {
   item: CartItemType;
@@ -15,7 +16,7 @@ export const CartItem: React.FC<CartItemProps> = ({
   onUpdateQuantity,
   onRemove,
 }) => {
-  const itemOptionsTotal = (item.selectedOptions || []).reduce((sum, opt) => sum + opt.price, 0);
+  const itemOptionsTotal = optionsUnitPrice(item.selectedOptions);
   const unitPrice = item.product.price + itemOptionsTotal;
   const totalPrice = unitPrice * item.quantity;
 
@@ -36,14 +37,14 @@ export const CartItem: React.FC<CartItemProps> = ({
         </span>
         {item.selectedOptions && item.selectedOptions.length > 0 && (
           <p className="text-[10px] text-slate-400 truncate">
-            {item.selectedOptions.map((o) => o.name).join(", ")}
+            {optionsLabel(item.selectedOptions)}
           </p>
         )}
       </div>
 
       <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 rounded-xl p-1 shadow-xs">
         <button
-          onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
+          onClick={() => onUpdateQuantity(cartLineKey(item), item.quantity - 1)}
           className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 transition-colors"
         >
           {item.quantity === 1 ? (
@@ -56,7 +57,7 @@ export const CartItem: React.FC<CartItemProps> = ({
           {item.quantity}
         </span>
         <button
-          onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
+          onClick={() => onUpdateQuantity(cartLineKey(item), item.quantity + 1)}
           className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />

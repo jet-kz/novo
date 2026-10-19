@@ -118,7 +118,7 @@ export default function MerchantOrdersPage() {
       </div>
 
       {/* FILTER TABS */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200/80 dark:border-slate-800">
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 border-slate-200/80 dark:border-slate-800">
         {[
           { id: "all", label: "All Orders" },
           { id: "pending", label: "New / Pending" },
@@ -207,7 +207,7 @@ export default function MerchantOrdersPage() {
               </div>
 
               {/* ACTION BUTTONS */}
-              <div className="flex items-center gap-2 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 lg:border-t-0 pt-3 lg:pt-0 border-slate-100 dark:border-slate-800">
                 <button
                   onClick={() => setSelectedOrder(ord)}
                   className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 transition-colors cursor-pointer"
@@ -251,7 +251,7 @@ export default function MerchantOrdersPage() {
       {selectedOrder && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div className="flex items-center justify-between border-slate-100 dark:border-slate-800 pb-4">
               <div>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white">Order #{selectedOrder.id}</h3>
                 <span className="text-xs text-[#66736E] font-semibold" suppressHydrationWarning>
@@ -296,7 +296,7 @@ export default function MerchantOrdersPage() {
               ) : (
                 <span className="text-xs text-slate-500 font-medium">Item breakdown included in total</span>
               )}
-              <div className="border-t border-slate-200 dark:border-slate-800 pt-3 flex items-center justify-between text-sm font-black text-[#087F5B]">
+              <div className="border-slate-200 dark:border-slate-800 pt-3 flex items-center justify-between text-sm font-black text-[#087F5B]">
                 <span>Total Amount</span>
                 <span>₦{selectedOrder.total?.toLocaleString() || "0"}</span>
               </div>

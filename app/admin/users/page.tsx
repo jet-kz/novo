@@ -106,7 +106,7 @@ export default function AdminUsersPage() {
         ) : rows.length === 0 ? (
           <p className="text-sm text-slate-500 text-center py-12">No accounts match.</p>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="">
             {rows.map((u) => (
               <li key={u.id}>
                 <button onClick={() => setSelected(u)} className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
@@ -131,7 +131,7 @@ export default function AdminUsersPage() {
           </ul>
         )}
         {rows.length < total && (
-          <div className="p-3 text-center border-t border-slate-100 dark:border-slate-800">
+          <div className="p-3 text-center border-slate-100 dark:border-slate-800">
             <button onClick={() => load(rows.length)} disabled={loading} className="text-sm font-bold text-[#087F5B] cursor-pointer">
               {loading ? "Loading…" : `Show more (${total - rows.length} left)`}
             </button>
@@ -194,7 +194,7 @@ function UserDrawer({ user, isSelf, onClose, onDone }: { user: AdminUserRow; isS
         {isSelf ? (
           <p className="text-xs text-slate-500">This is your account. Manage it from “My account & admins”.</p>
         ) : (
-          <div className="flex flex-col gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col gap-2 pt-2 border-slate-100 dark:border-slate-800">
             <Button variant="secondary" size="sm" disabled={busy} onClick={() => act(() => apiService.sendUserPasswordReset(user.id), "Reset code sent")}>
               Email a password reset code
             </Button>

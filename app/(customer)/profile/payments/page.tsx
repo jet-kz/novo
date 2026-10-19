@@ -11,7 +11,7 @@ export default function CustomerPaymentsPage() {
   return (
     <div className="w-full min-h-screen bg-[#F7FAF8] dark:bg-slate-950 text-[#101714] dark:text-slate-100 pb-24 font-sans">
       {/* Top Header */}
-      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-[#E3EAE6] dark:border-slate-800 px-4 py-3.5 flex items-center justify-between">
+      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-[#E3EAE6] dark:border-slate-800 px-4 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
@@ -30,7 +30,7 @@ export default function CustomerPaymentsPage() {
         </div>
 
         {/* FLAT BORDERLESS HERO UI LIST */}
-        <div className="flex flex-col bg-white dark:bg-slate-900 border-b border-[#E3EAE6] dark:border-slate-800">
+        <div className="flex flex-col bg-white dark:bg-slate-900 border-[#E3EAE6] dark:border-slate-800">
           {[
             { id: "card", title: "Credit / Debit Card", desc: "Paystack Instant Checkout (Visa, Mastercard, Verve)", icon: CreditCard },
             { id: "cash", title: "Pay on Delivery", desc: "Cash or POS upon order arrival", icon: Banknote },
@@ -42,7 +42,7 @@ export default function CustomerPaymentsPage() {
               <div
                 key={item.id}
                 onClick={() => setSelectedMethod(item.id)}
-                className="py-4 px-3 flex items-center justify-between border-b border-[#E3EAE6]/70 dark:border-slate-800/70 last:border-b-0 cursor-pointer hover:bg-[#F7FAF8] dark:hover:bg-slate-800/40 transition-colors"
+                className="py-4 px-3 flex items-center justify-between border-[#E3EAE6]/70 dark:border-slate-800/70 last:border-b-0 cursor-pointer hover:bg-[#F7FAF8] dark:hover:bg-slate-800/40 transition-colors"
               >
                 <div className="flex items-center gap-3.5">
                   <div className="w-9 h-9 rounded-full bg-[#E8F7EF] dark:bg-slate-800 text-[#008A4C] flex items-center justify-center shrink-0">

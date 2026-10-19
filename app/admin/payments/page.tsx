@@ -64,7 +64,7 @@ export default function AdminPaymentsPage() {
         {refunds.length === 0 ? (
           <p className="text-sm text-slate-500 bg-white dark:bg-slate-900 rounded-2xl p-4">No paid orders are waiting for a refund.</p>
         ) : (
-          <ul className="bg-white dark:bg-slate-900 rounded-2xl divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="bg-white dark:bg-slate-900 rounded-2xl ">
             {refunds.map((o) => (
               <li key={o.id}>
                 <Link href={`/admin/orders?view=refunds&order=${o.id}`} className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50">
@@ -96,7 +96,7 @@ export default function AdminPaymentsPage() {
                   <th className="px-4 py-3 font-bold text-right">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="">
                 {data.items.map((t: any) => (
                   <tr key={t.id}>
                     <td className="px-4 py-3 whitespace-nowrap text-slate-500">{when(t.created_at)}</td>
@@ -113,7 +113,7 @@ export default function AdminPaymentsPage() {
               </tbody>
             </table>
             {data.items.length < data.total && (
-              <div className="p-3 text-center border-t border-slate-100 dark:border-slate-800">
+              <div className="p-3 text-center border-slate-100 dark:border-slate-800">
                 <button onClick={more} disabled={loadingMore} className="text-sm font-bold text-[#087F5B] cursor-pointer">{loadingMore ? "Loading…" : "Show more"}</button>
               </div>
             )}

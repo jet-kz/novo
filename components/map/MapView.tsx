@@ -27,6 +27,8 @@ interface MapViewProps {
   recenterKey?: string | number;
   className?: string;
   interactive?: boolean;
+  /** Road path to draw (e.g. rider -> next stop). */
+  route?: LatLon[];
 }
 
 // OpenStreetMap tiles by default. For heavy production traffic set NEXT_PUBLIC_MAP_TILE_URL to a
@@ -62,12 +64,16 @@ export function MapView({
   recenterKey,
   className = "",
   interactive = true,
+  route,
 }: MapViewProps) {
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<Leaflet.Map | null>(null);
   const LRef = useRef<typeof Leaflet | null>(null);
   const layerRef = useRef<Leaflet.LayerGroup | null>(null);
   const markerRefs = useRef<Map<string, Leaflet.Marker>>(new Map());
+  const routeRef = useRef<Leaflet.Polyline[] | null>(null);
+  const routeData = useRef<LatLon[] | undefined>(route);
+  routeData.current = route;
   const onCenterRef = useRef(onCenterChange);
   onCenterRef.current = onCenterChange;
 
@@ -98,6 +104,7 @@ export function MapView({
       // Containers inside sheets/modals size late; fix tiles once laid out.
       setTimeout(() => map.invalidateSize(), 150);
       syncMarkers(true);
+      syncRoute();
     });
     return () => {
       cancelled = true;
@@ -138,6 +145,28 @@ export function MapView({
       map.setView([markers[0].lat, markers[0].lon], zoom);
     }
   };
+
+  const syncRoute = () => {
+    const L = LRef.current;
+    const map = mapRef.current;
+    if (!L || !map) return;
+    routeRef.current?.forEach((line) => line.remove());
+    routeRef.current = null;
+    const pts = (routeData.current || []).map((p) => [p.lat, p.lon] as [number, number]);
+    if (pts.length < 2) return;
+    // Soft halo under a solid line reads well on both light and busy map tiles.
+    routeRef.current = [
+      L.polyline(pts, { color: "#ffffff", weight: 9, opacity: 0.9, lineCap: "round", lineJoin: "round", interactive: false }).addTo(map),
+      L.polyline(pts, { color: "#087F5B", weight: 5, opacity: 0.95, lineCap: "round", lineJoin: "round", interactive: false }).addTo(map),
+    ];
+    layerRef.current?.eachLayer((l: any) => l.bringToFront?.());
+  };
+
+  const routeKey = (route || []).map((p) => `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`).join(";");
+  useEffect(() => {
+    syncRoute();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeKey]);
 
   const markerKey = markers.map((m) => `${m.id}:${m.lat.toFixed(5)},${m.lon.toFixed(5)}`).join("|");
   const markerIds = markers.map((m) => m.id).join("|");

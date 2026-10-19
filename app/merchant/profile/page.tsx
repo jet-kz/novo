@@ -217,7 +217,7 @@ export default function MerchantProfilePage() {
             </div>
 
             {/* STORE LOGO PREVIEW & SELECTOR */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 pt-2 border-slate-100 dark:border-slate-800">
               <div className="w-20 h-20 rounded-2xl overflow-hidden relative border-2 border-[#087F5B] bg-slate-100 dark:bg-slate-800 shrink-0 shadow-sm">
                 <img src={logo} alt="Store Logo" className="w-full h-full object-cover" />
               </div>
@@ -261,7 +261,7 @@ export default function MerchantProfilePage() {
           </div>
 
           {/* SECTION 2: BUSINESS DETAILS */}
-          <div className="flex flex-col gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col gap-4 pt-4 border-slate-100 dark:border-slate-800">
             <h3 className="text-base font-black text-slate-900 dark:text-white">Business Details</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -45,7 +45,7 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
     >
       {/* GLOBAL CUSTOMER HEADER (desktop) */}
       {isCustomerHeaderVisible && (
-        <header className="hidden md:block sticky top-0 z-40 w-full bg-white/95 dark:bg-slate-900/95 border-b border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md">
+        <header className="hidden md:block sticky top-0 z-40 w-full bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl shadow-[0_8px_24px_-16px_rgba(15,23,42,0.25)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             {/* Logo */}
             <NovoLogo subtitle="Delivery Express" size="md" />

@@ -33,7 +33,7 @@ export function Table<T>({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+        <tbody className="">
           {data.length === 0 ? (
             <tr>
               <td

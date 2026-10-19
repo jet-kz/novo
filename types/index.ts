@@ -60,11 +60,53 @@ export interface ProductSpecs {
   serves?: string;
 }
 
+/** One choice inside an option group, e.g. "Beef +₦500". */
+export interface GroupOption {
+  id: string;
+  name: string;
+  price: number;
+  /** false = sold out today; still shown, can't be picked. */
+  available?: boolean;
+  /** How many of this one choice a customer may add (e.g. 3 × plantain). */
+  max_qty?: number;
+  image?: string;
+}
+
+/**
+ * A question the customer answers about an item: "Choose your protein" (min 1, max 1),
+ * "Extras" (min 0, max 5), "Size" (min 1, max 1)... min/max count total picks in the group.
+ */
 export interface OptionGroup {
   id: string;
-  title: string; // e.g. "Choose Protein", "Add Extras", "Choose Crust"
-  type: "single" | "multiple"; // single (radio cards) or multiple (checkbox list)
-  options: ProductOption[];
+  name: string;
+  min: number;
+  max: number;
+  options: GroupOption[];
+}
+
+/** What the customer picked, as stored on a cart line / order item. */
+export interface SelectedOption {
+  id: string;
+  name: string;
+  price: number;
+  quantity?: number;
+  group?: string;
+}
+
+export interface PromoBanner {
+  id: string;
+  title?: string | null;
+  subtitle?: string | null;
+  image: string;
+  cta_label?: string | null;
+  link_url?: string | null;
+  placement: "home" | "shop";
+  show_text: boolean;
+  display_order: number;
+  is_active: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  state?: "live" | "scheduled" | "ended" | "hidden";
 }
 
 export interface Product {
@@ -125,7 +167,7 @@ export interface Store {
 export interface CartItem {
   product: Product;
   quantity: number;
-  selectedOptions?: ProductOption[];
+  selectedOptions?: SelectedOption[];
   specialInstructions?: string;
 }
 
@@ -174,6 +216,10 @@ export interface Order {
   riderEarnings?: number;
   /** Shown to merchants/admins only; the rider must enter it at pickup. */
   pickupCode?: string;
+  /** Customer-only: the 4-digit code they give the rider at the door. */
+  deliveryCode?: string;
+  /** Minutes until the rider reaches their next stop (server estimate). */
+  etaMinutes?: number;
   /** Map points. storeLocation is missing until the merchant pins their store. */
   storeLocation?: GeoPoint | null;
   dropoffLocation?: GeoPoint | null;

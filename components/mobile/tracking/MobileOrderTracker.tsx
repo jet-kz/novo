@@ -14,7 +14,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Order } from "@/types";
-import { LiveOrderMap } from "@/components/map/LiveOrderMap";
+import { DeliveryTracker } from "@/components/tracking/DeliveryTracker";
 
 interface MobileOrderTrackerProps {
   order: Order;
@@ -94,7 +94,7 @@ export function MobileOrderTracker({ order, onBack }: MobileOrderTrackerProps) {
       {/* Live map: store, delivery point and the rider's position */}
       {!isDelivered && order.status !== "cancelled" && (
         <div className="px-5 -mt-2 pt-4">
-          <LiveOrderMap order={order} className="h-56" />
+          <DeliveryTracker order={order} />
         </div>
       )}
 
@@ -144,12 +144,13 @@ export function MobileOrderTracker({ order, onBack }: MobileOrderTrackerProps) {
           </div>
         </div>
 
-        {/* 3. REAL RIDER / COURIER CONTACT CARD */}
+        {/* 3. RIDER CARD (while on the job it's shown in the tracker above) */}
+        {!(order.riderName && (order.status === "rider_assigned" || order.status === "picked_up")) && (
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 shadow-xs flex items-center justify-between">
           {order.riderName ? (
             <>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-slate-200 overflow-hidden shrink-0 border border-[#E3EAE6]">
+                <div className="w-12 h-12 rounded-full bg-slate-200 overflow-hidden shrink-0">
                   <img
                     src={order.riderPhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
                     alt={order.riderName}
@@ -191,6 +192,7 @@ export function MobileOrderTracker({ order, onBack }: MobileOrderTrackerProps) {
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );

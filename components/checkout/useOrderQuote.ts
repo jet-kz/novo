@@ -22,7 +22,7 @@ export function useOrderLines() {
   const items = cart.map((item) => ({
     product_id: item.product.id,
     quantity: item.quantity,
-    addons: (item.selectedOptions || []).map((o) => ({ id: o.id, name: o.name })),
+    addons: (item.selectedOptions || []).map((o) => ({ id: o.id, name: o.name, quantity: o.quantity || 1 })),
   }));
   const coords = userLocationCoords
     ? { delivery_latitude: userLocationCoords.lat, delivery_longitude: userLocationCoords.lon }

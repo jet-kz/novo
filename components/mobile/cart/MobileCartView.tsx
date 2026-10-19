@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Trash2, Plus, Minus, ShoppingBag, ArrowRight } from "lucide-react";
 import { CartTotals, useCartPricing } from "@/components/cart/CartTotals";
 import { usePlatform } from "@/store/PlatformContext";
+import { cartLineKey, optionsLabel, lineUnitPrice } from "@/utils/options";
 
 export function MobileCartView() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export function MobileCartView() {
   return (
     <div className="md:hidden flex flex-col w-full min-h-screen bg-[#F7FAF8] dark:bg-slate-950 text-[#101714] dark:text-slate-100 pb-28">
       {/* Top Header */}
-      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-[#E3EAE6] dark:border-slate-800 px-4 py-3 flex items-center justify-between shadow-xs">
+      <div className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-[#E3EAE6] dark:border-slate-800 px-4 py-3 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
@@ -59,7 +60,7 @@ export function MobileCartView() {
       <div className="p-4 flex flex-col gap-3">
         {cart.map((item) => (
           <div
-            key={item.product.id}
+            key={cartLineKey(item)}
             className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 shadow-xs"
           >
             <img
@@ -73,11 +74,11 @@ export function MobileCartView() {
                 {item.product.name}
               </h4>
               <span className="text-xs font-bold text-[#008A4C]">
-                ₦{item.product.price.toLocaleString()}
+                ₦{lineUnitPrice(item).toLocaleString()}
               </span>
               {item.selectedOptions && item.selectedOptions.length > 0 && (
                 <span className="text-[10px] text-[#66736D] line-clamp-1">
-                  + {item.selectedOptions.map((o) => o.name).join(", ")}
+                  + {optionsLabel(item.selectedOptions)}
                 </span>
               )}
             </div>
@@ -86,14 +87,14 @@ export function MobileCartView() {
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 bg-[#F7FAF8] dark:bg-slate-800 p-1 rounded-xl">
                 <button
-                  onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)}
+                  onClick={() => updateCartQuantity(cartLineKey(item), item.quantity - 1)}
                   className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-[#101714] font-bold shadow-xs cursor-pointer"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
                 <span className="text-xs font-black w-4 text-center">{item.quantity}</span>
                 <button
-                  onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)}
+                  onClick={() => updateCartQuantity(cartLineKey(item), item.quantity + 1)}
                   className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-[#101714] font-bold shadow-xs cursor-pointer"
                 >
                   <Plus className="w-3 h-3" />
@@ -101,7 +102,7 @@ export function MobileCartView() {
               </div>
 
               <button
-                onClick={() => removeFromCart(item.product.id)}
+                onClick={() => removeFromCart(cartLineKey(item))}
                 className="p-1.5 text-slate-400 hover:text-rose-500 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
@@ -119,7 +120,7 @@ export function MobileCartView() {
       </div>
 
       {/* Sticky Bottom Checkout CTA */}
-      <div className="fixed bottom-14 left-0 right-0 p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-[#E3EAE6] dark:border-slate-800 z-30">
+      <div className="fixed bottom-14 left-0 right-0 p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-[#E3EAE6] dark:border-slate-800 z-30">
         <button
           onClick={() => router.push("/checkout")}
           className="w-full py-3.5 rounded-2xl bg-[#008A4C] hover:bg-[#006B3C] text-white font-extrabold text-xs flex items-center justify-between px-5 shadow-lg cursor-pointer transition-colors"

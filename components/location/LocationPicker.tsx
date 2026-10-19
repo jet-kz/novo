@@ -180,7 +180,7 @@ export function LocationPicker({
             ) : null}
           </div>
           {results.length > 0 && (
-            <ul className="absolute left-0 right-0 top-full bg-white dark:bg-slate-900 shadow-xl max-h-[50vh] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+            <ul className="absolute left-0 right-0 top-full bg-white dark:bg-slate-900 shadow-xl max-h-[50vh] overflow-y-auto ">
               {results.map((r, i) => (
                 <li key={`${r.coords.lat},${r.coords.lon},${i}`}>
                   <button onClick={() => pick(r)} className="w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">

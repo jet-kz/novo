@@ -30,18 +30,20 @@ import { Modal } from "@/components/ui/Modal";
 import { NovoLogo } from "@/components/shared/NovoLogo";
 import { LiveOrderMap } from "@/components/map/LiveOrderMap";
 import { useRiderGps } from "@/components/rider/useRiderGps";
+import { useOrderRoute } from "@/components/tracking/useOrderRoute";
 import { RiderOnboardingStatus } from "@/components/rider/RiderOnboardingStatus";
 import { EnableAlertsCard } from "@/components/notifications/EnableAlertsCard";
 import type { Order } from "@/types";
 
 export default function RiderHubPage() {
-  const { riderProfile, toggleRiderOnline, orders, ordersError, currentUser, acceptDeliveryJob, confirmPickup, completeDelivery } =
+  const { riderProfile, toggleRiderOnline, orders, ordersError, currentUser, acceptDeliveryJob, confirmPickup, completeDelivery, reportDeliveryProblem } =
     usePlatform();
 
   const me = riderProfile.id || currentUser.id;
   // The backend scopes /orders for riders: jobs ready for pickup with no rider, plus jobs assigned to me.
   const gps = useRiderGps(riderProfile.isOnline);
   const activeOrder = orders.find((o) => o.riderId === me && (o.status === "rider_assigned" || o.status === "picked_up"));
+  const route = useOrderRoute(activeOrder, gps.position);
   const availableJobs = riderProfile.isOnline ? orders.filter((o) => o.status === "ready_for_pickup" && !o.riderId) : [];
   const earningsFor = (o?: Order) => (o ? o.riderEarnings ?? Math.round(o.deliveryFee * 0.85 + (o.tip || 0)) : 0);
 
@@ -57,6 +59,8 @@ export default function RiderHubPage() {
   const [deliveryCodeInput, setDeliveryCodeInput] = useState("");
   const [verificationError, setVerificationError] = useState("");
   const [showVerifyModal, setShowVerifyModal] = useState<"pickup" | "delivery" | null>(null);
+  const [problemMode, setProblemMode] = useState(false);
+  const [problemReason, setProblemReason] = useState("");
 
   const offeredJob = availableJobs.find((j) => j.id === targetJobId);
 
@@ -131,14 +135,35 @@ export default function RiderHubPage() {
     }
   };
 
+  const closeVerify = () => {
+    setShowVerifyModal(null);
+    setVerificationError("");
+    setProblemMode(false);
+    setProblemReason("");
+  };
+
   const handleConfirmDelivery = async () => {
     if (!activeOrder) return;
-    const ok = await run(() => completeDelivery(activeOrder.id), setVerificationError);
-    if (ok) {
-      setShowVerifyModal(null);
-      setDeliveryCodeInput("");
-      setVerificationError("");
+    const code = deliveryCodeInput.replace(/\D/g, "");
+    if (code.length !== 4) {
+      setVerificationError("Ask the customer for the 4-digit code on their order screen.");
+      return;
     }
+    const ok = await run(() => completeDelivery(activeOrder.id, code), setVerificationError);
+    if (ok) {
+      setDeliveryCodeInput("");
+      closeVerify();
+    }
+  };
+
+  const handleReportProblem = async () => {
+    if (!activeOrder) return;
+    if (problemReason.trim().length < 5) {
+      setVerificationError("Tell us what happened so support can follow up.");
+      return;
+    }
+    const ok = await run(() => reportDeliveryProblem(activeOrder.id, problemReason.trim()), setVerificationError);
+    if (ok) closeVerify();
   };
 
   // New riders wait for an admin to approve them before they can go online.
@@ -230,7 +255,7 @@ export default function RiderHubPage() {
       {/* ACTIVE DELIVERY TASK & INTERACTIVE MAP */}
       {activeOrder && (
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl flex flex-col gap-6">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div className="flex items-center justify-between">
             <div>
               <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">
                 Dispatch Task #{activeOrder.id}
@@ -243,14 +268,21 @@ export default function RiderHubPage() {
           </div>
 
           {/* EMBEDDED INTERACTIVE ROUTE MAP */}
-          <LiveOrderMap order={activeOrder} riderPosition={gps.position} forRider className="h-72" />
+          <div className="flex flex-col gap-2">
+            {route.minutes != null && (
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                ~{route.minutes} min{route.km != null ? ` · ${route.km} km` : ""} to the {route.heading === "customer" ? "customer" : "store"}
+              </p>
+            )}
+            <LiveOrderMap order={activeOrder} riderPosition={gps.position} route={route.path} forRider className="h-72" />
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* STEP 1: PICKUP MERCHANT */}
-            <div className={`p-4 rounded-2xl border flex flex-col gap-2 transition-all ${
+            <div className={`p-4 rounded-2xl flex flex-col gap-2 transition-all ${
               activeOrder.status === "rider_assigned"
-                ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 shadow-sm"
-                : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 opacity-80"
+                ? "bg-amber-50 dark:bg-amber-950/40 ring-2 ring-amber-300/70 dark:ring-amber-700/70"
+                : "bg-slate-50 dark:bg-slate-800/50 opacity-80"
             }`}>
               <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300 font-black text-sm">
                 <Store className="w-4 h-4 text-amber-500" />
@@ -258,16 +290,16 @@ export default function RiderHubPage() {
               </div>
               <p className="text-xs font-bold text-slate-900 dark:text-slate-100">{activeOrder.storeName}</p>
               <p className="text-xs text-slate-600 dark:text-slate-400">{activeOrder.storeAddress || "Merchant Store"}</p>
-              <p className="mt-2 text-xs bg-white dark:bg-slate-900 p-2 rounded-xl border font-bold text-amber-600">
+              <p className="mt-2 text-xs bg-white dark:bg-slate-900 p-2 rounded-xl font-bold text-amber-600">
                 Ask the store for the 4-digit pickup code.
               </p>
             </div>
 
             {/* STEP 2: DROP OFF CUSTOMER */}
-            <div className={`p-4 rounded-2xl border flex flex-col gap-2 transition-all ${
+            <div className={`p-4 rounded-2xl flex flex-col gap-2 transition-all ${
               activeOrder.status === "picked_up"
-                ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 shadow-sm"
-                : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 opacity-80"
+                ? "bg-emerald-50 dark:bg-emerald-950/40 ring-2 ring-emerald-300/70 dark:ring-emerald-700/70"
+                : "bg-slate-50 dark:bg-slate-800/50 opacity-80"
             }`}>
               <div className="flex items-center gap-2 text-emerald-900 dark:text-emerald-300 font-black text-sm">
                 <MapPin className="w-4 h-4 text-emerald-500" />
@@ -275,6 +307,9 @@ export default function RiderHubPage() {
               </div>
               <p className="text-xs font-bold text-slate-900 dark:text-slate-100">{activeOrder.customerName}</p>
               <p className="text-xs text-slate-600 dark:text-slate-400">{activeOrder.deliveryAddress}</p>
+              <p className="mt-1 text-xs bg-white dark:bg-slate-900 p-2 rounded-xl font-bold text-emerald-700 dark:text-emerald-300">
+                Hand over, then ask the customer for their 4-digit delivery code.
+              </p>
               {activeOrder.customerPhone && (
                 <a href={`tel:${activeOrder.customerPhone}`} className="mt-2 text-xs font-bold text-emerald-600 flex items-center gap-1 hover:underline">
                   <Phone className="w-3.5 h-3.5" />
@@ -285,7 +320,7 @@ export default function RiderHubPage() {
           </div>
 
           {/* DISPATCH ACTION FOOTER */}
-          <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between pt-2">
             <div>
               <span className="text-[10px] text-slate-400 uppercase font-bold">Delivery Earnings Payout</span>
               <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
@@ -309,7 +344,7 @@ export default function RiderHubPage() {
                 onClick={() => setShowVerifyModal("delivery")}
                 leftIcon={<CheckCircle2 className="w-4 h-4" />}
               >
-                Complete & Handover Package
+                Hand over & enter code
               </Button>
             )}
           </div>
@@ -445,37 +480,76 @@ export default function RiderHubPage() {
         </div>
       </Modal>
 
-      {/* POPUP 3: DELIVERY PIN VERIFICATION MODAL */}
-      <Modal
-        isOpen={showVerifyModal === "delivery"}
-        onClose={() => {
-          setShowVerifyModal(null);
-          setVerificationError("");
-        }}
-        title="Complete Delivery & Handover"
-      >
-        <div className="flex flex-col gap-4 text-center">
-          <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-            <FileCheck className="w-6 h-6" />
+      {/* POPUP 3: DELIVERY CODE (or report a problem) */}
+      <Modal isOpen={showVerifyModal === "delivery"} onClose={closeVerify} title={problemMode ? "Can't complete this delivery" : "Confirm delivery"}>
+        {!problemMode ? (
+          <div className="flex flex-col gap-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+              <FileCheck className="w-6 h-6" />
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Hand the order to {activeOrder?.customerName || "the customer"}, then type the 4-digit code from their order screen, text or email.
+            </p>
+            <input
+              type="text"
+              placeholder="• • • •"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={4}
+              aria-label="Delivery code"
+              value={deliveryCodeInput}
+              onChange={(e) => {
+                setDeliveryCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4));
+                setVerificationError("");
+              }}
+              className="w-full text-center text-2xl font-mono tracking-[0.5em] font-black py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/50"
+            />
+            {verificationError && <p role="alert" className="text-xs font-bold text-rose-500">{verificationError}</p>}
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl text-xs text-emerald-700 dark:text-emerald-300 font-bold">
+              ₦{earningsFor(activeOrder).toLocaleString()} is added to your earnings once the code checks out.
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={closeVerify} className="flex-1">
+                Back
+              </Button>
+              <Button variant="primary" onClick={handleConfirmDelivery} disabled={busy || deliveryCodeInput.length !== 4} className="flex-1">
+                Complete delivery
+              </Button>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setProblemMode(true);
+                setVerificationError("");
+              }}
+              className="text-xs font-semibold text-slate-500 hover:text-rose-600 cursor-pointer"
+            >
+              Customer unreachable or refused the order?
+            </button>
           </div>
-          <p className="text-xs text-slate-600 dark:text-slate-300">
-            Hand over package to {activeOrder?.customerName}. Click below to confirm successful delivery.
-          </p>
-          {verificationError && <p className="text-xs font-bold text-rose-500">{verificationError}</p>}
-
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl text-xs text-emerald-700 dark:text-emerald-300 font-bold">
-            ₦{earningsFor(activeOrder).toLocaleString()} will be added to your earnings once you confirm.
+        ) : (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Only use this if you&apos;ve tried calling and waited. Support is alerted and will contact you about returning the order.
+            </p>
+            <textarea
+              value={problemReason}
+              onChange={(e) => setProblemReason(e.target.value.slice(0, 300))}
+              rows={3}
+              placeholder="e.g. Called 3 times, no answer. Waited 10 minutes at the gate."
+              className="w-full rounded-2xl bg-slate-100 dark:bg-slate-800 p-3 text-sm outline-none focus:ring-2 focus:ring-rose-400/50 text-slate-900 dark:text-white"
+            />
+            {verificationError && <p role="alert" className="text-xs font-bold text-rose-500">{verificationError}</p>}
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setProblemMode(false)} className="flex-1">
+                Back
+              </Button>
+              <Button variant="danger" onClick={handleReportProblem} disabled={busy} className="flex-1">
+                Report problem
+              </Button>
+            </div>
           </div>
-
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setShowVerifyModal(null)} className="flex-1">
-              Back
-            </Button>
-            <Button variant="primary" onClick={handleConfirmDelivery} disabled={busy} className="flex-1">
-              Confirm Delivery Complete
-            </Button>
-          </div>
-        </div>
+        )}
       </Modal>
     </div>
   );

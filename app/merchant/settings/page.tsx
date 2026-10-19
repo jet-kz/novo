@@ -43,7 +43,7 @@ export default function MerchantSettingsPage() {
           />
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4">
+        <div className="flex items-center justify-between border-slate-100 dark:border-slate-800 pt-4">
           <div>
             <span className="text-xs font-black text-slate-900 dark:text-white block">Email Receipts & Summaries</span>
             <span className="text-[11px] text-slate-400">Receive daily order summaries and payout receipts</span>

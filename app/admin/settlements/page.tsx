@@ -166,7 +166,7 @@ export default function AdminSettlementsPage() {
       {data.settlements.length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className="text-sm font-black text-slate-900 dark:text-white">Recent settlements</h2>
-          <ul className="bg-white dark:bg-slate-900 rounded-2xl divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="bg-white dark:bg-slate-900 rounded-2xl ">
             {data.settlements.map((s) => (
               <li key={s.id} className="flex items-center justify-between p-3 text-sm">
                 <div>

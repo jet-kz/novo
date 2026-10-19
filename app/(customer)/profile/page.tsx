@@ -72,7 +72,7 @@ export default function CustomerProfilePage() {
       )}
 
       {/* Profile Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-6 border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-black text-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
             {displayName.charAt(0).toUpperCase()}
@@ -177,7 +177,7 @@ export default function CustomerProfilePage() {
               <span>Verified Account</span>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="pt-3 border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={handleLogout}

@@ -155,7 +155,7 @@ function AdminsCard({ canManage, myId }: { canManage: boolean; myId: string }) {
       {!admins ? (
         <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
       ) : (
-        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+        <ul className="">
           {admins.map((a) => (
             <li key={a.id} className="py-2.5 flex items-center gap-3 text-sm">
               <div className="min-w-0 flex-1">
@@ -181,7 +181,7 @@ function AdminsCard({ canManage, myId }: { canManage: boolean; myId: string }) {
             e.preventDefault();
             run(() => apiService.inviteAdmin(form.email, form.full_name)).then(() => setForm({ email: "", full_name: "" }));
           }}
-          className="flex flex-col gap-3 pt-3 border-t border-slate-100 dark:border-slate-800"
+          className="flex flex-col gap-3 pt-3 border-slate-100 dark:border-slate-800"
         >
           <p className="text-sm text-slate-500">Add an admin by email. If they don&apos;t have a Novo account yet, one is created and they get an email code to set their own password.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -17,12 +17,12 @@ import {
 import { MobileHomeView } from "@/components/mobile/home/MobileHomeView";
 import { CategoryIcon, useCatalog } from "@/components/shared/useCatalog";
 import { HomeCollections } from "@/components/shared/HomeCollections";
+import { PromoCarousel } from "@/components/home/PromoCarousel";
 import { MobileSplashOnboarding } from "@/components/mobile/navigation/MobileSplashOnboarding";
 import { Product, Store } from "@/types";
 import { usePlatform } from "@/store/PlatformContext";
 import { LocationPicker } from "@/components/location/LocationPicker";
 import { ProductCard } from "@/components/cards/ProductCard";
-import { Modal } from "@/components/ui/Modal";
 
 export default function CustomerHomePage() {
   const router = useRouter();
@@ -30,6 +30,7 @@ export default function CustomerHomePage() {
     stores,
     products,
     addToCart,
+    openProduct,
     userLocationAddress,
     userLocationCoords,
     userLocationDetails,
@@ -40,7 +41,6 @@ export default function CustomerHomePage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Synchronized Slide & Text State
   const [activeSlide, setActiveSlide] = useState(0);
@@ -254,7 +254,7 @@ export default function CustomerHomePage() {
                   className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-black transition-all whitespace-nowrap cursor-pointer ${
                     isSelected
                       ? "bg-[#087F5B] text-white shadow-md ring-2 ring-[#087F5B]/50"
-                      : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 shadow-xs hover:bg-slate-100 dark:hover:bg-slate-800"
                   }`}
                 >
                   <CategoryIcon category={cat.category} size={24} />
@@ -263,6 +263,11 @@ export default function CustomerHomePage() {
               );
             })}
           </div>
+        </section>
+
+        {/* PROMO BANNERS (Admin → Ad banners) */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 w-full">
+          <PromoCarousel placement="home" variant="hero" />
         </section>
 
         {/* ADMIN-CURATED COLLECTIONS */}
@@ -376,7 +381,7 @@ export default function CustomerHomePage() {
                     key={prod.id}
                     product={prod}
                     onAddToCart={addToCart}
-                    onSelectProduct={setSelectedProduct}
+                    onSelectProduct={openProduct}
                   />
                 ))}
               </div>
@@ -396,41 +401,6 @@ export default function CustomerHomePage() {
           }}
         />
 
-        {/* PRODUCT DETAILS MODAL */}
-        <Modal
-          isOpen={!!selectedProduct}
-          onClose={() => setSelectedProduct(null)}
-          title={selectedProduct?.name}
-        >
-          {selectedProduct && (
-            <div className="flex flex-col gap-4">
-              <div className="relative w-full h-48 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800">
-                <img
-                  src={selectedProduct.image}
-                  alt={selectedProduct.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                {selectedProduct.description}
-              </p>
-              <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800 mt-2">
-                <span className="text-lg font-black text-slate-900 dark:text-slate-100">
-                  ₦{selectedProduct.price.toLocaleString()}
-                </span>
-                <button
-                  onClick={() => {
-                    addToCart(selectedProduct);
-                    setSelectedProduct(null);
-                  }}
-                  className="px-6 py-2.5 rounded-xl bg-[#087F5B] hover:bg-[#065f44] text-white text-xs font-black transition-colors cursor-pointer"
-                >
-                  Add to Order
-                </button>
-              </div>
-            </div>
-          )}
-        </Modal>
       </div>
     </>
   );

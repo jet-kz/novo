@@ -25,7 +25,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col gap-4"
     >
       {/* Top Header */}
-      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+      <div className="flex items-center justify-between border-slate-100 dark:border-slate-800 pb-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black">
             <ShoppingBag className="w-5 h-5" />

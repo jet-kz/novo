@@ -118,7 +118,7 @@ export default function AdminCategoriesPage() {
             Add category
           </Button>
         </div>
-        <ul className="bg-white dark:bg-slate-900 rounded-2xl divide-y divide-slate-100 dark:divide-slate-800">
+        <ul className="bg-white dark:bg-slate-900 rounded-2xl ">
           {categories.map((cat, i) => (
             <li key={cat.id} className={`flex items-center gap-3 p-3 ${cat.is_active ? "" : "opacity-50"}`}>
               <span className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-[#087F5B] shrink-0">
@@ -167,7 +167,7 @@ export default function AdminCategoriesPage() {
           </Button>
         </div>
         {collections.length === 0 && <p className="text-sm text-slate-500">No collections yet.</p>}
-        <ul className="bg-white dark:bg-slate-900 rounded-2xl divide-y divide-slate-100 dark:divide-slate-800">
+        <ul className="bg-white dark:bg-slate-900 rounded-2xl ">
           {collections.map((col, i) => (
             <li key={col.id} className={`flex items-center gap-3 p-3 ${col.is_active ? "" : "opacity-50"}`}>
               <span className="w-16 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden shrink-0">

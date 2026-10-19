@@ -139,7 +139,7 @@ export function MobileProfileView() {
                         key={item.label}
                         href={item.href}
                         className={`flex items-center justify-between px-5 py-4 hover:bg-[#F7FAF8] dark:hover:bg-slate-800/50 transition-colors ${
-                          !isLast ? "border-b border-[#E3EAE6]/70 dark:border-slate-800/70" : ""
+                          !isLast ? " border-[#E3EAE6]/70 dark:border-slate-800/70" : ""
                         }`}
                       >
                         <div className="flex items-center gap-3.5">

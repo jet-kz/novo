@@ -8,6 +8,7 @@ import {
   BarChart3,
   Bike,
   CreditCard,
+  ImageIcon,
   Layers,
   LogOut,
   Menu,
@@ -48,7 +49,10 @@ const NAV: { group: string; items: NavItem[] }[] = [
   },
   {
     group: "Storefront",
-    items: [{ label: "Homepage categories", href: "/admin/categories", icon: <Layers className="w-4 h-4" /> }],
+    items: [
+      { label: "Ad banners", href: "/admin/banners", icon: <ImageIcon className="w-4 h-4" /> },
+      { label: "Homepage categories", href: "/admin/categories", icon: <Layers className="w-4 h-4" /> },
+    ],
   },
   {
     group: "Admin",
@@ -116,10 +120,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     "Admin";
 
   const nav = (
-    <nav className="flex-1 overflow-y-auto px-3 py-2 flex flex-col gap-5">
+    <nav className="flex-1 overflow-y-auto scrollbar-thin-dark px-3 py-2 flex flex-col gap-6">
       {NAV.map((group) => (
         <div key={group.group} className="flex flex-col gap-0.5">
-          <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{group.group}</p>
+          <p className="px-3 pb-1.5 text-[11px] font-medium text-slate-500">{group.group}</p>
           {group.items.map((item) => {
             const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
             const count = item.badge ? badges[item.badge] : 0;
@@ -127,14 +131,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold ${
-                  active ? "bg-[#087F5B] text-white" : "text-slate-300 hover:text-white hover:bg-slate-900"
+                className={`group relative flex items-center gap-3 px-3 py-2 rounded-xl text-[13.5px] font-medium transition-colors ${
+                  active ? "bg-white/[0.08] text-white" : "text-slate-400 hover:text-white hover:bg-white/[0.04]"
                 }`}
               >
-                {item.icon}
+                {active && <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-emerald-400" />}
+                <span className={active ? "text-emerald-400" : "text-slate-500 group-hover:text-slate-300"}>{item.icon}</span>
                 <span className="flex-1">{item.label}</span>
                 {count > 0 && (
-                  <span className={`min-w-5 h-5 px-1.5 rounded-full text-[11px] font-black flex items-center justify-center ${active ? "bg-white text-[#087F5B]" : "bg-amber-500 text-slate-950"}`}>
+                  <span className="min-w-5 h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center bg-amber-400 text-slate-950">
                     {count}
                   </span>
                 )}
@@ -147,20 +152,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
 
   const footer = (
-    <div className="p-3 border-t border-slate-900 flex flex-col gap-1">
-      <Link href="/admin/account" className="px-3 py-2 rounded-xl hover:bg-slate-900">
-        <p className="text-sm font-semibold text-white truncate">{currentUser.name || "Admin"}</p>
-        <p className="text-xs text-slate-500 truncate">{currentUser.email}</p>
-      </Link>
-      <button onClick={signOut} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-rose-300 hover:bg-rose-950/40 cursor-pointer">
-        <LogOut className="w-4 h-4" /> Sign out
-      </button>
+    <div className="p-3">
+      <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/[0.04]">
+        <Link href="/admin/account" className="flex items-center gap-3 min-w-0 flex-1">
+          <span className="w-9 h-9 rounded-full bg-emerald-500/15 text-emerald-300 flex items-center justify-center text-sm font-semibold shrink-0">
+            {(currentUser.name || currentUser.email || "A").slice(0, 1).toUpperCase()}
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-white truncate">{currentUser.name || "Admin"}</span>
+            <span className="block text-xs text-slate-500 truncate">{currentUser.email}</span>
+          </span>
+        </Link>
+        <button onClick={signOut} aria-label="Sign out" title="Sign out" className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer shrink-0">
+          <LogOut className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen w-full flex bg-[#F4F6F5] dark:bg-slate-950">
-      <aside className="hidden lg:flex flex-col w-64 bg-slate-950 text-white shrink-0 sticky top-0 h-screen">
+    <div className="min-h-screen w-full flex bg-[#F5F7F6] dark:bg-slate-950">
+      <aside className="hidden lg:flex flex-col w-64 bg-[#0B1220] text-white shrink-0 sticky top-0 h-screen">
         <div className="px-6 py-5">
           <NovoLogo variant="white" subtitle="Admin" size="md" href="/admin" />
         </div>
@@ -171,7 +183,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {menuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           <div className="absolute inset-0 bg-black/50" onClick={() => setMenuOpen(false)} />
-          <div className="relative w-72 max-w-[85%] h-full bg-slate-950 text-white flex flex-col">
+          <div className="relative w-72 max-w-[85%] h-full bg-[#0B1220] text-white flex flex-col">
             <div className="px-5 py-4 flex items-center justify-between">
               <NovoLogo variant="white" subtitle="Admin" size="sm" href="/admin" />
               <button onClick={() => setMenuOpen(false)} aria-label="Close menu" className="p-2 text-slate-400 cursor-pointer">
@@ -185,12 +197,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-30 h-16 bg-white dark:bg-slate-900 px-4 sm:px-6 flex items-center justify-between gap-3">
+        <header className="sticky top-0 z-30 h-16 bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl px-4 sm:px-6 flex items-center justify-between gap-3 shadow-[0_8px_24px_-16px_rgba(15,23,42,0.25)]">
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => setMenuOpen(true)} aria-label="Open menu" className="lg:hidden p-2 -ml-2 text-slate-700 dark:text-slate-200 cursor-pointer">
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white truncate">{title}</h1>
+            <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white truncate">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
             <NotificationBell />

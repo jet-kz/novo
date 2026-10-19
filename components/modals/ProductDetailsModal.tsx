@@ -1,339 +1,314 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import {
-  X,
-  Plus,
-  Minus,
-  CheckCircle2,
-  Check,
-  Flame,
-  Star,
-  Clock,
-  UtensilsCrossed,
-  Sparkles,
-  Users,
-} from "lucide-react";
-import { Product } from "@/types";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Check, Clock, Flame, Minus, Plus, Users, UtensilsCrossed, X } from "lucide-react";
+import { OptionGroup, Product, SelectedOption } from "@/types";
+import { groupRule, optionGroupsOf } from "@/utils/options";
 
 interface ProductDetailsModalProps {
   product: Product | null;
   isOpen: boolean;
   onClose: () => void;
-  onAddToCart: (
-    product: Product,
-    quantity: number,
-    selectedOptions: any[],
-    specialInstructions: string
-  ) => void;
+  onAddToCart: (product: Product, quantity: number, selectedOptions: SelectedOption[], specialInstructions: string) => void;
 }
 
-// Sample Protein / Base option cards if none are provided on the product
-const DEFAULT_PROTEIN_OPTIONS = [
-  {
-    id: "prot-1",
-    name: "Grilled Chicken",
-    price: 0,
-    image: "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=200&q=80",
-  },
-  {
-    id: "prot-2",
-    name: "Succulent Beef",
-    price: 800,
-    image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=200&q=80",
-  },
-  {
-    id: "prot-3",
-    name: "Pan Fried Fish",
-    price: 600,
-    image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=200&q=80",
-  },
-];
+const naira = (n: number) => `₦${Math.round(n).toLocaleString()}`;
 
-// Sample Extras / Add-ons if none are provided
-const DEFAULT_EXTRAS = [
-  { id: "ext-1", name: "Fried Plantain (Dodo)", price: 500 },
-  { id: "ext-2", name: "Fresh Side Salad", price: 800 },
-  { id: "ext-3", name: "Extra Pepper Sauce", price: 300 },
-];
+/** "Choose your protein" stays as is; "Size" becomes "Choose size". */
+const choosePrompt = (groupName: string) =>
+  /^(choose|pick|select)\b/i.test(groupName.trim()) ? groupName.trim() : `Choose ${groupName.trim().toLowerCase()}`;
 
-export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
+/** Item sheet: photo, the merchant's option groups, quantity and notes. Bottom sheet on phones. */
+export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ product, isOpen, onClose, onAddToCart }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [isOpen, onClose]);
+
+  return (
+    <AnimatePresence>
+      {isOpen && product && (
+        <motion.div
+          key="product-sheet"
+          className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <div className="absolute inset-0 bg-slate-950/55 backdrop-blur-[2px]" onClick={onClose} />
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label={product.name}
+            className="relative w-full sm:max-w-lg max-h-[94dvh] sm:max-h-[90vh] bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-[28px] shadow-2xl flex flex-col overflow-hidden"
+            initial={{ y: 48, opacity: 0.6 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 48, opacity: 0 }}
+            transition={{ type: "spring", damping: 30, stiffness: 340 }}
+          >
+            <SheetBody key={product.id} product={product} onClose={onClose} onAddToCart={onAddToCart} />
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+function SheetBody({
   product,
-  isOpen,
   onClose,
   onAddToCart,
-}) => {
-  if (!isOpen || !product) return null;
-
-  const proteinList = useMemo(() => {
-    if (product.proteinOptions && product.proteinOptions.length > 0) {
-      return product.proteinOptions;
-    }
-    return DEFAULT_PROTEIN_OPTIONS;
-  }, [product]);
-
-  const extrasList = useMemo(() => {
-    if (product.extrasOptions && product.extrasOptions.length > 0) {
-      return product.extrasOptions;
-    }
-    if (product.options && product.options.length > 0) {
-      return product.options;
-    }
-    return DEFAULT_EXTRAS;
-  }, [product]);
-
-  const specsInfo = useMemo(() => {
-    return {
-      prepTime: product.specs?.prepTime || (product.preparationTimeMinutes ? `${product.preparationTimeMinutes} min` : "15-20 min"),
-      spicyLevel: product.specs?.spicyLevel || "Medium 🌶️",
-      calories: product.specs?.calories || "650 kcal",
-      serves: product.specs?.serves || "1 person",
-    };
-  }, [product]);
-
+}: {
+  product: Product;
+  onClose: () => void;
+  onAddToCart: ProductDetailsModalProps["onAddToCart"];
+}) {
+  const groups = useMemo(() => optionGroupsOf(product), [product]);
+  const [picks, setPicks] = useState<Record<string, number>>({});
   const [quantity, setQuantity] = useState(1);
-  const [selectedProtein, setSelectedProtein] = useState(proteinList[0] || null);
-  const [selectedExtras, setSelectedExtras] = useState<string[]>([extrasList[0]?.id || "ext-1"]);
-  const [specialInstructions, setSpecialInstructions] = useState("");
+  const [note, setNote] = useState("");
+  const [showMissing, setShowMissing] = useState(false);
+  const groupRefs = useRef<Record<string, HTMLElement | null>>({});
 
-  const toggleExtra = (id: string) => {
-    setSelectedExtras((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
+  const countIn = (g: OptionGroup) => g.options.reduce((n, o) => n + (picks[o.id] || 0), 0);
+  const missing = groups.filter((g) => countIn(g) < (g.min || 0));
+
+  const setPick = (g: OptionGroup, optionId: string, qty: number) => {
+    setPicks((prev) => {
+      const next = { ...prev };
+      if (g.max === 1 && qty > 0) {
+        // Single choice: picking one replaces the other.
+        for (const o of g.options) delete next[o.id];
+      }
+      if (qty <= 0) delete next[optionId];
+      else next[optionId] = qty;
+      return next;
+    });
   };
 
-  const extrasTotalPrice = useMemo(() => {
-    let sum = 0;
-    if (selectedProtein && selectedProtein.price) {
-      sum += selectedProtein.price;
+  const selected: SelectedOption[] = groups.flatMap((g) =>
+    g.options
+      .filter((o) => picks[o.id])
+      .map((o) => ({ id: o.id, name: o.name, price: o.price, quantity: picks[o.id], group: g.name }))
+  );
+  const unit = product.price + selected.reduce((s, o) => s + o.price * (o.quantity || 1), 0);
+
+  const add = () => {
+    if (missing.length) {
+      setShowMissing(true);
+      groupRefs.current[missing[0].id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
     }
-    extrasList.forEach((ext: any) => {
-      if (selectedExtras.includes(ext.id)) {
-        sum += ext.price || 0;
-      }
-    });
-    return sum;
-  }, [selectedProtein, selectedExtras, extrasList]);
-
-  const unitTotal = product.price + extrasTotalPrice;
-  const grandTotal = unitTotal * quantity;
-
-  const handleAdd = () => {
-    const formattedOptions = [
-      ...(selectedProtein ? [{ id: selectedProtein.id, name: selectedProtein.name, price: selectedProtein.price }] : []),
-      ...extrasList
-        .filter((ext: any) => selectedExtras.includes(ext.id))
-        .map((ext: any) => ({ id: ext.id, name: ext.name, price: ext.price })),
-    ];
-    onAddToCart(product, quantity, formattedOptions, specialInstructions);
+    onAddToCart(product, quantity, selected, note.trim());
     onClose();
   };
 
+  const specs = [
+    { icon: <Clock className="w-4 h-4" />, label: "Ready in", value: product.specs?.prepTime || (product.preparationTimeMinutes ? `${product.preparationTimeMinutes} min` : "") },
+    { icon: <Flame className="w-4 h-4" />, label: "Spice", value: product.specs?.spicyLevel || "" },
+    { icon: <UtensilsCrossed className="w-4 h-4" />, label: "Energy", value: product.specs?.calories || "" },
+    { icon: <Users className="w-4 h-4" />, label: "Serves", value: product.specs?.serves || "" },
+  ].filter((s) => s.value);
+
   return (
-    <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-xs flex items-stretch sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-      <div className="w-full sm:max-w-lg h-[100dvh] sm:h-auto sm:max-h-[92vh] bg-white dark:bg-slate-900 sm:rounded-3xl p-5 sm:p-6 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))] flex flex-col gap-4 overflow-y-auto shadow-2xl relative scrollbar-none">
-        {/* 1. TOP HEADER WITH TITLE & CLOSE BUTTON */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#E3EAE6] dark:border-slate-800">
-          <h3 className="text-base font-black text-[#101714] dark:text-white">Product Details</h3>
+    <>
+      <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-none">
+        <div className="relative w-full aspect-[16/10] bg-slate-100 dark:bg-slate-800">
+          {product.image && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={product.image} alt="" className="w-full h-full object-cover" />
+          )}
+          <span className="sm:hidden absolute top-2.5 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-white/70" />
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#F7FAF8] dark:bg-slate-800 text-[#66736D] dark:text-slate-300 hover:text-[#101714] dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            aria-label="Close"
+            className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-sm cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4.5 h-4.5" />
           </button>
         </div>
 
-        {/* 2. HERO IMAGE CONTAINER */}
-        <div className="relative w-full h-48 sm:h-56 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
+        <div className="px-5 pt-5 pb-4 flex flex-col gap-1.5">
+          <div className="flex items-start justify-between gap-4">
+            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white leading-snug">{product.name}</h2>
+            <span className="text-lg font-extrabold text-[#087F5B] dark:text-emerald-400 shrink-0">{naira(product.price)}</span>
+          </div>
+          {product.description && <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{product.description}</p>}
+          {specs.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {specs.map((s) => (
+                <span key={s.label} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  <span className="text-[#087F5B] dark:text-emerald-400">{s.icon}</span>
+                  {s.value}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* 3. PRODUCT TITLE, PRICE, RATING & POPULAR BADGE */}
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-start justify-between gap-3">
-            <h2 className="text-lg sm:text-xl font-black text-[#101714] dark:text-white leading-tight">
-              {product.name}
-            </h2>
-            <span className="text-lg sm:text-xl font-black text-[#008A4C] dark:text-emerald-400 shrink-0">
-              ₦{product.price.toLocaleString()}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between mt-0.5">
-            <div className="flex items-center gap-2 text-xs font-bold text-[#66736D] dark:text-slate-400">
-              <span className="flex items-center gap-1 text-amber-500">
-                <Star className="w-3.5 h-3.5 fill-amber-500" />
-                {product.rating || "4.9"}
-              </span>
-              <span>•</span>
-              <span>320 reviews</span>
-            </div>
-
-            <div className="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#008A4C] dark:text-emerald-300 font-extrabold text-[10px] flex items-center gap-1">
-              <Flame className="w-3 h-3 text-emerald-600 fill-emerald-600" />
-              <span>Popular</span>
-            </div>
-          </div>
-
-          <p className="text-xs text-[#66736D] dark:text-slate-400 leading-relaxed font-medium mt-1">
-            {product.description || "Delicious party-style meal prepared with fresh local ingredients and aromatic spices."}
-          </p>
-        </div>
-
-        {/* 4. CHOOSE PROTEIN (HORIZONTAL CARDS WITH IMAGE & CHECKMARK) */}
-        {proteinList.length > 0 && (
-          <div className="flex flex-col gap-2.5 pt-3 border-t border-[#E3EAE6] dark:border-slate-800">
-            <span className="text-xs font-black text-[#101714] dark:text-white uppercase tracking-wider">
-              Choose Protein
-            </span>
-
-            <div className="grid grid-cols-3 gap-2.5">
-              {proteinList.map((prot: any) => {
-                const isSelected = selectedProtein?.id === prot.id;
-                return (
-                  <button
-                    key={prot.id}
-                    onClick={() => setSelectedProtein(prot)}
-                    className={`relative flex flex-col items-center p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
-                      isSelected
-                        ? "border-[#008A4C] bg-[#E8F7EF] dark:bg-slate-800 text-[#008A4C] dark:text-emerald-300 ring-2 ring-[#008A4C]/20"
-                        : "border-[#E3EAE6] dark:border-slate-800 bg-white dark:bg-slate-800/40 text-[#101714] dark:text-slate-300 hover:bg-slate-50"
-                    }`}
-                  >
-                    {isSelected && (
-                      <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#008A4C] text-white flex items-center justify-center shadow-xs">
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                      </div>
-                    )}
-
-                    <div className="w-10 h-10 rounded-full overflow-hidden mb-1.5 bg-slate-200 shrink-0">
-                      <img
-                        src={prot.image || "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=200&q=80"}
-                        alt={prot.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-
-                    <span className="text-[11px] font-bold leading-tight">{prot.name}</span>
-                    <span className="text-[10px] font-extrabold text-[#66736D] dark:text-slate-400 mt-0.5">
-                      {prot.price === 0 ? "NO" : `+ ₦${prot.price}`}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* 5. ADD EXTRAS LIST */}
-        {extrasList.length > 0 && (
-          <div className="flex flex-col gap-2 pt-3 border-t border-[#E3EAE6] dark:border-slate-800">
-            <span className="text-xs font-black text-[#101714] dark:text-white uppercase tracking-wider">
-              Add Extras
-            </span>
-
-            <div className="flex flex-col gap-2">
-              {extrasList.map((ext: any) => {
-                const isChecked = selectedExtras.includes(ext.id);
-                return (
-                  <div
-                    key={ext.id}
-                    onClick={() => toggleExtra(ext.id)}
-                    className="flex items-center justify-between p-3 rounded-xl bg-[#F7FAF8] dark:bg-slate-800/50 border border-[#E3EAE6] dark:border-slate-800 cursor-pointer hover:border-[#008A4C] transition-all"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-[#008A4C] flex items-center justify-center font-bold text-xs shrink-0">
-                        <Sparkles className="w-3.5 h-3.5" />
-                      </div>
-                      <span className="text-xs font-bold text-[#101714] dark:text-white">
-                        {ext.name}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-[#66736D] dark:text-slate-400">
-                        + ₦{ext.price}
-                      </span>
-                      <div
-                        className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
-                          isChecked
-                            ? "bg-[#008A4C] border-[#008A4C] text-white"
-                            : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700"
-                        }`}
-                      >
-                        {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
+        <div className="flex flex-col gap-3 px-3 pb-3">
+          {groups.map((g) => {
+            const count = countIn(g);
+            const full = count >= g.max;
+            const isMissing = showMissing && count < (g.min || 0);
+            const single = g.max === 1;
+            return (
+              <section
+                key={g.id}
+                ref={(el) => {
+                  groupRefs.current[g.id] = el;
+                }}
+                className={`rounded-3xl p-4 transition-colors ${isMissing ? "bg-rose-50 dark:bg-rose-950/30" : "bg-slate-50/80 dark:bg-slate-800/40"}`}
+              >
+                <div className="flex items-center justify-between gap-3 mb-2.5">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">{g.name}</h3>
+                    <p className={`text-xs mt-0.5 ${isMissing ? "text-rose-600 font-semibold" : "text-slate-500"}`}>
+                      {isMissing ? "Please choose to continue" : groupRule(g)}
+                    </p>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                  {(g.min || 0) > 0 && count >= g.min ? (
+                    <span className="w-6 h-6 rounded-full bg-[#087F5B] text-white flex items-center justify-center shrink-0">
+                      <Check className="w-3.5 h-3.5" />
+                    </span>
+                  ) : !single && count > 0 ? (
+                    <span className="text-xs font-bold text-slate-500 shrink-0">{count}/{g.max}</span>
+                  ) : null}
+                </div>
 
-        {/* 6. QUANTITY STEPPER & ADD TO CART CTA BAR */}
-        <div className="flex items-center gap-3 pt-3 border-t border-[#E3EAE6] dark:border-slate-800 mt-1">
-          <div className="flex items-center gap-3 bg-[#F7FAF8] dark:bg-slate-800 px-3 py-2 rounded-2xl shrink-0">
-            <button
-              type="button"
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-[#101714] dark:text-white flex items-center justify-center font-black shadow-xs hover:bg-slate-100 cursor-pointer transition-colors"
-            >
-              <Minus className="w-3.5 h-3.5" />
-            </button>
-            <span className="text-xs font-black w-4 text-center text-[#101714] dark:text-white">
-              {quantity}
-            </span>
-            <button
-              type="button"
-              onClick={() => setQuantity((q) => q + 1)}
-              className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-[#101714] dark:text-white flex items-center justify-center font-black shadow-xs hover:bg-slate-100 cursor-pointer transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          </div>
+                <ul className="flex flex-col gap-1.5">
+                  {g.options.map((o) => {
+                    const qty = picks[o.id] || 0;
+                    const soldOut = o.available === false;
+                    const maxQty = Math.max(1, o.max_qty || 1);
+                    const blocked = soldOut || (!qty && full && !single);
+                    return (
+                      <li key={o.id}>
+                        <div
+                          role={single ? "radio" : "checkbox"}
+                          aria-checked={qty > 0}
+                          aria-disabled={blocked}
+                          tabIndex={blocked ? -1 : 0}
+                          onClick={() => !blocked && setPick(g, o.id, qty ? (single && (g.min || 0) > 0 ? qty : 0) : 1)}
+                          onKeyDown={(e) => {
+                            if ((e.key === " " || e.key === "Enter") && !blocked) {
+                              e.preventDefault();
+                              setPick(g, o.id, qty ? (single && (g.min || 0) > 0 ? qty : 0) : 1);
+                            }
+                          }}
+                          className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all select-none ${
+                            qty
+                              ? "bg-white dark:bg-slate-900 shadow-sm ring-2 ring-[#087F5B]"
+                              : "bg-white dark:bg-slate-900"
+                          } ${blocked ? "opacity-45 cursor-not-allowed" : "cursor-pointer active:scale-[0.99]"}`}
+                        >
+                          <span
+                            className={`w-5 h-5 shrink-0 flex items-center justify-center transition-colors ${single ? "rounded-full" : "rounded-md"} ${
+                              qty ? "bg-[#087F5B] text-white" : "bg-slate-100 dark:bg-slate-800"
+                            }`}
+                          >
+                            {qty > 0 && (single ? <span className="w-2 h-2 rounded-full bg-white" /> : <Check className="w-3.5 h-3.5" />)}
+                          </span>
+                          {o.image && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={o.image} alt="" className="w-9 h-9 rounded-xl object-cover shrink-0" />
+                          )}
+                          <span className="flex-1 min-w-0 text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{o.name}</span>
+                          {soldOut ? (
+                            <span className="text-xs font-bold text-rose-500">Sold out</span>
+                          ) : qty > 0 && maxQty > 1 && !single ? (
+                            <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              <StepButton label={`One less ${o.name}`} onClick={() => setPick(g, o.id, qty - 1)}>
+                                <Minus className="w-3.5 h-3.5" />
+                              </StepButton>
+                              <span className="w-5 text-center text-sm font-bold">{qty}</span>
+                              <StepButton label={`One more ${o.name}`} disabled={qty >= maxQty || full} onClick={() => setPick(g, o.id, qty + 1)}>
+                                <Plus className="w-3.5 h-3.5" />
+                              </StepButton>
+                            </span>
+                          ) : (
+                            <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 shrink-0">
+                              {o.price > 0 ? `+${naira(o.price)}` : "Free"}
+                            </span>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            );
+          })}
 
-          <button
-            type="button"
-            onClick={handleAdd}
-            className="flex-1 py-3.5 px-5 rounded-2xl bg-[#008A4C] hover:bg-[#006B3C] text-white font-black text-xs flex items-center justify-between shadow-lg shadow-emerald-600/20 cursor-pointer transition-all active:scale-[0.98]"
-          >
-            <span>Add to Cart</span>
-            <span>₦{grandTotal.toLocaleString()}</span>
-          </button>
-        </div>
-
-        {/* 7. NUTRITIONAL & PREP INFO SPECS GRID */}
-        <div className="grid grid-cols-4 gap-2 pt-3 border-t border-[#E3EAE6] dark:border-slate-800 text-center">
-          <div className="flex flex-col items-center p-2 rounded-xl bg-[#F7FAF8] dark:bg-slate-800/50">
-            <Clock className="w-4 h-4 text-[#008A4C] mb-1" />
-            <span className="text-[9px] text-[#66736D] dark:text-slate-400 font-semibold">Prep Time</span>
-            <span className="text-[10px] font-black text-[#101714] dark:text-white mt-0.5">{specsInfo.prepTime}</span>
-          </div>
-
-          <div className="flex flex-col items-center p-2 rounded-xl bg-[#F7FAF8] dark:bg-slate-800/50">
-            <Flame className="w-4 h-4 text-amber-500 mb-1" />
-            <span className="text-[9px] text-[#66736D] dark:text-slate-400 font-semibold">Spicy Level</span>
-            <span className="text-[10px] font-black text-[#101714] dark:text-white mt-0.5">{specsInfo.spicyLevel}</span>
-          </div>
-
-          <div className="flex flex-col items-center p-2 rounded-xl bg-[#F7FAF8] dark:bg-slate-800/50">
-            <UtensilsCrossed className="w-4 h-4 text-[#008A4C] mb-1" />
-            <span className="text-[9px] text-[#66736D] dark:text-slate-400 font-semibold">Calories</span>
-            <span className="text-[10px] font-black text-[#101714] dark:text-white mt-0.5">{specsInfo.calories}</span>
-          </div>
-
-          <div className="flex flex-col items-center p-2 rounded-xl bg-[#F7FAF8] dark:bg-slate-800/50">
-            <Users className="w-4 h-4 text-[#008A4C] mb-1" />
-            <span className="text-[9px] text-[#66736D] dark:text-slate-400 font-semibold">Serves</span>
-            <span className="text-[10px] font-black text-[#101714] dark:text-white mt-0.5">{specsInfo.serves}</span>
-          </div>
+          <label className="rounded-3xl p-4 bg-slate-50/80 dark:bg-slate-800/40 flex flex-col gap-2">
+            <span className="text-sm font-bold text-slate-900 dark:text-white">Note for the store <span className="font-normal text-slate-400">(optional)</span></span>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value.slice(0, 200))}
+              rows={2}
+              placeholder="e.g. No onions, extra pepper"
+              className="w-full resize-none rounded-2xl bg-white dark:bg-slate-900 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#087F5B]/40 text-slate-900 dark:text-white placeholder:text-slate-400"
+            />
+          </label>
         </div>
       </div>
-    </div>
+
+      <div className="px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white dark:bg-slate-900 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.15)] flex items-center gap-3">
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-2xl p-1">
+          <StepButton label="Fewer" disabled={quantity <= 1} onClick={() => setQuantity((q) => Math.max(1, q - 1))} large>
+            <Minus className="w-4 h-4" />
+          </StepButton>
+          <span className="w-7 text-center text-sm font-bold text-slate-900 dark:text-white">{quantity}</span>
+          <StepButton label="More" disabled={quantity >= 50} onClick={() => setQuantity((q) => Math.min(50, q + 1))} large>
+            <Plus className="w-4 h-4" />
+          </StepButton>
+        </div>
+        <button
+          type="button"
+          onClick={add}
+          disabled={!product.inStock}
+          className={`flex-1 min-w-0 h-12 px-5 rounded-2xl text-white text-sm font-bold flex items-center justify-between transition-all active:scale-[0.98] cursor-pointer disabled:cursor-not-allowed ${
+            !product.inStock ? "bg-slate-300 dark:bg-slate-700" : missing.length ? "bg-[#087F5B]/70" : "bg-[#087F5B] hover:bg-[#066A4C]"
+          }`}
+        >
+          <span className="truncate text-left">{!product.inStock ? "Sold out" : missing.length ? choosePrompt(missing[0].name) : "Add to cart"}</span>
+          {product.inStock && <span className="shrink-0 pl-3">{naira(unit * quantity)}</span>}
+        </button>
+      </div>
+    </>
   );
-};
+}
+
+function StepButton({
+  children,
+  onClick,
+  disabled,
+  label,
+  large,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  label: string;
+  large?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className={`${large ? "w-10 h-10" : "w-7 h-7"} rounded-xl bg-white dark:bg-slate-700 text-slate-800 dark:text-white flex items-center justify-center shadow-xs disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed`}
+    >
+      {children}
+    </button>
+  );
+}

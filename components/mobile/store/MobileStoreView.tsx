@@ -21,23 +21,16 @@ import {
 } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
 import { Product, Store } from "@/types";
-import { ProductDetailsModal } from "@/components/modals/ProductDetailsModal";
 
 export function MobileStoreView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const storeIdParam = searchParams.get("store") || "";
-  const { stores, products, addToCart, favorites, toggleFavorite } = usePlatform();
+  const { stores, products, addToCart, openProduct, favorites, toggleFavorite } = usePlatform();
 
   const [activeTab, setActiveTab] = useState<"menu" | "info" | "reviews">("menu");
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-
-  // Selected Options & Add-ons state for Product Sheet
-  const [selectedOptions, setSelectedOptions] = useState<{ id: string; name: string; price: number }[]>([]);
-  const [quantity, setQuantity] = useState(1);
-  const [specialInstructions, setSpecialInstructions] = useState("");
 
   const store: Store =
     stores.find(
@@ -76,30 +69,7 @@ export function MobileStoreView() {
     return matchesCat && matchesSearch;
   });
 
-  const handleOpenProductSheet = (prod: Product) => {
-    setSelectedProduct(prod);
-    setQuantity(1);
-    setSelectedOptions([]);
-    setSpecialInstructions("");
-  };
-
-  const handleAddToCartFromSheet = () => {
-    if (selectedProduct) {
-      addToCart(selectedProduct, quantity, selectedOptions, specialInstructions);
-      setSelectedProduct(null);
-    }
-  };
-
-  const toggleOption = (opt: { id: string; name: string; price: number }) => {
-    setSelectedOptions((prev) =>
-      prev.some((o) => o.id === opt.id)
-        ? prev.filter((o) => o.id !== opt.id)
-        : [...prev, opt]
-    );
-  };
-
-  const addOnsTotal = selectedOptions.reduce((sum, o) => sum + o.price, 0);
-  const itemTotal = selectedProduct ? (selectedProduct.price + addOnsTotal) * quantity : 0;
+  const handleOpenProductSheet = (prod: Product) => openProduct(prod);
 
   return (
     <div className="md:hidden flex flex-col w-full min-h-screen bg-[#F7FAF8] dark:bg-slate-950 text-[#101714] dark:text-slate-100 pb-24">
@@ -169,9 +139,9 @@ export function MobileStoreView() {
       </div>
 
       {/* 2. TABS & CATEGORIES */}
-      <div className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-[#E3EAE6] dark:border-slate-800 shadow-xs">
+      <div className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-[0_8px_24px_-16px_rgba(15,23,42,0.25)]">
         {/* Main Tabs (Menu, Info, Reviews) */}
-        <div className="flex items-center border-b border-[#E3EAE6] dark:border-slate-800 px-4">
+        <div className="flex items-center border-[#E3EAE6] dark:border-slate-800 px-4">
           {(["menu", "info", "reviews"] as const).map((tab) => (
             <button
               key={tab}
@@ -197,7 +167,7 @@ export function MobileStoreView() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search in store menu..."
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#F7FAF8] dark:bg-slate-800 text-xs font-semibold text-[#101714] dark:text-white outline-none border border-[#E3EAE6] dark:border-slate-700"
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#F7FAF8] dark:bg-slate-800 text-xs font-semibold text-[#101714] dark:text-white outline-none focus:ring-2 focus:ring-[#087F5B]/30"
               />
             </div>
 
@@ -233,7 +203,7 @@ export function MobileStoreView() {
                 <div
                   key={prod.id}
                   onClick={() => handleOpenProductSheet(prod)}
-                  className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-[#E3EAE6] dark:border-slate-800 shadow-xs cursor-pointer hover:border-[#008A4C] transition-all"
+                  className="flex items-center justify-between gap-3 p-3 rounded-[22px] bg-white dark:bg-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.12)] cursor-pointer active:scale-[0.99] transition-transform"
                 >
                   <div className="flex flex-col gap-1 flex-1 min-w-0">
                     <h4 className="text-xs font-black text-[#101714] dark:text-white truncate">
@@ -296,17 +266,6 @@ export function MobileStoreView() {
           </div>
         </div>
       )}
-
-      {/* 6. PRODUCT DETAILS MODAL / BOTTOM SHEET */}
-      <ProductDetailsModal
-        product={selectedProduct}
-        isOpen={Boolean(selectedProduct)}
-        onClose={() => setSelectedProduct(null)}
-        onAddToCart={(prod: Product, qty: number, opts: any[], inst: string) => {
-          addToCart(prod, qty, opts, inst);
-          setSelectedProduct(null);
-        }}
-      />
     </div>
   );
 }

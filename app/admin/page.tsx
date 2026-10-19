@@ -99,7 +99,7 @@ export default function AdminOverviewPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <section className="xl:col-span-2 bg-white dark:bg-slate-900 rounded-2xl p-5">
           <DailyOrdersChart days={data.daily} />
-          <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 text-sm">
+          <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-slate-100 dark:border-slate-800 text-sm">
             <Mini label="Delivered (30 days)" value={String(data.last_30_days.delivered)} />
             <Mini label="Cancelled (30 days)" value={String(data.last_30_days.cancelled)} />
             <Mini label="Average order" value={naira(data.last_30_days.average_order)} />
@@ -117,7 +117,7 @@ export default function AdminOverviewPage() {
             ))}
           </ul>
           <Link href="/admin/orders?view=active" className="text-xs font-bold text-[#087F5B] dark:text-emerald-400 mt-1">Open live orders →</Link>
-          <div className="mt-2 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-3 text-sm">
+          <div className="mt-2 pt-3 border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-3 text-sm">
             <Mini label="Customers" value={String(data.counts.customers)} />
             <Mini label="Merchants" value={String(data.counts.merchants)} />
             <Mini label="Stores" value={String(data.counts.stores)} />
@@ -134,7 +134,7 @@ export default function AdminOverviewPage() {
         {data.recent_orders.length === 0 ? (
           <p className="text-sm text-slate-500">No orders yet.</p>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="">
             {data.recent_orders.map((o: any) => (
               <li key={o.id}>
                 <Link href={`/admin/orders?order=${o.id}`} className="flex items-center gap-3 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50 -mx-2 px-2 rounded-lg">
@@ -190,7 +190,7 @@ function DailyOrdersChart({ days }: { days: { date: string; orders: number; gmv:
         </div>
         <div className="relative flex-1">
           <div className="absolute inset-x-0 top-0 bottom-5 flex flex-col justify-between pointer-events-none">
-            {ticks.map((t) => <div key={t} className="border-t border-slate-100 dark:border-slate-800" />)}
+            {ticks.map((t) => <div key={t} className="border-slate-100 dark:border-slate-800" />)}
           </div>
           <div className="absolute inset-x-0 top-0 bottom-5 flex items-end gap-[2px]" onMouseLeave={() => setHover(null)}>
             {days.map((d, i) => (
