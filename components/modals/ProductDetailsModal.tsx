@@ -134,7 +134,7 @@ function SheetBody({
           <button
             onClick={onClose}
             aria-label="Close"
-            className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-sm cursor-pointer"
+            className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 dark:bg-black/85 backdrop-blur text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-sm cursor-pointer"
           >
             <X className="w-4.5 h-4.5" />
           </button>

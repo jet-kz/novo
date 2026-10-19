@@ -88,14 +88,14 @@ export function MobileCartView() {
               <div className="flex items-center gap-2 bg-[#F7FAF8] dark:bg-slate-800 p-1 rounded-xl">
                 <button
                   onClick={() => updateCartQuantity(cartLineKey(item), item.quantity - 1)}
-                  className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-[#101714] font-bold shadow-xs cursor-pointer"
+                  className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-[#101714] dark:text-white font-bold shadow-xs cursor-pointer"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
                 <span className="text-xs font-black w-4 text-center">{item.quantity}</span>
                 <button
                   onClick={() => updateCartQuantity(cartLineKey(item), item.quantity + 1)}
-                  className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-[#101714] font-bold shadow-xs cursor-pointer"
+                  className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-[#101714] dark:text-white font-bold shadow-xs cursor-pointer"
                 >
                   <Plus className="w-3 h-3" />
                 </button>

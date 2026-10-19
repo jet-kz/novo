@@ -110,7 +110,7 @@ export function RiderNavbar() {
       </header>
 
       {/* Phone: bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-[0_-8px_24px_-16px_rgba(15,23,42,0.3)] pb-[env(safe-area-inset-bottom)]">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/90 dark:bg-black/85 backdrop-blur-xl shadow-[0_-8px_24px_-16px_rgba(15,23,42,0.3)] pb-[env(safe-area-inset-bottom)]">
         <div className="grid grid-cols-4 h-16">
           {tabs.map((t) => {
             const Icon = t.icon;

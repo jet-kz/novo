@@ -47,7 +47,7 @@ export function MobileStoreView() {
   if (!store) {
     return (
       <div className="md:hidden flex flex-col items-center justify-center min-h-[60vh] gap-3 p-6 text-center">
-        <h2 className="text-lg font-black text-[#101714]">Store Not Found</h2>
+        <h2 className="text-lg font-black text-[#101714] dark:text-white">Store Not Found</h2>
         <p className="text-xs text-[#66736D]">The merchant you requested could not be loaded.</p>
         <button
           onClick={() => router.push("/shop")}
@@ -143,7 +143,7 @@ export function MobileStoreView() {
       </div>
 
       {/* 2. TABS & CATEGORIES */}
-      <div className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-[0_8px_24px_-16px_rgba(15,23,42,0.25)]">
+      <div className="sticky top-0 z-30 bg-white/90 dark:bg-black/85 backdrop-blur-xl shadow-[0_8px_24px_-16px_rgba(15,23,42,0.25)]">
         {/* Main Tabs (Menu, Info, Reviews) */}
         <div className="flex items-center border-[#E3EAE6] dark:border-slate-800 px-4">
           {(["menu", "info", "reviews"] as const).map((tab) => (

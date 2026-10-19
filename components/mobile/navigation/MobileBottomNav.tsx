@@ -21,7 +21,7 @@ export function MobileBottomNav() {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl px-3 py-2 flex items-center justify-around shadow-[0_-8px_24px_-16px_rgba(15,23,42,0.3)] pb-[env(safe-area-inset-bottom,12px)]">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-black/85 backdrop-blur-xl px-3 py-2 flex items-center justify-around shadow-[0_-8px_24px_-16px_rgba(15,23,42,0.3)] pb-[env(safe-area-inset-bottom,12px)]">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive =

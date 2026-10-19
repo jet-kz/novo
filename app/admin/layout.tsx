@@ -172,7 +172,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen w-full flex bg-[#F5F7F6] dark:bg-slate-950">
-      <aside className="hidden lg:flex flex-col w-64 bg-[#0B1220] text-white shrink-0 sticky top-0 h-screen">
+      <aside className="hidden lg:flex flex-col w-64 bg-[#0B1220] dark:bg-black text-white shrink-0 sticky top-0 h-screen">
         <div className="px-6 py-5">
           <NovoLogo variant="white" subtitle="Admin" size="md" href="/admin" />
         </div>
@@ -183,7 +183,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {menuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           <div className="absolute inset-0 bg-black/50" onClick={() => setMenuOpen(false)} />
-          <div className="relative w-72 max-w-[85%] h-full bg-[#0B1220] text-white flex flex-col">
+          <div className="relative w-72 max-w-[85%] h-full bg-[#0B1220] dark:bg-black text-white flex flex-col">
             <div className="px-5 py-4 flex items-center justify-between">
               <NovoLogo variant="white" subtitle="Admin" size="sm" href="/admin" />
               <button onClick={() => setMenuOpen(false)} aria-label="Close menu" className="p-2 text-slate-400 cursor-pointer">
@@ -197,7 +197,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-30 h-16 bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl px-4 sm:px-6 flex items-center justify-between gap-3 shadow-[0_8px_24px_-16px_rgba(15,23,42,0.25)]">
+        <header className="sticky top-0 z-30 h-16 bg-white/85 dark:bg-black/80 backdrop-blur-xl px-4 sm:px-6 flex items-center justify-between gap-3 shadow-[0_8px_24px_-16px_rgba(15,23,42,0.25)]">
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => setMenuOpen(true)} aria-label="Open menu" className="lg:hidden p-2 -ml-2 text-slate-700 dark:text-slate-200 cursor-pointer">
               <Menu className="w-5 h-5" />

@@ -63,11 +63,15 @@ export const NovoLogo: React.FC<NovoLogoProps> = ({
       {/* Wordmark (if not icon only) */}
       {!isIconOnly && (
         <div className="flex flex-col justify-center min-w-0">
-          <img
-            src={variant === "white" ? "/novo-logo/04_Wordmark/04-wordmark_white-on-transparent.svg" : "/novo-logo/04_Wordmark/04-wordmark_black-on-transparent.svg"}
-            alt="Novo"
-            className={`${heightMap[size]} w-auto object-contain`}
-          />
+          {variant === "white" ? (
+            <img src="/novo-logo/04_Wordmark/04-wordmark_white-on-transparent.svg" alt="Novo" className={`${heightMap[size]} w-auto object-contain`} />
+          ) : (
+            <>
+              {/* Black wordmark on light backgrounds, white one in dark mode. */}
+              <img src="/novo-logo/04_Wordmark/04-wordmark_black-on-transparent.svg" alt="Novo" className={`${heightMap[size]} w-auto object-contain dark:hidden`} />
+              <img src="/novo-logo/04_Wordmark/04-wordmark_white-on-transparent.svg" alt="Novo" className={`${heightMap[size]} w-auto object-contain hidden dark:block`} />
+            </>
+          )}
           {subtitle && (
             <span
               className={`text-[9px] font-black uppercase tracking-widest leading-none mt-1 ${

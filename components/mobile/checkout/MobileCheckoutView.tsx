@@ -67,7 +67,7 @@ export function MobileCheckoutView({ checkout }: { checkout: ReturnType<typeof u
                   className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
                     isSelected
                       ? "bg-[#E8F7EF] border-[#008A4C] text-[#008A4C] dark:bg-slate-800"
-                      : "bg-[#F7FAF8] dark:bg-slate-800/40 border-[#E3EAE6] text-[#101714]"
+                      : "bg-[#F7FAF8] dark:bg-slate-800/40 border-[#E3EAE6] text-[#101714] dark:text-white"
                   }`}
                 >
                   <div className="flex items-center gap-3">

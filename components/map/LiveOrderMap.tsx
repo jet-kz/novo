@@ -54,7 +54,7 @@ export function LiveOrderMap({ order, riderPosition, forRider = false, className
         </a>
       )}
       {!forRider && !rider && (order.status === "rider_assigned" || order.status === "picked_up") && (
-        <span className="absolute z-[500] left-3 bottom-3 px-3 py-1.5 rounded-full bg-white/90 dark:bg-slate-900/90 text-xs font-semibold text-slate-600 dark:text-slate-300">
+        <span className="absolute z-[500] left-3 bottom-3 px-3 py-1.5 rounded-full bg-white/90 dark:bg-black/85 text-xs font-semibold text-slate-600 dark:text-slate-300">
           Waiting for the rider&apos;s location…
         </span>
       )}

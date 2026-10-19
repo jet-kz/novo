@@ -267,19 +267,39 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  const toggleTheme = () => setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  const toggleTheme = () =>
+    setTheme((prev) => {
+      const next = prev === "light" ? "dark" : "light";
+      try {
+        localStorage.setItem("novo_theme", next);
+      } catch {}
+      return next;
+    });
 
+  // The inline script in app/layout.tsx already set the class before paint; mirror it here and
+  // keep following the system setting until the user picks a theme themselves.
   useEffect(() => {
-    try {
-      setTheme((localStorage.getItem("novo_theme") as "light" | "dark") || "light");
-    } catch {}
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const saved = (() => {
+      try {
+        return localStorage.getItem("novo_theme") as "light" | "dark" | null;
+      } catch {
+        return null;
+      }
+    })();
+    setTheme(saved || (media.matches ? "dark" : "light"));
+    const follow = (e: MediaQueryListEvent) => {
+      try {
+        if (localStorage.getItem("novo_theme")) return;
+      } catch {}
+      setTheme(e.matches ? "dark" : "light");
+    };
+    media.addEventListener("change", follow);
+    return () => media.removeEventListener("change", follow);
   }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
-    try {
-      localStorage.setItem("novo_theme", theme);
-    } catch {}
   }, [theme]);
 
   // ── Auth ────────────────────────────────────────────────────────────────

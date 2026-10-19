@@ -1,5 +1,47 @@
 @import "tailwindcss";
 
+/* Dark theme = the .dark class on <html> (set from the user's choice, else the system setting). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Dark palette: pure black like X. Every slate/gray shade the app uses is remapped to a
+ * neutral grey, so "dark:bg-slate-900" etc. become X's surfaces without touching components.
+ *   page #000 · card #16181C · raised #202327 · line #2F3336 · muted text #71767B · text #E7E9EA
+ */
+.dark {
+  color-scheme: dark;
+  --background: #000000;
+  --foreground: #e7e9ea;
+  --card-bg: #16181c;
+  --border: #2f3336;
+  --primary: #e7e9ea;
+  --primary-hover: #d6d9db;
+
+  --color-slate-950: #000000;
+  --color-slate-900: #16181c;
+  --color-slate-800: #202327;
+  --color-slate-700: #2f3336;
+  --color-slate-600: #3e4144;
+  --color-slate-500: #71767b;
+  --color-slate-400: #8b9095;
+  --color-slate-300: #b4b8bc;
+  --color-slate-200: #cfd3d6;
+  --color-slate-100: #e7e9ea;
+  --color-slate-50: #f7f9f9;
+
+  --color-gray-950: #000000;
+  --color-gray-900: #16181c;
+  --color-gray-800: #202327;
+  --color-gray-700: #2f3336;
+  --color-gray-600: #3e4144;
+  --color-gray-500: #71767b;
+  --color-gray-400: #8b9095;
+  --color-gray-300: #b4b8bc;
+  --color-gray-200: #cfd3d6;
+  --color-gray-100: #e7e9ea;
+  --color-gray-50: #f7f9f9;
+}
+
 :root {
   --background: #f8fafc; /* slate-50 */
   --foreground: #0f172a; /* slate-900 */
@@ -25,16 +67,6 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #090d16; /* very dark slate */
-    --foreground: #f1f5f9;
-    --card-bg: #111827; /* gray-900 */
-    --border: #1f2937; /* gray-800 */
-    --primary: #f1f5f9;
-    --primary-hover: #e2e8f0;
-  }
-}
 
 body {
   background-color: var(--background);

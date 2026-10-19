@@ -156,12 +156,12 @@ export default function CustomerHomePage() {
               </div>
 
               {/* CHOWDECK LOCATION & SEARCH WIDGET */}
-              <div className="w-full max-w-lg bg-white text-slate-900 rounded-3xl p-3 sm:p-4 shadow-2xl flex flex-col gap-3">
+              <div className="w-full max-w-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-3xl p-3 sm:p-4 shadow-2xl flex flex-col gap-3">
                 {/* Delivery Location Bar */}
                 <button
                   type="button"
                   onClick={() => setIsLocationModalOpen(true)}
-                  className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-emerald-50/80 hover:bg-emerald-100/80 border border-emerald-200/80 text-left transition-all cursor-pointer group"
+                  className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 hover:bg-emerald-100/80 text-left transition-all cursor-pointer group"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-[#087F5B] text-white flex items-center justify-center shrink-0">
@@ -171,7 +171,7 @@ export default function CustomerHomePage() {
                       <span className="text-[10px] font-extrabold text-[#087F5B] uppercase tracking-wider">
                         DELIVERING TO
                       </span>
-                      <span className="text-xs font-black text-slate-800 truncate">
+                      <span className="text-xs font-black text-slate-800 dark:text-slate-100 truncate">
                         {userLocationAddress}
                       </span>
                     </div>
@@ -190,7 +190,7 @@ export default function CustomerHomePage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search restaurants, dishes, groceries..."
-                    className="w-full pl-10 pr-24 py-3 rounded-2xl bg-slate-50 text-xs font-bold text-slate-900 placeholder-slate-400 border border-slate-200 outline-none focus:ring-2 focus:ring-[#087F5B]"
+                    className="w-full pl-10 pr-24 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-[#087F5B]"
                   />
                   <button
                     type="submit"

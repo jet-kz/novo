@@ -31,11 +31,13 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#020617" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
 };
 
 import { HeroUIProviderWrapper } from "@/components/providers/HeroUIProviderWrapper";
+
+const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("novo_theme");if(t!=="light"&&t!=="dark"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}if(t==="dark")document.documentElement.classList.add("dark")}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -43,8 +45,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={jakarta.variable}>
-      <body className={`${jakarta.className} antialiased bg-slate-50 dark:bg-slate-950`}>
+    <html lang="en" className={jakarta.variable} suppressHydrationWarning>
+      <head>
+        {/* Apply the theme before first paint so dark mode never flashes white. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
+      <body className={`${jakarta.className} antialiased bg-slate-50 dark:bg-black`}>
         <HeroUIProviderWrapper>
           <PlatformProvider>
             <ResponsiveLayout>{children}</ResponsiveLayout>
