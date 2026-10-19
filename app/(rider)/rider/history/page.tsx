@@ -10,11 +10,14 @@ export default function RiderHistoryPage() {
   const completedDeliveries = orders.filter((o) => o.status === "delivered" && o.riderId === me);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full min-h-screen flex flex-col gap-6">
-      <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100">Delivery Job History</h1>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 w-full flex flex-col gap-8">
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">History</h1>
+        <p className="text-sm text-slate-500 mt-1">{completedDeliveries.length} completed deliver{completedDeliveries.length === 1 ? "y" : "ies"}</p>
+      </div>
 
       {completedDeliveries.length === 0 && (
-        <p className="p-10 text-center text-xs font-medium text-slate-400 bg-white dark:bg-slate-900 rounded-3xl">
+        <p className="py-12 text-center text-sm text-slate-500">
           Completed deliveries will appear here.
         </p>
       )}

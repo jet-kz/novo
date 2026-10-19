@@ -8,10 +8,10 @@ export default function RiderLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-[100dvh] bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <RiderAuthGate>
         <RiderNavbar />
-        <main className="flex-1 w-full pb-20">{children}</main>
+        <main className="flex-1 w-full pb-24 md:pb-10">{children}</main>
       </RiderAuthGate>
     </div>
   );

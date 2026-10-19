@@ -55,50 +55,52 @@ export function RiderOnboardingStatus() {
   };
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-8 w-full flex flex-col gap-5">
-      <div className={`rounded-3xl p-6 ${rejected ? "bg-rose-950/40" : "bg-slate-900"}`}>
+    <div className="max-w-xl mx-auto px-4 pt-6 sm:pt-10 w-full flex flex-col gap-6">
+      <div>
         <div className="flex items-center gap-3">
-          {rejected ? <AlertCircle className="w-7 h-7 text-rose-400 shrink-0" /> : <Clock className="w-7 h-7 text-amber-300 shrink-0" />}
-          <h1 className="text-xl font-black text-white">
+          <span className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${rejected ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-600"}`}>
+            {rejected ? <AlertCircle className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+          </span>
+          <h1 className="text-2xl font-bold tracking-tight">
             {rejected ? "Your application needs a fix" : "We're reviewing your application"}
           </h1>
         </div>
-        <p className="text-sm text-slate-300 mt-3 leading-relaxed">
+        <p className="text-sm text-slate-500 mt-3 leading-relaxed">
           {rejected
             ? "Update the details below and we'll take another look."
             : "Our team checks every rider before their first delivery. Upload a clear photo of your ID to speed things up. We'll email you as soon as you're approved."}
         </p>
         {rejected && riderProfile.approvalNote && (
-          <p className="text-sm text-rose-200 mt-3 rounded-xl bg-rose-950/60 p-3">
+          <p className="text-sm text-rose-800 mt-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 px-4 py-3">
             <span className="font-bold">Note from our team: </span>
             {riderProfile.approvalNote}
           </p>
         )}
       </div>
 
-      {error && <p role="alert" className="text-sm font-semibold text-rose-300 bg-rose-950/60 rounded-xl p-3">{error}</p>}
+      {error && <p role="alert" className="text-sm text-rose-700 bg-rose-50 rounded-2xl px-4 py-3">{error}</p>}
 
-      <div className="rounded-3xl bg-slate-900 p-5 flex flex-col gap-3">
-        <h2 className="text-sm font-black text-white">ID document</h2>
-        <p className="text-xs text-slate-400">Driver&apos;s licence, NIN slip, voter&apos;s card or international passport. Make sure your name and photo are readable.</p>
+      <div className="rounded-3xl bg-slate-50 dark:bg-slate-900/60 p-5 flex flex-col gap-3">
+        <h2 className="text-[15px] font-semibold">ID document</h2>
+        <p className="text-sm text-slate-500">Driver&apos;s licence, NIN slip, voter&apos;s card or international passport. Make sure your name and photo are readable.</p>
         <div className="flex items-center gap-3">
           {riderProfile.idDocumentUrl ? (
             <a
               href={riderProfile.idDocumentUrl}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-2 text-sm font-semibold text-emerald-400"
+              className="flex items-center gap-2 text-sm font-semibold text-[#087F5B]"
             >
               <CheckCircle2 className="w-4 h-4" /> ID uploaded <FileText className="w-4 h-4" />
             </a>
           ) : (
-            <span className="text-sm text-slate-400">Not uploaded yet</span>
+            <span className="text-sm text-slate-500">Not uploaded yet</span>
           )}
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
-            className="ml-auto px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
+            className="ml-auto h-10 px-4 rounded-full bg-[#087F5B] text-white text-[13px] font-semibold flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
           >
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             {riderProfile.idDocumentUrl ? "Replace" : "Upload photo"}
@@ -107,13 +109,13 @@ export function RiderOnboardingStatus() {
         </div>
       </div>
 
-      <form onSubmit={saveDetails} className="rounded-3xl bg-slate-900 p-5 flex flex-col gap-3">
-        <h2 className="text-sm font-black text-white">Vehicle</h2>
+      <form onSubmit={saveDetails} className="rounded-3xl bg-slate-50 dark:bg-slate-900/60 p-5 flex flex-col gap-3">
+        <h2 className="text-[15px] font-semibold">Vehicle</h2>
         <div className="grid grid-cols-2 gap-3">
           <select
             value={vehicle}
             onChange={(e) => setVehicle(e.target.value as typeof vehicle)}
-            className="px-3 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm outline-none"
+            className="h-12 px-3 rounded-2xl bg-white dark:bg-slate-800 text-sm outline-none cursor-pointer"
             aria-label="Vehicle type"
           >
             <option value="motorcycle">Motorcycle</option>
@@ -125,15 +127,15 @@ export function RiderOnboardingStatus() {
             onChange={(e) => setPlate(e.target.value)}
             placeholder="Plate number"
             aria-label="Plate number"
-            className="px-3 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm outline-none"
+            className="h-12 px-3.5 rounded-2xl bg-white dark:bg-slate-800 text-sm outline-none"
           />
         </div>
-        <button type="submit" disabled={saving} className="py-3 rounded-xl bg-slate-800 text-white text-sm font-bold disabled:opacity-60 cursor-pointer">
+        <button type="submit" disabled={saving} className="h-12 rounded-2xl bg-[#087F5B] text-white text-sm font-semibold disabled:opacity-60 cursor-pointer">
           {saving ? "Saving..." : saved ? "Saved" : rejected ? "Save and ask for review" : "Save"}
         </button>
       </form>
 
-      <Link href="/rider/messages" className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-400 hover:text-white">
+      <Link href="/rider/messages" className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900">
         <MessageSquare className="w-4 h-4" /> Messages from Novo
       </Link>
     </div>

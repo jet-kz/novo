@@ -3,11 +3,10 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Building2, Store, MapPin, Check, ArrowRight } from "lucide-react";
 import { apiService } from "@/services/api";
 import { usePlatform } from "@/store/PlatformContext";
 import { getUniqueStoreBanner, getUniqueStoreLogo } from "@/utils/storeImageUtils";
-import { NovoLogo } from "@/components/shared/NovoLogo";
+import { AuthButton, AuthField, AuthNotice, AuthShell, PARTNER_PHOTOS } from "@/components/auth/AuthShell";
 import { useCatalog } from "@/components/shared/useCatalog";
 import { StoreLocationField } from "@/components/location/StoreLocationField";
 import { OtpCodeStep } from "@/components/auth/OtpCodeStep";
@@ -140,144 +139,68 @@ export default function MerchantRegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] dark:bg-slate-950 flex flex-col justify-center items-center p-4 sm:p-6 font-sans text-[#17201D] dark:text-slate-100">
-      <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-none p-6 sm:p-8 flex flex-col gap-6">
-        <div className="flex flex-col items-center text-center gap-3">
-          <NovoLogo subtitle="Merchant Registration" size="lg" href="/merchant" />
-          <h2 className="text-xl font-black text-slate-900 dark:text-white">Partner with Novo</h2>
-          <p className="text-xs text-[#66736E] dark:text-slate-400">Register your business & start receiving customer orders</p>
+    <AuthShell
+      title={otpNotice ? "Check your email" : step === 1 ? "List your store on Novo" : "About your store"}
+      subtitle={otpNotice ? "We'll set up your store as soon as you verify." : step === 1 ? "Step 1 of 2 · Your account" : "Step 2 of 2 · Where customers and riders find you"}
+      badge="For stores"
+      home="/merchant"
+      photo={PARTNER_PHOTOS.merchant}
+      tagline="Reach more customers. We handle the delivery."
+    >
+      {error && <AuthNotice tone="error">{error}</AuthNotice>}
+
+      {!otpNotice && (
+        <div className="grid grid-cols-2 gap-2" aria-hidden="true">
+          <span className="h-1.5 rounded-full bg-[#087F5B]" />
+          <span className={`h-1.5 rounded-full ${step >= 2 ? "bg-[#087F5B]" : "bg-slate-200 dark:bg-slate-800"}`} />
         </div>
+      )}
 
-        {error && (
-          <div className="p-4 rounded-2xl bg-rose-50 text-rose-700 text-xs font-bold text-center leading-relaxed">
-            {error}
-          </div>
-        )}
-
-        {/* STEP PROGRESS */}
-        <div className={`flex items-center justify-center gap-3 ${otpNotice ? "hidden" : ""}`}>
-          <div className={`w-8 h-8 rounded-none flex items-center justify-center text-xs font-black ${step >= 1 ? "bg-[#087F5B] text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>
-            1
-          </div>
-          <div className={`w-12 h-0.5 ${step >= 2 ? "bg-[#087F5B]" : "bg-slate-200 dark:bg-slate-800"}`} />
-          <div className={`w-8 h-8 rounded-none flex items-center justify-center text-xs font-black ${step >= 2 ? "bg-[#087F5B] text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>
-            2
-          </div>
-        </div>
-
-        {otpNotice ? (
-          <OtpCodeStep
-            email={email}
-            password={password}
-            initialNotice={otpNotice}
-            onVerified={handleVerified}
-            onBack={() => setOtpNotice(null)}
-            submitLabel={loading ? "Setting up your store..." : "Verify & Create Store"}
-          />
-        ) : (
+      {otpNotice ? (
+        <OtpCodeStep
+          email={email}
+          password={password}
+          initialNotice={otpNotice}
+          onVerified={handleVerified}
+          onBack={() => setOtpNotice(null)}
+          submitLabel={loading ? "Setting up your store…" : "Verify & create store"}
+        />
+      ) : (
         <form onSubmit={handleRegister} className="flex flex-col gap-4">
           {step === 1 && (
             <>
-              <div>
-                <label className="text-xs font-black text-slate-700 dark:text-slate-300">Owner Full Name</label>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Godswill Okenrenkporo"
-                  required
-                  className="w-full mt-1 p-3 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none rounded-none"
-                />
+              <AuthField label="Your full name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your name" autoComplete="name" required />
+              <AuthField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@yourstore.com" autoComplete="email" required />
+              <AuthField label="Phone number" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="080 1234 5678" autoComplete="tel" required />
+              <AuthField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="new-password" minLength={6} required />
+              <div className="pt-1">
+                <AuthButton
+                  type="button"
+                  onClick={() => {
+                    if (fullName && email && phone && password.length >= 6) {
+                      setError(null);
+                      setStep(2);
+                    } else setError("Fill in all the fields to continue (password at least 6 characters).");
+                  }}
+                >
+                  Continue
+                </AuthButton>
               </div>
-
-              <div>
-                <label className="text-xs font-black text-slate-700 dark:text-slate-300">Business Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="owner@restaurant.com"
-                  required
-                  className="w-full mt-1 p-3 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none rounded-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-black text-slate-700 dark:text-slate-300">Phone Number</label>
-                <input
-                  type="text"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+234 803 123 4567"
-                  required
-                  className="w-full mt-1 p-3 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none rounded-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-black text-slate-700 dark:text-slate-300">Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  className="w-full mt-1 p-3 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none rounded-none"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (fullName && email && phone && password) setStep(2);
-                }}
-                className="w-full mt-2 py-3 bg-[#087F5B] text-white text-xs font-black flex items-center justify-center gap-2 cursor-pointer rounded-none"
-              >
-                <span>Continue to Business Details</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
             </>
           )}
 
           {step === 2 && (
             <>
-              <div>
-                <label className="text-xs font-black text-slate-700 dark:text-slate-300">Restaurant / Business Name</label>
-                <input
-                  type="text"
-                  value={businessName}
-                  onChange={(e) => setBusinessName(e.target.value)}
-                  placeholder="e.g. Suya Kingdom & Fast Food"
-                  required
-                  className="w-full mt-1 p-3 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none rounded-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-black text-slate-700 dark:text-slate-300">Business Category</label>
-                <select
-                  value={businessType}
-                  onChange={(e) => setBusinessType(e.target.value)}
-                  className="w-full mt-1 p-3 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none rounded-none"
-                >
+              <AuthField label="Store name" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="e.g. Mama Put Kitchen" required />
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">What do you sell?</span>
+                <select value={businessType} onChange={(e) => setBusinessType(e.target.value)} className="w-full h-12 px-4 rounded-2xl bg-slate-100 dark:bg-slate-900 text-[15px] text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#087F5B]/35 cursor-pointer">
                   {platformCategories.map((c) => (
                     <option key={c.slug} value={c.slug}>{c.name}</option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-black text-slate-700 dark:text-slate-300">Store Address</label>
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="e.g. 14 Commercial Avenue, Central District, Sapele"
-                  required
-                  className="w-full mt-1 p-3 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none rounded-none"
-                />
-              </div>
-
+              </label>
+              <AuthField label="Store address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, area, city" autoComplete="street-address" required />
               <StoreLocationField
                 coords={storeCoords}
                 onChange={({ address: picked, coords }) => {
@@ -285,33 +208,31 @@ export default function MerchantRegisterPage() {
                   if (!address.trim()) setAddress(picked);
                 }}
               />
-
-              <div className="flex gap-3 mt-2">
+              <div className="flex gap-3 pt-1">
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="py-3 px-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold cursor-pointer rounded-none"
+                  className="h-12 px-5 rounded-2xl bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-[15px] font-semibold cursor-pointer"
                 >
                   Back
                 </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 py-3 bg-[#087F5B] text-white text-xs font-black cursor-pointer rounded-none"
-                >
-                  {loading ? "Creating Business Profile..." : "Complete Registration"}
-                </button>
+                <div className="flex-1">
+                  <AuthButton type="submit" busy={loading}>{loading ? "Creating your store…" : "Create my store"}</AuthButton>
+                </div>
               </div>
             </>
           )}
         </form>
-        )}
+      )}
 
-        <div className="text-center pt-2 text-xs">
-          <span className="text-[#66736E] dark:text-slate-400">Already registered? </span>
-          <Link href="/merchant/login" className="font-black text-[#087F5B] hover:underline">Sign In</Link>
-        </div>
-      </div>
-    </div>
+      {!otpNotice && (
+        <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+          Already on Novo?{" "}
+          <Link href="/merchant/login" className="font-semibold text-[#087F5B] dark:text-emerald-400 hover:underline">
+            Sign in
+          </Link>
+        </p>
+      )}
+    </AuthShell>
   );
 }

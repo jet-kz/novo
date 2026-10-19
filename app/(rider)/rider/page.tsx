@@ -171,244 +171,168 @@ export default function RiderHubPage() {
     return <RiderOnboardingStatus />;
   }
 
+  const firstName = (riderProfile.name || "").split(" ")[0];
+  const headline = activeOrder
+    ? activeOrder.status === "picked_up"
+      ? `Deliver to ${activeOrder.customerName || "the customer"}`
+      : `Pick up from ${activeOrder.storeName || "the store"}`
+    : !riderProfile.isOnline
+      ? "You're offline"
+      : availableJobs.length
+        ? `${availableJobs.length} job${availableJobs.length === 1 ? "" : "s"} near you`
+        : "Waiting for jobs";
+
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex flex-col gap-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 w-full flex flex-col gap-10">
       <EnableAlertsCard
         storageKey="rider"
-        tone="dark"
         title="Get job alerts"
         body="We'll ping you when a new delivery is ready near you, even with the app closed. First to accept gets it."
       />
-      {riderProfile.isOnline && gps.problem && (
-        <p role="status" className="rounded-2xl bg-amber-500/15 text-amber-200 text-sm font-semibold p-3">{gps.problem}</p>
-      )}
 
-      {/* RIDER PROFILE HEADER */}
-      <div className="bg-slate-950 text-white rounded-3xl p-6 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <img
-              src={riderProfile.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
-              alt={riderProfile.name}
-              className="w-16 h-16 rounded-full object-cover border-2 border-emerald-500"
-            />
-            {riderProfile.isVerified && (
-              <ShieldCheck className="w-5 h-5 text-emerald-400 absolute -bottom-1 -right-1 bg-slate-900 rounded-full" />
-            )}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-black">{riderProfile.name || "Rider"}</h2>
-              <span className="text-xs font-bold bg-slate-800 text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
-                {riderProfile.vehiclePlate || riderProfile.vehicleType}
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {riderProfile.totalDeliveries} Deliveries Completed • {riderProfile.rating || 5.0} ★ Rating
-            </p>
-          </div>
-        </div>
-
-        {/* ONLINE TOGGLE SWITCH */}
-        <button
-          onClick={handleToggleOnline}
-          disabled={busy}
-          className={`flex items-center gap-3 px-6 py-3.5 rounded-2xl text-xs font-black transition-all cursor-pointer shadow-lg active:scale-95 ${
-            riderProfile.isOnline
-              ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20"
-              : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
-          }`}
-        >
-          <Power className="w-4 h-4" />
-          <span>{riderProfile.isOnline ? "ONLINE - Ready for Jobs" : "OFFLINE - Go Online"}</span>
-        </button>
+      {/* Greeting */}
+      <div>
+        <p className="text-sm text-slate-500">{firstName ? `Hi ${firstName}` : "Hi"} · {riderProfile.totalDeliveries || 0} deliveries done</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mt-0.5">{headline}</h1>
+        {riderProfile.isOnline && gps.problem && (
+          <p role="status" className="mt-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 text-sm px-4 py-3">{gps.problem}</p>
+        )}
       </div>
 
       {(actionError || ordersError) && (
-        <p role="alert" className="text-xs font-semibold text-rose-700 bg-rose-50 dark:bg-rose-950/40 rounded-2xl p-3">
+        <p role="alert" className="text-sm text-rose-700 bg-rose-50 dark:bg-rose-950/40 rounded-2xl px-4 py-3">
           {actionError || ordersError}
         </p>
       )}
 
-      {/* QUICK RIDER STATS */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-xs flex flex-col">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Today&apos;s Earnings</span>
-          <span className="text-xl font-black text-slate-900 dark:text-slate-100">
-            ₦{(riderProfile.earningsToday ?? 0).toLocaleString()}
-          </span>
-        </div>
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-xs flex flex-col">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tips Collected</span>
-          <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-            ₦{(riderProfile.tipsToday ?? 0).toLocaleString()}
-          </span>
-        </div>
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-xs flex flex-col">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Job</span>
-          <span className="text-xl font-black text-slate-900 dark:text-slate-100">
-            {activeOrder ? "1 In Progress" : "None"}
-          </span>
-        </div>
-      </div>
+      {/* Today: plain numbers, no boxes */}
+      <section className="grid grid-cols-3 gap-6">
+        <Stat label="Earned today" value={`₦${(riderProfile.earningsToday ?? 0).toLocaleString()}`} />
+        <Stat label="Tips today" value={`₦${(riderProfile.tipsToday ?? 0).toLocaleString()}`} />
+        <Stat label="This week" value={`₦${(riderProfile.earningsThisWeek ?? 0).toLocaleString()}`} />
+      </section>
 
-      {/* ACTIVE DELIVERY TASK & INTERACTIVE MAP */}
+      {/* Current job */}
       {activeOrder && (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl flex flex-col gap-6">
-          <div className="flex items-center justify-between">
+        <section className="flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">
-                Dispatch Task #{activeOrder.id}
-              </span>
-              <h3 className="text-xl font-black text-slate-900 dark:text-slate-100">
-                Deliver to {activeOrder.customerName}
-              </h3>
+              <h2 className="text-lg font-bold tracking-tight">Current job</h2>
+              <p className="text-sm text-slate-500">
+                #{activeOrder.id.slice(-6).toUpperCase()} · you earn ₦{earningsFor(activeOrder).toLocaleString()}
+              </p>
             </div>
             <StatusBadge status={activeOrder.status} />
           </div>
 
-          {/* EMBEDDED INTERACTIVE ROUTE MAP */}
-          <div className="flex flex-col gap-2">
-            {route.minutes != null && (
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                ~{route.minutes} min{route.km != null ? ` · ${route.km} km` : ""} to the {route.heading === "customer" ? "customer" : "store"}
-              </p>
-            )}
-            <LiveOrderMap order={activeOrder} riderPosition={gps.position} route={route.path} forRider className="h-72" />
-          </div>
+          {route.minutes != null && (
+            <p className="text-sm font-semibold">
+              ~{route.minutes} min{route.km != null ? ` · ${route.km} km` : ""} to the {route.heading === "customer" ? "customer" : "store"}
+            </p>
+          )}
+          <LiveOrderMap order={activeOrder} riderPosition={gps.position} route={route.path} forRider className="h-72 rounded-[28px]" />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* STEP 1: PICKUP MERCHANT */}
-            <div className={`p-4 rounded-2xl flex flex-col gap-2 transition-all ${
-              activeOrder.status === "rider_assigned"
-                ? "bg-amber-50 dark:bg-amber-950/40 ring-2 ring-amber-300/70 dark:ring-amber-700/70"
-                : "bg-slate-50 dark:bg-slate-800/50 opacity-80"
-            }`}>
-              <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300 font-black text-sm">
-                <Store className="w-4 h-4 text-amber-500" />
-                <span>1. Pickup Store Location</span>
-              </div>
-              <p className="text-xs font-bold text-slate-900 dark:text-slate-100">{activeOrder.storeName}</p>
-              <p className="text-xs text-slate-600 dark:text-slate-400">{activeOrder.storeAddress || "Merchant Store"}</p>
-              <p className="mt-2 text-xs bg-white dark:bg-slate-900 p-2 rounded-xl font-bold text-amber-600">
-                Ask the store for the 4-digit pickup code.
-              </p>
-            </div>
+          <ol className="flex flex-col gap-2">
+            <Stop
+              n={1}
+              active={activeOrder.status === "rider_assigned"}
+              done={activeOrder.status === "picked_up"}
+              icon={<Store className="w-4 h-4" />}
+              title={activeOrder.storeName || "Store"}
+              detail={activeOrder.storeAddress || ""}
+              hint="Ask the store for the 4-digit pickup code."
+            />
+            <Stop
+              n={2}
+              active={activeOrder.status === "picked_up"}
+              icon={<MapPin className="w-4 h-4" />}
+              title={activeOrder.customerName || "Customer"}
+              detail={activeOrder.deliveryAddress}
+              hint="Hand over, then ask for their 4-digit delivery code."
+              action={
+                activeOrder.customerPhone ? (
+                  <a href={`tel:${activeOrder.customerPhone}`} className="h-9 px-4 rounded-full bg-white dark:bg-slate-800 text-[#087F5B] text-[13px] font-semibold flex items-center gap-1.5 shrink-0">
+                    <Phone className="w-4 h-4" /> Call
+                  </a>
+                ) : null
+              }
+            />
+          </ol>
 
-            {/* STEP 2: DROP OFF CUSTOMER */}
-            <div className={`p-4 rounded-2xl flex flex-col gap-2 transition-all ${
-              activeOrder.status === "picked_up"
-                ? "bg-emerald-50 dark:bg-emerald-950/40 ring-2 ring-emerald-300/70 dark:ring-emerald-700/70"
-                : "bg-slate-50 dark:bg-slate-800/50 opacity-80"
-            }`}>
-              <div className="flex items-center gap-2 text-emerald-900 dark:text-emerald-300 font-black text-sm">
-                <MapPin className="w-4 h-4 text-emerald-500" />
-                <span>2. Customer Dropoff Location</span>
-              </div>
-              <p className="text-xs font-bold text-slate-900 dark:text-slate-100">{activeOrder.customerName}</p>
-              <p className="text-xs text-slate-600 dark:text-slate-400">{activeOrder.deliveryAddress}</p>
-              <p className="mt-1 text-xs bg-white dark:bg-slate-900 p-2 rounded-xl font-bold text-emerald-700 dark:text-emerald-300">
-                Hand over, then ask the customer for their 4-digit delivery code.
-              </p>
-              {activeOrder.customerPhone && (
-                <a href={`tel:${activeOrder.customerPhone}`} className="mt-2 text-xs font-bold text-emerald-600 flex items-center gap-1 hover:underline">
-                  <Phone className="w-3.5 h-3.5" />
-                  <span>Call Customer ({activeOrder.customerPhone})</span>
-                </a>
-              )}
-            </div>
-          </div>
-
-          {/* DISPATCH ACTION FOOTER */}
-          <div className="flex items-center justify-between pt-2">
-            <div>
-              <span className="text-[10px] text-slate-400 uppercase font-bold">Delivery Earnings Payout</span>
-              <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-                ₦{earningsFor(activeOrder).toLocaleString()}
-              </p>
-            </div>
-
-            {activeOrder.status === "rider_assigned" && (
-              <Button
-                variant="primary"
-                onClick={() => setShowVerifyModal("pickup")}
-                leftIcon={<Navigation className="w-4 h-4" />}
-              >
-                Arrived at Store & Pickup
-              </Button>
-            )}
-
-            {activeOrder.status === "picked_up" && (
-              <Button
-                variant="primary"
-                onClick={() => setShowVerifyModal("delivery")}
-                leftIcon={<CheckCircle2 className="w-4 h-4" />}
-              >
-                Hand over & enter code
-              </Button>
-            )}
-          </div>
-        </div>
+          {activeOrder.status === "rider_assigned" && (
+            <button onClick={() => setShowVerifyModal("pickup")} className="h-12 rounded-2xl bg-[#087F5B] text-white text-[15px] font-semibold flex items-center justify-center gap-2 cursor-pointer">
+              <Navigation className="w-4 h-4" /> I&apos;m at the store · enter pickup code
+            </button>
+          )}
+          {activeOrder.status === "picked_up" && (
+            <button onClick={() => setShowVerifyModal("delivery")} className="h-12 rounded-2xl bg-[#087F5B] text-white text-[15px] font-semibold flex items-center justify-center gap-2 cursor-pointer">
+              <CheckCircle2 className="w-4 h-4" /> Hand over · enter delivery code
+            </button>
+          )}
+        </section>
       )}
 
-      {/* AVAILABLE JOBS DISPATCH FEED */}
+      {/* Jobs feed */}
       {!activeOrder && (
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
-              Available Delivery Offers ({availableJobs.length})
-            </h3>
-            <span className="text-xs text-slate-400">Auto-refreshing dispatch queue</span>
+        <section className="flex flex-col gap-4">
+          <div>
+            <h2 className="text-lg font-bold tracking-tight">Available jobs</h2>
+            <p className="text-sm text-slate-500">Updates on its own. First to accept gets the job.</p>
           </div>
 
-          {availableJobs.length === 0 ? (
-            <div className="p-10 text-center bg-white dark:bg-slate-900 rounded-3xl text-slate-400 text-xs font-medium flex flex-col items-center gap-2">
-              <Bike className="w-10 h-10 text-slate-300 dark:text-slate-700 animate-pulse" />
-              <span>
-                {riderProfile.isOnline
-                  ? "Waiting for new merchant dispatch orders in your zone..."
-                  : "You are offline. Click 'ONLINE' button above to receive job offers."}
+          {!riderProfile.isOnline ? (
+            <div className="py-12 text-center flex flex-col items-center gap-3">
+              <span className="w-14 h-14 rounded-[20px] bg-slate-100 dark:bg-slate-900 flex items-center justify-center">
+                <Power className="w-6 h-6 text-slate-400" />
               </span>
+              <p className="text-sm text-slate-500 max-w-xs">Go online to start getting delivery offers near you.</p>
+              <button onClick={handleToggleOnline} disabled={busy} className="h-11 px-6 rounded-2xl bg-[#087F5B] text-white text-sm font-semibold cursor-pointer disabled:opacity-60">
+                Go online
+              </button>
+            </div>
+          ) : availableJobs.length === 0 ? (
+            <div className="py-12 text-center flex flex-col items-center gap-3">
+              <span className="w-14 h-14 rounded-[20px] bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
+                <Bike className="w-6 h-6 text-[#087F5B] animate-pulse" />
+              </span>
+              <p className="text-sm text-slate-500 max-w-xs">No jobs right now. We&apos;ll alert you the moment one is ready.</p>
             </div>
           ) : (
-            availableJobs.map((job) => (
-              <div
-                key={job.id}
-                className="p-5 bg-white dark:bg-slate-900 rounded-3xl shadow-sm flex items-center justify-between gap-4 transition-all"
-              >
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-slate-900 dark:text-slate-100">
-                      Pickup: {job.storeName}
-                    </span>
-                    <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full">
-                      Ready for Pickup
-                    </span>
-                  </div>
-                  <span className="text-xs text-slate-500">Deliver to: {job.deliveryAddress}</span>
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                    Earnings: ₦{earningsFor(job).toLocaleString()}
+            <ul className="flex flex-col -mx-3">
+              {availableJobs.map((job) => (
+                <li key={job.id} className="flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                  <span className="w-11 h-11 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-[#087F5B] flex items-center justify-center shrink-0">
+                    <Store className="w-5 h-5" />
                   </span>
-                </div>
-                <Button variant="primary" size="sm" disabled={busy} onClick={() => handleAccept(job.id)}>
-                  Accept Delivery
-                </Button>
-              </div>
-            ))
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[15px] font-semibold truncate">{job.storeName}</p>
+                    <p className="text-xs text-slate-500 truncate">To {job.deliveryAddress}</p>
+                  </div>
+                  <span className="text-[15px] font-bold text-[#087F5B] shrink-0">₦{earningsFor(job).toLocaleString()}</span>
+                  <button
+                    disabled={busy}
+                    onClick={() => handleAccept(job.id)}
+                    className="h-9 px-4 rounded-full bg-[#087F5B] text-white text-[13px] font-semibold shrink-0 cursor-pointer disabled:opacity-60"
+                  >
+                    Accept
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
-        </div>
+        </section>
       )}
 
       {/* POPUP 1: BROADCAST JOB OFFER MODAL */}
-      <Modal isOpen={jobOfferModal && !!offeredJob} onClose={dismissOffer} title="New Delivery Offer!">
+      <Modal isOpen={jobOfferModal && !!offeredJob} onClose={dismissOffer} title="New delivery">
         <div className="flex flex-col gap-4 text-center">
           <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center mx-auto text-2xl animate-bounce">
             🛵
           </div>
 
           <div className="flex flex-col">
-            <span className="text-xs text-slate-400 font-bold uppercase">Estimated Earnings</span>
-            <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
+            <span className="text-sm text-slate-500">You earn</span>
+            <span className="text-3xl font-bold text-[#087F5B] dark:text-emerald-400">
               ₦{earningsFor(offeredJob).toLocaleString()}
             </span>
           </div>
@@ -431,7 +355,7 @@ export default function RiderHubPage() {
               Decline
             </Button>
             <Button variant="primary" onClick={handleAcceptJob} disabled={busy} className="flex-1">
-              Accept Job
+              Accept
             </Button>
           </div>
         </div>
@@ -444,14 +368,14 @@ export default function RiderHubPage() {
           setShowVerifyModal(null);
           setVerificationError("");
         }}
-        title="Confirm Store Pickup"
+        title="Confirm pickup"
       >
         <div className="flex flex-col gap-4 text-center">
           <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
             <KeyRound className="w-6 h-6" />
           </div>
           <p className="text-xs text-slate-600 dark:text-slate-300">
-            Enter the 4-digit pickup code shown on the store receipt or merchant screen to confirm package receipt.
+            Type the 4-digit code the store gives you.
           </p>
 
           <input
@@ -462,7 +386,7 @@ export default function RiderHubPage() {
             aria-label="Pickup code"
             value={pickupCodeInput}
             onChange={(e) => setPickupCodeInput(e.target.value)}
-            className="w-full text-center text-xl font-mono tracking-widest font-black py-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white"
+            className="w-full text-center text-xl font-mono tracking-widest font-black py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/50"
           />
 
           {verificationError && (
@@ -552,5 +476,49 @@ export default function RiderHubPage() {
         )}
       </Modal>
     </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-sm text-slate-500 truncate">{label}</p>
+      <p className="mt-1 text-xl sm:text-3xl font-bold tracking-tight truncate">{value}</p>
+    </div>
+  );
+}
+
+function Stop({
+  n,
+  active,
+  done,
+  icon,
+  title,
+  detail,
+  hint,
+  action,
+}: {
+  n: number;
+  active: boolean;
+  done?: boolean;
+  icon: React.ReactNode;
+  title: string;
+  detail: string;
+  hint: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <li className={`flex items-start gap-3 p-4 rounded-3xl transition-colors ${active ? "bg-emerald-50 dark:bg-emerald-950/30" : "bg-slate-50 dark:bg-slate-900/60"} ${done ? "opacity-60" : ""}`}>
+      <span className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${active ? "bg-[#087F5B] text-white" : "bg-white dark:bg-slate-800 text-slate-500"}`}>
+        {done ? <CheckCircle2 className="w-4 h-4" /> : icon}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-slate-500">Stop {n}</p>
+        <p className="text-[15px] font-semibold truncate">{title}</p>
+        {detail && <p className="text-sm text-slate-500">{detail}</p>}
+        {active && <p className="text-sm font-medium text-[#087F5B] dark:text-emerald-300 mt-1">{hint}</p>}
+      </div>
+      {action}
+    </li>
   );
 }

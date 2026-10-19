@@ -3,10 +3,9 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Lock, Mail, ArrowRight, ShieldCheck } from "lucide-react";
 import { apiService } from "@/services/api";
 import { usePlatform } from "@/store/PlatformContext";
-import { NovoLogo } from "@/components/shared/NovoLogo";
+import { AuthButton, AuthField, AuthNotice, AuthShell, PARTNER_PHOTOS } from "@/components/auth/AuthShell";
 import { OtpCodeStep, isUnverifiedEmailError } from "@/components/auth/OtpCodeStep";
 
 export default function MerchantLoginPage() {
@@ -63,7 +62,7 @@ export default function MerchantLoginPage() {
       } else {
         setError(
           err?.message ||
-            "Invalid email or password. If you don't have an account yet, please register your store below!"
+            "Wrong email or password."
         );
       }
       setLoading(false);
@@ -71,100 +70,62 @@ export default function MerchantLoginPage() {
   };
 
   return (
-    <div className="h-screen w-full bg-slate-50 dark:bg-slate-950 flex flex-col justify-center items-center px-4 overflow-hidden select-none font-sans text-slate-900 dark:text-slate-100">
-      <div className="w-full max-w-sm sm:max-w-md flex flex-col gap-4 py-2">
-        {/* LOGO */}
-        <div className="flex flex-col items-center text-center gap-2">
-          <NovoLogo subtitle="Merchant Portal" size="md" href="/merchant" />
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">Merchant Portal Sign In</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Sign in to manage your store, orders &amp; earnings</p>
-        </div>
+    <AuthShell
+      title={otpNotice ? "Check your email" : "Welcome back"}
+      subtitle={otpNotice ? "One last step to secure your account." : "Sign in to manage your store and orders."}
+      badge="For stores"
+      home="/merchant"
+      photo={PARTNER_PHOTOS.merchant}
+      tagline="Reach more customers. We handle the delivery."
+    >
+      {error && <AuthNotice tone="error">{error}</AuthNotice>}
 
-        {error && (
-          <div className="p-3 bg-rose-50 text-rose-700 text-xs font-bold text-center leading-relaxed">
-            {error}
-          </div>
-        )}
-
-        {otpNotice ? (
-          <OtpCodeStep
-            email={email}
-            password={password}
-            initialNotice={otpNotice}
-            onBack={() => setOtpNotice(null)}
-            onVerified={async (token) => {
-              if (!token) {
-                setOtpNotice(null);
-                setError("Email verified. Sign in to continue.");
-                return;
-              }
-              try {
-                await completeLogin(token);
-              } catch (err: any) {
-                setOtpNotice(null);
-                setError(err?.message || "Sign in failed.");
-              }
-            }}
-          />
-        ) : (
-        <form onSubmit={handleLogin} className="flex flex-col gap-3">
-          <div>
-            <label className="text-xs font-black text-slate-700 dark:text-slate-300">Merchant Email</label>
-            <div className="relative mt-1">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="store@restaurant.com"
-                required
-                className="w-full pl-9 p-3 bg-slate-100 dark:bg-slate-800 text-xs font-bold outline-none text-slate-900 dark:text-white rounded-none"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-black text-slate-700 dark:text-slate-300">Password</label>
-            <div className="relative mt-1">
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className="w-full pl-9 p-3 bg-slate-100 dark:bg-slate-800 text-xs font-bold outline-none text-slate-900 dark:text-white rounded-none"
-              />
-            </div>
+      {otpNotice ? (
+        <OtpCodeStep
+          email={email}
+          password={password}
+          initialNotice={otpNotice}
+          onBack={() => setOtpNotice(null)}
+          onVerified={async (token) => {
+            if (!token) {
+              setOtpNotice(null);
+              setError("Email verified. Sign in to continue.");
+              return;
+            }
+            try {
+              await completeLogin(token);
+            } catch (err: any) {
+              setOtpNotice(null);
+              setError(err?.message || "Sign in failed.");
+            }
+          }}
+        />
+      ) : (
+        <form onSubmit={handleLogin} className="flex flex-col gap-4">
+          <AuthField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@yourstore.com" autoComplete="email" required />
+          <div className="flex flex-col gap-2">
+            <AuthField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Your password" autoComplete="current-password" required />
             <Link
               href={`/auth/forgot-password?portal=merchant${email ? `&email=${encodeURIComponent(email)}` : ""}`}
-              className="block text-right mt-1.5 text-xs font-bold text-[#087F5B] dark:text-emerald-400 hover:underline"
+              className="self-end text-[13px] font-medium text-[#087F5B] dark:text-emerald-400 hover:underline"
             >
               Forgot password?
             </Link>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full mt-1 py-3 bg-[#087F5B] text-white text-xs font-black cursor-pointer flex items-center justify-center gap-2 rounded-none"
-          >
-            <span>{loading ? "Authenticating..." : "Sign In to Merchant Portal"}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          <div className="pt-1">
+            <AuthButton type="submit" busy={loading}>{loading ? "Signing in…" : "Sign in"}</AuthButton>
+          </div>
         </form>
-        )}
+      )}
 
-        <div className="text-center pt-2 flex items-center justify-between text-xs">
-          <span className="text-slate-500 dark:text-slate-400">New Store Partner?</span>
-          <Link
-            href="/merchant/register"
-            className="text-[#087F5B] dark:text-emerald-400 font-black hover:underline"
-          >
-            Register Store →
+      {!otpNotice && (
+        <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+          New to Novo?{" "}
+          <Link href="/merchant/register" className="font-semibold text-[#087F5B] dark:text-emerald-400 hover:underline">
+            List your store
           </Link>
-        </div>
-      </div>
-    </div>
+        </p>
+      )}
+    </AuthShell>
   );
 }

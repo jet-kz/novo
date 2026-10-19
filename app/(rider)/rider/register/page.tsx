@@ -3,11 +3,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bike, ArrowRight, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
-import { NovoLogo } from "@/components/shared/NovoLogo";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
+import { AuthButton, AuthField, AuthNotice, AuthShell, PARTNER_PHOTOS } from "@/components/auth/AuthShell";
 import { apiService } from "@/services/api";
 import { OtpCodeStep } from "@/components/auth/OtpCodeStep";
 
@@ -29,7 +26,7 @@ export default function RiderRegisterPage() {
 
   const enterHub = (token: string) => {
     loginUser(token, email, "rider");
-    setSuccessMsg("Welcome to the Novo Delivery Network! Opening Rider Hub...");
+    setSuccessMsg("Account created. Opening your rider app…");
     router.push("/rider");
   };
 
@@ -42,7 +39,7 @@ export default function RiderRegisterPage() {
     }
     setOtpNotice(null);
     if (!session) {
-      setSuccessMsg("Email verified! Sign in to open the Rider Hub.");
+      setSuccessMsg("Email verified. Sign in to continue.");
       return;
     }
     enterHub(session);
@@ -79,138 +76,51 @@ export default function RiderRegisterPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-950 px-4 py-8 text-white">
-      <div className="w-full max-w-md flex flex-col gap-5 bg-slate-900 p-8 rounded-3xl shadow-2xl">
-        {/* BRAND HEADER */}
-        <div className="flex flex-col items-center text-center gap-2">
-          <NovoLogo variant="rider" subtitle="Courier Partner Portal" size="md" />
-          <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
-            Register as a Courier Rider
-          </h2>
-          <p className="text-xs text-slate-400">
-            Earn money delivering orders for top merchants in your city.
-          </p>
-        </div>
+    <AuthShell
+      title={otpNotice ? "Check your email" : "Become a Novo rider"}
+      subtitle={otpNotice ? "One last step to secure your account." : "Earn delivering orders from stores in your city."}
+      badge="For riders"
+      home="/rider"
+      photo={PARTNER_PHOTOS.rider}
+      tagline="Deliver for Novo. Earn on your own schedule."
+    >
+      {errorMsg && <AuthNotice tone="error">{errorMsg}</AuthNotice>}
+      {successMsg && <AuthNotice tone="ok">{successMsg}</AuthNotice>}
 
-        {/* FEEDBACK ALERTS */}
-        {errorMsg && (
-          <div className="p-3 bg-rose-950/80 text-rose-300 text-xs font-semibold rounded-2xl flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        {successMsg && (
-          <div className="p-3 bg-emerald-950/80 text-emerald-300 text-xs font-semibold rounded-2xl flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>{successMsg}</span>
-          </div>
-        )}
-
-        {/* REGISTRATION FORM */}
-        {otpNotice ? (
-          <OtpCodeStep
-            email={email}
-            password={password}
-            tone="dark"
-            initialNotice={otpNotice}
-            onVerified={handleVerified}
-            onBack={() => setOtpNotice(null)}
-          />
-        ) : (
-        <form onSubmit={handleRegister} className="flex flex-col gap-3">
-          <Input
-            label="Full Name *"
-            type="text"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            placeholder="e.g. Tunde Bakare"
-            required
-            className="bg-slate-950 border-slate-700 text-white"
-          />
-
+      {otpNotice ? (
+        <OtpCodeStep email={email} password={password} initialNotice={otpNotice} onVerified={handleVerified} onBack={() => setOtpNotice(null)} />
+      ) : (
+        <form onSubmit={handleRegister} className="flex flex-col gap-4">
+          <AuthField label="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your name" autoComplete="name" required />
+          <AuthField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required />
+          <AuthField label="Phone number" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="080 1234 5678" autoComplete="tel" required />
           <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Email Address *"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="rider@domain.com"
-              required
-              className="bg-slate-950 border-slate-700 text-white"
-            />
-
-            <Input
-              label="Phone Number *"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+234 800 000 0000"
-              required
-              className="bg-slate-950 border-slate-700 text-white"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-300">Vehicle Type *</label>
-              <select
-                value={vehicleType}
-                onChange={(e) => setVehicleType(e.target.value as any)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-white text-xs font-medium focus:outline-none focus:border-emerald-500"
-              >
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300">Vehicle</span>
+              <select value={vehicleType} onChange={(e) => setVehicleType(e.target.value as typeof vehicleType)} className="w-full h-12 px-4 rounded-2xl bg-slate-100 dark:bg-slate-900 text-[15px] text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#087F5B]/35 cursor-pointer">
                 <option value="motorcycle">Motorcycle</option>
                 <option value="bicycle">Bicycle</option>
                 <option value="car">Car / Van</option>
               </select>
-            </div>
-
-            <Input
-              label="Vehicle Plate Number"
-              type="text"
-              value={vehiclePlate}
-              onChange={(e) => setVehiclePlate(e.target.value)}
-              placeholder="e.g. LSD-458-XY"
-              className="bg-slate-950 border-slate-700 text-white"
-            />
+            </label>
+            <AuthField label="Plate number" value={vehiclePlate} onChange={(e) => setVehiclePlate(e.target.value)} placeholder="Optional" />
           </div>
-
-          <Input
-            label="Password *"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="•••••••• (Min 6 chars)"
-            required
-            className="bg-slate-950 border-slate-700 text-white"
-          />
-
-          <Button
-            variant="primary"
-            type="submit"
-            size="lg"
-            disabled={isLoading}
-            className="w-full mt-2 py-3.5 text-xs font-black rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white"
-            rightIcon={
-              isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <ArrowRight className="w-4 h-4" />
-              )
-            }
-          >
-            {isLoading ? "Creating Courier Account..." : "Complete Rider Sign Up"}
-          </Button>
+          <AuthField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="new-password" minLength={6} required />
+          <div className="pt-1">
+            <AuthButton type="submit" busy={isLoading}>{isLoading ? "Creating account…" : "Apply to deliver"}</AuthButton>
+          </div>
+          <p className="text-xs text-slate-500 text-center">We check every rider before their first delivery. You&apos;ll upload your ID next.</p>
         </form>
-        )}
+      )}
 
-        {/* FOOTER */}
-        <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-slate-800">
-          <Link href="/rider/login" className="hover:text-emerald-400 font-bold">
-            Already a Partner? Sign In →
+      {!otpNotice && (
+        <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+          Already a rider?{" "}
+          <Link href="/rider/login" className="font-semibold text-[#087F5B] dark:text-emerald-400 hover:underline">
+            Sign in
           </Link>
-        </div>
-      </div>
-    </div>
+        </p>
+      )}
+    </AuthShell>
   );
 }

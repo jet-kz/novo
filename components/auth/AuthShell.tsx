@@ -6,24 +6,54 @@ import { NovoLogo } from "@/components/shared/NovoLogo";
 
 const PHOTO = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1400&q=75";
 
+/** Side photos for the partner sign-in screens. */
+export const PARTNER_PHOTOS = {
+  rider: "https://images.unsplash.com/photo-1617347454431-f49d7ff5c3b1?auto=format&fit=crop&w=1400&q=75",
+  merchant: "https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=1400&q=75",
+};
+
 /** Calm two-panel frame for sign-in screens: photo on large screens, just the form on phones. */
-export function AuthShell({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+export function AuthShell({
+  title,
+  subtitle,
+  children,
+  photo = PHOTO,
+  tagline = "Food and everyday things, brought to your door.",
+  badge,
+  home = "/",
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+  /** Side photo on large screens. */
+  photo?: string;
+  tagline?: string;
+  /** Small label next to the logo, e.g. "For riders". */
+  badge?: string;
+  /** Where the logo links to. */
+  home?: string;
+}) {
   return (
     <div className="min-h-[100dvh] w-full flex bg-white dark:bg-slate-950">
       <aside className="hidden lg:flex relative w-[46%] max-w-[640px] m-3 rounded-[32px] overflow-hidden bg-slate-900">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={PHOTO} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <img src={photo} alt="" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
         <div className="relative mt-auto p-10 text-white">
-          <p className="text-3xl font-extrabold leading-tight tracking-tight max-w-sm">Food and everyday things, brought to your door.</p>
+          <p className="text-3xl font-extrabold leading-tight tracking-tight max-w-sm">{tagline}</p>
           <p className="mt-2 text-sm text-white/75">Warri · Asaba · Sapele</p>
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-5 py-10 pt-[max(2.5rem,env(safe-area-inset-top))]">
+      <main className="flex-1 flex flex-col items-center justify-start lg:justify-center px-5 pb-10 pt-[max(3.5rem,calc(env(safe-area-inset-top)+2rem))] lg:py-10">
         <div className="w-full max-w-[380px] flex flex-col gap-7">
           <div className="flex flex-col gap-5">
-            <NovoLogo size="sm" href="/" />
+            <div className="flex items-center gap-2.5">
+              <NovoLogo size="sm" href={home} />
+              {badge && (
+                <span className="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-[#087F5B] dark:text-emerald-300 text-xs font-semibold">{badge}</span>
+              )}
+            </div>
             <div>
               <h1 className="text-[26px] font-bold tracking-tight text-slate-900 dark:text-white leading-tight">{title}</h1>
               {subtitle && <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>}

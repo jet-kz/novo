@@ -29,7 +29,7 @@ export function RiderAuthGate({ children }: { children: React.ReactNode }) {
   if (isPublic || allowed) return <>{children}</>;
   return (
     <div className="flex-1 flex items-center justify-center py-24">
-      <Loader2 className="w-7 h-7 animate-spin text-emerald-400" />
+      <Loader2 className="w-7 h-7 animate-spin text-[#087F5B]" />
     </div>
   );
 }

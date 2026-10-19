@@ -8,23 +8,26 @@ export default function RiderEarningsPage() {
   const { riderProfile } = usePlatform();
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex flex-col gap-6">
-      <h1 className="text-2xl font-black text-white">Earnings &amp; payouts</h1>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 w-full flex flex-col gap-8">
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Earnings</h1>
+        <p className="text-sm text-slate-500 mt-1">What you&apos;ve earned, what Novo has paid you, and withdrawals to your bank.</p>
+      </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-6">
         {[
           { label: "Today", value: riderProfile.earningsToday },
           { label: "This week", value: riderProfile.earningsThisWeek },
           { label: "Tips today", value: riderProfile.tipsToday },
         ].map((s) => (
-          <div key={s.label} className="p-4 bg-slate-900 rounded-2xl">
-            <span className="text-[11px] font-bold text-slate-400 uppercase">{s.label}</span>
-            <p className="text-xl font-black text-white mt-1">₦{(s.value ?? 0).toLocaleString()}</p>
+          <div key={s.label} className="min-w-0">
+            <p className="text-sm text-slate-500">{s.label}</p>
+            <p className="text-xl sm:text-3xl font-bold tracking-tight mt-1 truncate">₦{(s.value ?? 0).toLocaleString()}</p>
           </div>
         ))}
       </div>
 
-      <PayoutsPanel tone="dark" />
+      <PayoutsPanel />
     </div>
   );
 }
