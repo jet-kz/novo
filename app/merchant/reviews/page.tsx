@@ -40,14 +40,14 @@ export default function MerchantReviewsPage() {
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-12">
       <div>
-        <h1 className="text-2xl font-black text-slate-900 dark:text-white">Customer Reviews & Ratings</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Customer Reviews & Ratings</h1>
         <p className="text-xs text-[#66736E] font-medium mt-1">See customer feedback, ratings and respond to reviews</p>
       </div>
 
       {/* RATING OVERVIEW CARD */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm flex items-center gap-8">
+      <div className="bg-slate-50 dark:bg-slate-900/70 p-6 rounded-3xl flex items-center gap-8">
         <div className="flex flex-col items-center">
-          <span className="text-4xl font-black text-slate-900 dark:text-white">{averageRating}</span>
+          <span className="text-4xl font-bold text-slate-900 dark:text-white">{averageRating}</span>
           <div className="flex items-center text-amber-400 my-1">
             {[...Array(5)].map((_, i) => (
               <Star
@@ -69,11 +69,11 @@ export default function MerchantReviewsPage() {
       {/* REVIEWS LIST */}
       <div className="flex flex-col gap-4">
         {reviews.length === 0 ? (
-          <div className="py-16 bg-white dark:bg-slate-900 rounded-3xl text-center flex flex-col items-center justify-center gap-3">
+          <div className="py-16 bg-slate-50 dark:bg-slate-900/70 rounded-3xl text-center flex flex-col items-center justify-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center">
               <Star className="w-6 h-6" />
             </div>
-            <span className="text-sm font-black text-slate-900 dark:text-white">
+            <span className="text-sm font-bold text-slate-900 dark:text-white">
               No customer reviews yet
             </span>
             <span className="text-xs font-medium text-slate-500 max-w-sm">
@@ -82,9 +82,9 @@ export default function MerchantReviewsPage() {
           </div>
         ) : (
           reviews.map((rev) => (
-            <div key={rev.id} className="bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm flex flex-col gap-3">
+            <div key={rev.id} className="bg-slate-50 dark:bg-slate-900/70 p-5 rounded-3xl flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-black text-slate-900 dark:text-white">{rev.author}</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">{rev.author}</span>
                 <span className="text-xs text-slate-400">{rev.date}</span>
               </div>
 
@@ -100,7 +100,7 @@ export default function MerchantReviewsPage() {
                 <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-slate-800 flex items-start gap-2 text-xs font-semibold text-[#087F5B]">
                   <CornerDownRight className="w-4 h-4 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-black block">Store Reply:</span>
+                    <span className="font-bold block">Store Reply:</span>
                     <span>{rev.reply}</span>
                   </div>
                 </div>
@@ -115,13 +115,13 @@ export default function MerchantReviewsPage() {
                   />
                   <div className="flex justify-end gap-2">
                     <button onClick={() => setReplyId(null)} className="px-3 py-1.5 text-xs text-slate-500">Cancel</button>
-                    <button onClick={() => handleReplySubmit(rev.id)} className="px-4 py-1.5 bg-[#087F5B] text-white text-xs font-black rounded-xl">Post Reply</button>
+                    <button onClick={() => handleReplySubmit(rev.id)} className="px-4 py-1.5 bg-[#087F5B] text-white text-xs font-bold rounded-xl">Post Reply</button>
                   </div>
                 </div>
               ) : (
                 <button
                   onClick={() => setReplyId(rev.id)}
-                  className="w-fit text-xs font-black text-[#087F5B] hover:underline"
+                  className="w-fit text-xs font-bold text-[#087F5B] hover:underline"
                 >
                   Reply to Review
                 </button>

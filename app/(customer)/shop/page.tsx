@@ -81,7 +81,7 @@ function ShopContent() {
               <div className="flex items-center gap-4 text-xs font-bold text-slate-300 mt-1">
                 <div className="flex items-center gap-1">
                   <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  <span>{selectedStore.rating} ({selectedStore.reviewCount} reviews)</span>
+                  <span>{selectedStore.rating > 0 ? `${selectedStore.rating.toFixed(1)} (${selectedStore.reviewCount} reviews)` : "New on Novo"}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Clock className="w-4 h-4 text-emerald-400" />

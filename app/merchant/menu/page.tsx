@@ -109,6 +109,17 @@ export default function MerchantMenuPage() {
     setIsAddModalOpen(true);
   };
 
+  // "Add item" links elsewhere point here with ?action=add.
+  useEffect(() => {
+    if (!merchantStore || typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("action") !== "add") return;
+    url.searchParams.delete("action");
+    window.history.replaceState(null, "", url.pathname + url.search);
+    openNewModal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [merchantStore?.id]);
+
   // Open modal to edit existing product
   const openEditModal = (p: any) => {
     setEditingProduct(p);
@@ -233,21 +244,16 @@ export default function MerchantMenuPage() {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white">Menu & Catalog Management</h1>
-            <span className="px-3 py-1 rounded-full bg-[#E6F7F2] text-[#087F5B] text-xs font-black">
-              {myStore.name}
-            </span>
-          </div>
-          <p className="text-xs font-semibold text-[#66736E] dark:text-slate-400 mt-1">
-            Manage menu items for <strong className="text-slate-800 dark:text-slate-200">{myStore.name}</strong>. Add items, set what customers can choose (protein, size, extras…), and mark things sold out.
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Menu</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Add items, set what customers can choose, and mark things sold out.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsCsvModalOpen(true)}
-            className="px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-200 text-xs font-black hover:bg-slate-50 transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+            className="px-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-50 transition-all flex items-center gap-2 cursor-pointer"
           >
             <Upload className="w-4 h-4 text-[#087F5B]" />
             <span>CSV Bulk Import</span>
@@ -255,7 +261,7 @@ export default function MerchantMenuPage() {
 
           <button
             onClick={openNewModal}
-            className="px-5 py-2.5 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-[#087F5B]/20"
+            className="px-5 py-2.5 rounded-2xl bg-[#087F5B] text-white text-xs font-bold hover:bg-[#065A43] transition-all flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add New Item</span>
@@ -275,12 +281,12 @@ export default function MerchantMenuPage() {
 
       {/* PRODUCTS LIST GRID */}
       {storeProducts.length === 0 ? (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-10 border border-dashed border-slate-300 dark:border-slate-800 text-center flex flex-col items-center gap-4">
+        <div className="bg-slate-50 dark:bg-slate-900/70 rounded-3xl p-10 border border-dashed border-slate-300 dark:border-slate-800 text-center flex flex-col items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#087F5B] flex items-center justify-center text-2xl">
             📦
           </div>
           <div className="max-w-md">
-            <h3 className="text-base font-black text-slate-900 dark:text-white">Your Menu Catalogue is Empty</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Your Menu Catalogue is Empty</h3>
             <p className="text-xs text-[#66736E] dark:text-slate-400 font-medium mt-1">
               Add your store&apos;s first product or upload a CSV file with your entire menu to get started.
             </p>
@@ -289,14 +295,14 @@ export default function MerchantMenuPage() {
             <button
               onClick={openNewModal}
               disabled={!merchantStore}
-              className="disabled:opacity-50 px-5 py-2.5 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-[#087F5B]/20"
+              className="disabled:opacity-50 px-5 py-2.5 rounded-2xl bg-[#087F5B] text-white text-xs font-bold hover:bg-[#065A43] transition-all flex items-center gap-2 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Add Your First Item</span>
             </button>
             <button
               onClick={() => setIsCsvModalOpen(true)}
-              className="px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-black hover:bg-slate-200 transition-all flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-200 transition-all flex items-center gap-2 cursor-pointer"
             >
               <Upload className="w-4 h-4 text-[#087F5B]" />
               <span>Upload CSV Menu</span>
@@ -307,19 +313,19 @@ export default function MerchantMenuPage() {
         <div className="flex flex-col gap-6">
         {groupedProducts.map((group) => (
         <section key={group.key} className="flex flex-col gap-3">
-          {group.title && <h3 className="text-sm font-black text-slate-900 dark:text-white">{group.title} <span className="text-xs font-normal text-slate-400">{group.items.length}</span></h3>}
+          {group.title && <h3 className="text-sm font-bold text-slate-900 dark:text-white">{group.title} <span className="text-xs font-normal text-slate-400">{group.items.length}</span></h3>}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {group.items.map((p) => (
             <div
               key={p.id}
-              className="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm flex items-center gap-4 transition-all"
+              className="bg-slate-50 dark:bg-slate-900/70 rounded-3xl p-4 flex items-center gap-4 transition-all"
             >
               <img src={p.image} alt={p.name} className="w-20 h-20 rounded-2xl object-cover shrink-0 bg-slate-100" />
 
               <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
                 <div>
-                  <h4 className="font-black text-slate-900 dark:text-white text-xs truncate">{p.name}</h4>
-                  <span className="text-xs font-black text-[#087F5B]">₦{p.price.toLocaleString()}</span>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs truncate">{p.name}</h4>
+                  <span className="text-xs font-bold text-[#087F5B]">₦{p.price.toLocaleString()}</span>
                   <span className="text-[10px] text-[#66736E] font-medium block mt-0.5">
                     {p.category}
                     {(p.optionGroups || []).length > 0 && ` · ${(p.optionGroups || []).map((g) => g.name).join(", ")}`}
@@ -330,7 +336,7 @@ export default function MerchantMenuPage() {
                   <button
                     onClick={() => runItemAction(p.id, () => toggleProductStock(p.id))}
                     disabled={busyId === p.id}
-                    className={`disabled:opacity-50 px-3 py-1 rounded-xl text-[10px] font-black transition-all cursor-pointer ${p.inStock
+                    className={`disabled:opacity-50 px-3 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${p.inStock
                         ? "bg-emerald-100 text-[#087F5B]"
                         : "bg-rose-100 text-rose-700"
                       }`}
@@ -369,7 +375,7 @@ export default function MerchantMenuPage() {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl flex flex-col gap-5 max-h-[92vh] overflow-y-auto scrollbar-thin">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-black text-slate-900 dark:text-white">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 {editingProduct ? "Edit Menu Item" : "Add Item to Menu"}
               </h3>
               <button
@@ -386,12 +392,12 @@ export default function MerchantMenuPage() {
             <form onSubmit={handleSaveProduct} className="flex flex-col gap-4">
               {/* BASIC DETAILS */}
               <div className="flex flex-col gap-3">
-                <span className="text-xs font-black text-[#087F5B] uppercase tracking-wider">
+                <span className="text-xs font-bold text-[#087F5B]">
                   Basic Details
                 </span>
 
                 <div>
-                  <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">Item Name</label>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Item Name</label>
                   <input
                     type="text"
                     value={name}
@@ -404,7 +410,7 @@ export default function MerchantMenuPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">Menu section</label>
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Menu section</label>
                     <input
                       type="text"
                       list="menu-sections"
@@ -421,7 +427,7 @@ export default function MerchantMenuPage() {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">Price (₦)</label>
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Price (₦)</label>
                     <input
                       type="number"
                       value={price}
@@ -434,7 +440,7 @@ export default function MerchantMenuPage() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">Description</label>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Description</label>
                   <input
                     type="text"
                     value={description}
@@ -445,7 +451,7 @@ export default function MerchantMenuPage() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">Photo</label>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Photo</label>
                   <div className="mt-1 flex items-center gap-3">
                     <button
                       type="button"
@@ -471,7 +477,7 @@ export default function MerchantMenuPage() {
                         type="button"
                         onClick={() => photoInputRef.current?.click()}
                         disabled={imageUploading}
-                        className="self-start px-3 py-2 rounded-xl bg-[#087F5B] text-white text-[11px] font-black cursor-pointer disabled:opacity-60"
+                        className="self-start px-3 py-2 rounded-xl bg-[#087F5B] text-white text-[11px] font-bold cursor-pointer disabled:opacity-60"
                       >
                         {imageUploading ? "Uploading..." : image ? "Change photo" : "Upload photo"}
                       </button>
@@ -499,7 +505,7 @@ export default function MerchantMenuPage() {
               {/* CUSTOMER CHOICES */}
               <div className="flex flex-col gap-3 pt-2">
                 <div>
-                  <span className="text-xs font-black text-[#087F5B] uppercase tracking-wider">Customer choices</span>
+                  <span className="text-xs font-bold text-[#087F5B]">Customer choices</span>
                   <p className="text-[11px] text-slate-500 mt-0.5">
                     Groups like “Choose your protein” (required, pick 1) or “Extras” (optional, up to 3). Prices are added to the item.
                   </p>
@@ -514,13 +520,13 @@ export default function MerchantMenuPage() {
 
               {/* PREP & DETAILS */}
               <div className="flex flex-col gap-3 pt-2">
-                <span className="text-xs font-black text-[#087F5B] uppercase tracking-wider">
+                <span className="text-xs font-bold text-[#087F5B]">
                   More details <span className="normal-case font-semibold text-slate-400 tracking-normal">(optional)</span>
                 </span>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">Prep Time (min)</label>
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Prep Time (min)</label>
                     <input
                       type="number"
                       value={prepTime}
@@ -531,7 +537,7 @@ export default function MerchantMenuPage() {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">Spicy Level</label>
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Spicy Level</label>
                     <select
                       value={spicyLevel}
                       onChange={(e) => setSpicyLevel(e.target.value)}
@@ -547,7 +553,7 @@ export default function MerchantMenuPage() {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">Calories / size</label>
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Calories / size</label>
                     <input
                       type="text"
                       value={calories}
@@ -558,7 +564,7 @@ export default function MerchantMenuPage() {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-black text-slate-700 dark:text-slate-300">Serves</label>
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Serves</label>
                     <input
                       type="text"
                       value={serves}
@@ -579,7 +585,7 @@ export default function MerchantMenuPage() {
               <button
                 type="submit"
                 disabled={saving || imageUploading}
-                className="w-full mt-3 py-3.5 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all cursor-pointer shadow-md shadow-[#087F5B]/20 disabled:opacity-50"
+                className="w-full mt-3 py-3.5 rounded-2xl bg-[#087F5B] text-white text-xs font-bold hover:bg-[#065A43] transition-all cursor-pointer disabled:opacity-50"
               >
                 {saving ? "Saving…" : editingProduct ? "Save Changes to Menu Item" : "Save & Add to Menu"}
               </button>
@@ -593,7 +599,7 @@ export default function MerchantMenuPage() {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl flex flex-col gap-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-black text-slate-900 dark:text-white">CSV Bulk Inventory Import</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">CSV Bulk Inventory Import</h3>
               <button onClick={() => setIsCsvModalOpen(false)} className="p-1.5 rounded-xl text-slate-400">
                 <X className="w-5 h-5" />
               </button>
@@ -608,7 +614,7 @@ export default function MerchantMenuPage() {
               className="p-8 rounded-2xl border-2 border-dashed border-emerald-200 dark:border-slate-700 bg-emerald-50/50 dark:bg-slate-800/50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-emerald-50 transition-colors"
             >
               <FileText className="w-8 h-8 text-[#087F5B]" />
-              <span className="text-xs font-black text-slate-900 dark:text-white">
+              <span className="text-xs font-bold text-slate-900 dark:text-white">
                 {csvFile ? csvFile.name : "Click to select CSV File"}
               </span>
               <input
@@ -629,7 +635,7 @@ export default function MerchantMenuPage() {
             <button
               onClick={handleCsvUpload}
               disabled={!csvFile || csvLoading}
-              className="w-full py-3 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all cursor-pointer shadow-md shadow-[#087F5B]/20 disabled:opacity-50"
+              className="w-full py-3 rounded-2xl bg-[#087F5B] text-white text-xs font-bold hover:bg-[#065A43] transition-all cursor-pointer disabled:opacity-50"
             >
               {csvLoading ? "Processing Import..." : "Upload & Sync Inventory"}
             </button>

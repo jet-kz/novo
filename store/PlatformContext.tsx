@@ -153,7 +153,7 @@ export function normalizeStore(bs: any): Store {
     category: (bs.store_type || "restaurant").toLowerCase() as Store["category"],
     address: bs.address || "",
     phone: bs.phone || "",
-    rating: bs.rating || 5.0,
+    rating: Number(bs.rating) || 0,
     reviewCount: bs.review_count || 0,
     isOpening: bs.is_open ?? true,
     isVerified: !!bs.is_verified,

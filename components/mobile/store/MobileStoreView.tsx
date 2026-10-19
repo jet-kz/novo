@@ -121,10 +121,14 @@ export function MobileStoreView() {
             </div>
             <p className="text-[11px] text-slate-200 truncate font-medium">{store.description}</p>
             <div className="flex items-center gap-3 text-[10px] font-bold text-slate-200 mt-1">
-              <span className="flex items-center gap-0.5 text-amber-400">
-                <Star className="w-3 h-3 fill-amber-400" />
-                {store.rating} ({store.reviewCount} reviews)
-              </span>
+              {store.rating > 0 ? (
+                <span className="flex items-center gap-0.5 text-amber-400">
+                  <Star className="w-3 h-3 fill-amber-400" />
+                  {store.rating.toFixed(1)} ({store.reviewCount} reviews)
+                </span>
+              ) : (
+                <span className="text-slate-200">New on Novo</span>
+              )}
               <span className="flex items-center gap-0.5 text-emerald-300">
                 <Clock className="w-3 h-3" />
                 {store.deliveryTime}

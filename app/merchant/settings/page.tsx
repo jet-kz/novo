@@ -16,23 +16,23 @@ export default function MerchantSettingsPage() {
   return (
     <div className="flex flex-col gap-6 max-w-3xl mx-auto pb-12">
       <div>
-        <h1 className="text-2xl font-black text-slate-900 dark:text-white">Account Settings</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Account Settings</h1>
         <p className="text-xs text-[#66736E] font-medium mt-1">Manage notification sounds, email alerts and account security</p>
       </div>
 
       {saved && (
-        <div className="p-4 rounded-2xl bg-emerald-100 text-[#087F5B] text-xs font-black flex items-center gap-2">
+        <div className="p-4 rounded-2xl bg-emerald-100 text-[#087F5B] text-xs font-bold flex items-center gap-2">
           <Check className="w-4 h-4" />
           <span>Preferences updated successfully!</span>
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm flex flex-col gap-6">
-        <h3 className="text-base font-black text-slate-900 dark:text-white">Notification Preferences</h3>
+      <div className="bg-slate-50 dark:bg-slate-900/70 p-6 rounded-3xl flex flex-col gap-6">
+        <h3 className="text-base font-bold text-slate-900 dark:text-white">Notification Preferences</h3>
 
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-xs font-black text-slate-900 dark:text-white block">Order Alert Chime</span>
+            <span className="text-xs font-bold text-slate-900 dark:text-white block">Order Alert Chime</span>
             <span className="text-[11px] text-slate-400">Play sound notification when a new customer order arrives</span>
           </div>
           <input
@@ -45,7 +45,7 @@ export default function MerchantSettingsPage() {
 
         <div className="flex items-center justify-between border-slate-100 dark:border-slate-800 pt-4">
           <div>
-            <span className="text-xs font-black text-slate-900 dark:text-white block">Email Receipts & Summaries</span>
+            <span className="text-xs font-bold text-slate-900 dark:text-white block">Email Receipts & Summaries</span>
             <span className="text-[11px] text-slate-400">Receive daily order summaries and payout receipts</span>
           </div>
           <input
@@ -58,7 +58,7 @@ export default function MerchantSettingsPage() {
 
         <button
           onClick={handleSave}
-          className="w-fit px-8 py-3 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all cursor-pointer shadow-md shadow-[#087F5B]/20 mt-2"
+          className="w-fit px-8 py-3 rounded-2xl bg-[#087F5B] text-white text-xs font-bold hover:bg-[#065A43] transition-all cursor-pointer mt-2"
         >
           Save Preferences
         </button>

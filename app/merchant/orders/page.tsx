@@ -103,7 +103,7 @@ export default function MerchantOrdersPage() {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Orders Queue</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Orders</h1>
           <p className="text-xs font-semibold text-[#66736E] dark:text-slate-400 mt-1">
             Accept, prepare and dispatch customer orders in real-time
           </p>
@@ -111,7 +111,7 @@ export default function MerchantOrdersPage() {
 
         <div className="flex items-center gap-2">
           <span className={`w-3 h-3 rounded-full ${ordersError ? "bg-rose-500" : "bg-emerald-500 animate-pulse"}`} />
-          <span className="text-xs font-extrabold text-[#087F5B] dark:text-emerald-400">
+          <span className="text-xs font-semibold text-[#087F5B] dark:text-emerald-400">
             {ordersError ? "Connection problem — retrying" : ordersLoading ? "Refreshing…" : "Live queue · refreshes every 20s"}
           </span>
         </div>
@@ -131,10 +131,10 @@ export default function MerchantOrdersPage() {
           <button
             key={tab.id}
             onClick={() => setFilter(tab.id)}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
+            className={`h-9 px-4 rounded-full text-[13px] font-semibold transition-colors cursor-pointer whitespace-nowrap ${
               filter === tab.id
-                ? "bg-[#087F5B] text-white shadow-md shadow-[#087F5B]/20"
-                : "bg-white dark:bg-slate-900 text-[#66736E] dark:text-slate-400 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-50"
+                ? "bg-[#087F5B] text-white"
+                : "bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-300"
             }`}
           >
             {tab.label}
@@ -151,11 +151,11 @@ export default function MerchantOrdersPage() {
       {/* ORDERS LIST */}
       <div className="flex flex-col gap-4">
         {filteredOrders.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center flex flex-col items-center gap-3">
+          <div className="bg-slate-50 dark:bg-slate-900/70 rounded-3xl p-12 text-center flex flex-col items-center gap-3">
             <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
               <ShoppingBag className="w-7 h-7" />
             </div>
-            <h3 className="text-base font-black text-slate-900 dark:text-white">No Orders Found</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">No Orders Found</h3>
             <p className="text-xs text-[#66736E] dark:text-slate-400 max-w-sm">
               There are no orders matching this status filter right now. New customer orders will pop up automatically!
             </p>
@@ -164,14 +164,14 @@ export default function MerchantOrdersPage() {
           filteredOrders.map((ord) => (
             <div
               key={ord.id}
-              className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all"
+              className="bg-slate-50 dark:bg-slate-900/70 rounded-3xl p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all"
             >
               <div className="flex flex-col sm:flex-row sm:items-center gap-5">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
-                    <span className="text-base font-black text-slate-900 dark:text-white">#{ord.id}</span>
+                    <span className="text-base font-bold text-slate-900 dark:text-white">#{ord.id}</span>
                     <span
-                      className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      className={`px-3 py-1 rounded-full text-[11px] font-semibold ${
                         isNewOrder(ord.status)
                           ? "bg-emerald-100 text-[#087F5B]"
                           : isInKitchen(ord.status)
@@ -191,18 +191,18 @@ export default function MerchantOrdersPage() {
                   </span>
                 </div>
 
-                <div className="flex flex-col border-l border-slate-200 dark:border-slate-800 pl-5">
-                  <span className="text-xs font-black text-slate-900 dark:text-white">{ord.customerName || "Customer"}</span>
+                <div className="flex flex-col pl-1">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">{ord.customerName || "Customer"}</span>
                   <span className="text-xs text-[#66736E] font-medium">{ord.customerPhone || "No phone provided"}</span>
                 </div>
 
-                <div className="flex flex-col border-l border-slate-200 dark:border-slate-800 pl-5 max-w-xs">
-                  <span className="text-xs font-black text-slate-900 dark:text-white">
+                <div className="flex flex-col pl-1 max-w-xs">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">
                     {ord.items && ord.items.length > 0
                       ? ord.items.map((i) => `${i.quantity}x ${i.product?.name || "Item"}`).join(", ")
                       : "Standard Order Items"}
                   </span>
-                  <span className="text-xs font-black text-[#087F5B]">₦{ord.total?.toLocaleString() || "0"}</span>
+                  <span className="text-xs font-bold text-[#087F5B]">₦{ord.total?.toLocaleString() || "0"}</span>
                 </div>
               </div>
 
@@ -220,7 +220,7 @@ export default function MerchantOrdersPage() {
                   <button
                     onClick={() => handleStatusChange(ord.id, merchantNextStep(ord.status)!.status)}
                     disabled={busyId === ord.id}
-                    className="px-5 py-2.5 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all shadow-md shadow-[#087F5B]/20 cursor-pointer disabled:opacity-50"
+                    className="px-5 py-2.5 rounded-2xl bg-[#087F5B] text-white text-xs font-bold hover:bg-[#065A43] transition-all cursor-pointer disabled:opacity-50"
                   >
                     {busyId === ord.id ? "Saving…" : merchantNextStep(ord.status)!.label}
                   </button>
@@ -230,14 +230,14 @@ export default function MerchantOrdersPage() {
                   <button
                     onClick={() => setCancelModalOrder(ord)}
                     disabled={busyId === ord.id}
-                    className="px-4 py-2.5 rounded-2xl bg-rose-100 text-rose-700 text-xs font-extrabold hover:bg-rose-200 transition-all cursor-pointer disabled:opacity-50"
+                    className="px-4 py-2.5 rounded-2xl bg-rose-100 text-rose-700 text-xs font-semibold hover:bg-rose-200 transition-all cursor-pointer disabled:opacity-50"
                   >
                     Decline
                   </button>
                 )}
 
                 {(isReady(ord.status) || ord.status === "rider_assigned") && ord.pickupCode && (
-                  <span className="px-4 py-2.5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-black" title="Give this code to the rider at pickup">
+                  <span className="px-4 py-2.5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-bold" title="Give this code to the rider at pickup">
                     Pickup code: {ord.pickupCode}
                   </span>
                 )}
@@ -253,7 +253,7 @@ export default function MerchantOrdersPage() {
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-slate-100 dark:border-slate-800 pb-4">
               <div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white">Order #{selectedOrder.id}</h3>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Order #{selectedOrder.id}</h3>
                 <span className="text-xs text-[#66736E] font-semibold" suppressHydrationWarning>
                   Placed at {new Date(selectedOrder.createdAt || Date.now()).toLocaleString()}
                 </span>
@@ -268,7 +268,7 @@ export default function MerchantOrdersPage() {
 
             {/* CUSTOMER & DELIVERY INFO */}
             <div className="flex flex-col gap-2 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
-              <span className="text-xs font-black text-[#087F5B] uppercase tracking-wider">Customer & Delivery Info</span>
+              <span className="text-xs font-bold text-[#087F5B]">Customer & Delivery Info</span>
               <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white">
                 <User className="w-4 h-4 text-slate-400" />
                 <span>{selectedOrder.customerName || "Customer"}</span>
@@ -285,10 +285,10 @@ export default function MerchantOrdersPage() {
 
             {/* ITEMS LIST */}
             <div className="flex flex-col gap-3">
-              <span className="text-xs font-black text-slate-900 dark:text-white">Ordered Items</span>
+              <span className="text-xs font-bold text-slate-900 dark:text-white">Ordered Items</span>
               {selectedOrder.items && selectedOrder.items.length > 0 ? (
                 selectedOrder.items.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-xs font-extrabold text-slate-800 dark:text-slate-200">
+                  <div key={idx} className="flex items-center justify-between text-xs font-semibold text-slate-800 dark:text-slate-200">
                     <span>{item.quantity}x {item.product?.name || "Item"}</span>
                     <span>₦{((item.product?.price || 0) * item.quantity).toLocaleString()}</span>
                   </div>
@@ -296,7 +296,7 @@ export default function MerchantOrdersPage() {
               ) : (
                 <span className="text-xs text-slate-500 font-medium">Item breakdown included in total</span>
               )}
-              <div className="border-slate-200 dark:border-slate-800 pt-3 flex items-center justify-between text-sm font-black text-[#087F5B]">
+              <div className="border-slate-200 dark:border-slate-800 pt-3 flex items-center justify-between text-sm font-bold text-[#087F5B]">
                 <span>Total Amount</span>
                 <span>₦{selectedOrder.total?.toLocaleString() || "0"}</span>
               </div>
@@ -305,7 +305,7 @@ export default function MerchantOrdersPage() {
             {/* TIMELINE HISTORY FROM BACKEND */}
             {orderHistory.length > 0 && (
               <div className="flex flex-col gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
-                <div className="flex items-center gap-2 text-xs font-black text-slate-900 dark:text-white">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white">
                   <History className="w-4 h-4 text-[#087F5B]" />
                   <span>Order Timeline History</span>
                 </div>
@@ -327,7 +327,7 @@ export default function MerchantOrdersPage() {
 
             <button
               onClick={() => setSelectedOrder(null)}
-              className="w-full py-3 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all cursor-pointer"
+              className="w-full py-3 rounded-2xl bg-[#087F5B] text-white text-xs font-bold hover:bg-[#065A43] transition-all cursor-pointer"
             >
               Close Details
             </button>
@@ -339,7 +339,7 @@ export default function MerchantOrdersPage() {
       {cancelModalOrder && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-4">
-            <h3 className="text-base font-black text-slate-900 dark:text-white">Decline Order #{cancelModalOrder.id}?</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Decline Order #{cancelModalOrder.id}?</h3>
             <p className="text-xs text-[#66736E]">Please specify a cancellation reason for the customer:</p>
 
             <textarea
@@ -360,7 +360,7 @@ export default function MerchantOrdersPage() {
               <button
                 onClick={handleConfirmCancel}
                 disabled={busyId === cancelModalOrder.id}
-                className="disabled:opacity-50 px-5 py-2 rounded-xl bg-rose-600 text-white text-xs font-black hover:bg-rose-700 cursor-pointer"
+                className="disabled:opacity-50 px-5 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 cursor-pointer"
               >
                 Confirm Decline
               </button>

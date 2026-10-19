@@ -52,9 +52,9 @@ export function MenuSectionsManager({ storeId, sections, itemCounts, onChange }:
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 flex flex-col gap-3">
+    <div className="bg-slate-50 dark:bg-slate-900/70 rounded-3xl p-5 flex flex-col gap-3">
       <div>
-        <h3 className="text-sm font-black text-slate-900 dark:text-white">Menu sections</h3>
+        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Menu sections</h3>
         <p className="text-xs text-slate-500 mt-0.5">Group your items the way customers browse, e.g. Rice dishes, Soups, Drinks. Order here is the order on your store page.</p>
       </div>
 
@@ -137,7 +137,7 @@ export function MenuSectionsManager({ storeId, sections, itemCounts, onChange }:
         <button
           type="submit"
           disabled={busy || !newName.trim()}
-          className="px-4 py-2.5 rounded-xl bg-[#087F5B] text-white text-xs font-black flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+          className="px-4 py-2.5 rounded-xl bg-[#087F5B] text-white text-xs font-bold flex items-center gap-1 disabled:opacity-50 cursor-pointer"
         >
           <Plus className="w-4 h-4" /> Add
         </button>

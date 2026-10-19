@@ -2,589 +2,312 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import {
-  ShoppingBag,
-  Wallet,
-  Star,
-  Users,
-  TrendingUp,
-  Pencil,
-  Plus,
-  ChevronRight,
-  Clock,
-  MapPin,
-  Lightbulb,
-} from "lucide-react";
+import { ArrowRight, MapPin, Pencil, Plus, ShoppingBag, Star } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
 import { getUniqueStoreBanner } from "@/utils/storeImageUtils";
-import { isDone, isInKitchen, isNewOrder, isOnTheWay, isReady, statusLabel } from "@/utils/orderStatus";
-import type { OrderStatus } from "@/types";
+import {
+  isCancelled,
+  isDone,
+  isInKitchen,
+  isNewOrder,
+  isOnTheWay,
+  isReady,
+  merchantCanReject,
+  merchantNextStep,
+  statusLabel,
+} from "@/utils/orderStatus";
+import type { Order, OrderStatus } from "@/types";
+
+type Tab = "new" | "preparing" | "ready" | "completed";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "new", label: "New" },
+  { id: "preparing", label: "In the kitchen" },
+  { id: "ready", label: "Ready & on the way" },
+  { id: "completed", label: "Completed" },
+];
+
+const naira = (n: number) => `₦${Math.round(n || 0).toLocaleString()}`;
+const isToday = (iso?: string) => {
+  if (!iso) return false;
+  const d = new Date(iso);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+};
+const greeting = () => {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+};
 
 export default function MerchantDashboardPage() {
-  const {
-    activeStore,
-    merchantStore,
-    merchantStoreLoading,
-    toggleStoreStatus,
-    updateOrderStatus,
-    orders,
-    ordersError,
-    products,
-    analytics,
-  } = usePlatform();
+  const { merchantStore, merchantStoreLoading, updateOrderStatus, orders, ordersError, products } = usePlatform();
 
-  const currentStore: any = merchantStore;
   const isLoading = merchantStoreLoading && !merchantStore;
-  const realOrders = merchantStore ? orders.filter((o) => o.storeId === merchantStore.id) : [];
-  const realProducts = merchantStore ? products.filter((p) => p.storeId === merchantStore.id) : [];
-  const storeOpen = merchantStore?.isOpening ?? true;
+  const storeOrders = merchantStore ? orders.filter((o) => o.storeId === merchantStore.id) : [];
+  const storeProducts = merchantStore ? products.filter((p) => p.storeId === merchantStore.id) : [];
 
-  const [orderTab, setOrderTab] = useState<"all" | "new" | "preparing" | "ready" | "completed">("new");
-  const [menuTab, setMenuTab] = useState<"all" | "available" | "out">("all");
-  const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("new");
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const run = async (id: string, fn: () => Promise<unknown>) => {
-    setBusyOrderId(id);
+    setBusyId(id);
     setActionError(null);
     try {
       await fn();
     } catch (e: any) {
-      setActionError(e?.message || "That action failed. Please try again.");
+      setActionError(e?.message || "That didn't go through. Please try again.");
     } finally {
-      setBusyOrderId(null);
+      setBusyId(null);
     }
   };
 
-  const handleToggleStore = () => {
-    if (merchantStore) run("store", () => toggleStoreStatus(merchantStore.id));
-  };
+  const inTab = (s: OrderStatus, t: Tab) =>
+    t === "new" ? isNewOrder(s) : t === "preparing" ? isInKitchen(s) : t === "ready" ? isReady(s) || isOnTheWay(s) : isDone(s);
+  const counts = Object.fromEntries(TABS.map((t) => [t.id, storeOrders.filter((o) => inTab(o.status, t.id)).length])) as Record<Tab, number>;
+  const shown = storeOrders.filter((o) => inTab(o.status, tab)).slice(0, 8);
 
-  const handleAcceptOrder = (orderId: string) => run(orderId, () => updateOrderStatus(orderId, "preparing"));
-  const handleDeclineOrder = (orderId: string) => {
-    if (!window.confirm("Reject this order? The customer will be notified.")) return;
-    run(orderId, () => updateOrderStatus(orderId, "cancelled", { reason: "Rejected by store" }));
-  };
+  const today = storeOrders.filter((o) => isToday(o.createdAt) && !isCancelled(o.status));
+  const salesToday = today.reduce((sum, o) => sum + (o.subtotal || 0), 0);
+  const rating = Number(merchantStore?.rating) || 0;
 
-  const inTab = (status: OrderStatus, tab: typeof orderTab) => {
-    if (tab === "new") return isNewOrder(status);
-    if (tab === "preparing") return isInKitchen(status);
-    if (tab === "ready") return isReady(status) || isOnTheWay(status);
-    if (tab === "completed") return isDone(status);
-    return true;
-  };
-  const filteredOrders = realOrders.filter((o) => inTab(o.status, orderTab));
+  const banner = merchantStore?.banner || (merchantStore ? getUniqueStoreBanner(merchantStore) : "");
 
-  const filteredProducts = realProducts.filter((p) => {
-    if (menuTab === "available") return p.inStock !== false;
-    if (menuTab === "out") return p.inStock === false;
-    return true;
-  });
-
-  let savedProfileName = "";
-  let savedProfileAddress = "";
-  let savedProfileCategory = "";
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem("merchant_profile");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.businessName) savedProfileName = parsed.businessName;
-        if (parsed.address) savedProfileAddress = parsed.address;
-        if (parsed.businessType) savedProfileCategory = parsed.businessType;
-      }
-    } catch (e) {}
+  if (isLoading) {
+    return <div className="py-24 flex justify-center"><span className="w-7 h-7 rounded-full border-[3px] border-[#087F5B] border-t-transparent animate-spin" /></div>;
   }
 
-  const activeStoreName = savedProfileName || activeStore?.name || currentStore?.name || "My Store";
-  const activeStoreCategory = savedProfileCategory || activeStore?.cuisineType || activeStore?.category || currentStore?.cuisineType || "Restaurant";
-  const activeStoreAddress = savedProfileAddress || activeStore?.address || currentStore?.address || "Store Location";
+  if (!merchantStore) {
+    return (
+      <div className="max-w-md mx-auto py-20 text-center flex flex-col items-center gap-3">
+        <span className="w-14 h-14 rounded-[20px] bg-slate-100 dark:bg-slate-900 flex items-center justify-center">
+          <ShoppingBag className="w-6 h-6 text-slate-400" />
+        </span>
+        <h1 className="text-xl font-bold">No store linked yet</h1>
+        <p className="text-sm text-slate-500">Finish setting up your store to start receiving orders.</p>
+        <Link href="/merchant/register" className="mt-2 h-11 px-5 rounded-2xl bg-[#087F5B] text-white text-sm font-semibold flex items-center">
+          Set up my store
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-12">
-      {/* 1. TOP SUMMARY METRICS (4 CARDS GRID) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Card 1: Today's Orders */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-[#087F5B] flex items-center justify-center shrink-0">
-            <ShoppingBag className="w-6 h-6 text-[#087F5B]" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold text-[#66736E] dark:text-slate-400">Today's Orders</span>
-            <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-black text-slate-900 dark:text-white">
-                {analytics.totalOrders || realOrders.length || 0}
-              </span>
-              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center">
-                ↑ 0% <span className="text-slate-400 font-medium ml-1">vs yesterday</span>
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: Today's Earnings */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 flex items-center justify-center shrink-0">
-            <Wallet className="w-6 h-6 text-sky-600" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold text-[#66736E] dark:text-slate-400">Today's Earnings</span>
-            <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-black text-slate-900 dark:text-white">
-                ₦{(analytics.totalRevenue || 0).toLocaleString()}
-              </span>
-              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center">
-                ↑ 0% <span className="text-slate-400 font-medium ml-1">vs yesterday</span>
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: Total Reviews */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center shrink-0">
-            <Star className="w-6 h-6 text-amber-500 fill-amber-500" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold text-[#66736E] dark:text-slate-400">Total Reviews</span>
-            <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-black text-slate-900 dark:text-white">
-                {currentStore?.rating && currentStore.rating > 0 ? `${Number(currentStore.rating).toFixed(1)}/5` : "0.0/5"}
-              </span>
-              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center">
-                {currentStore?.reviewCount ? `${currentStore.reviewCount} reviews` : "New Store"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: Active Customers */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center shrink-0">
-            <Users className="w-6 h-6 text-purple-600" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold text-[#66736E] dark:text-slate-400">Active Customers</span>
-            <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-black text-slate-900 dark:text-white">
-                {analytics.totalCustomersCount || 0}
-              </span>
-              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center">
-                ↑ 0% <span className="text-slate-400 font-medium ml-1">vs last week</span>
-              </span>
-            </div>
-          </div>
-        </div>
+    <div className="flex flex-col gap-10">
+      {/* Greeting */}
+      <div>
+        <p className="text-sm text-slate-500">{greeting()}</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mt-0.5">
+          {counts.new > 0 ? `${counts.new} new order${counts.new === 1 ? "" : "s"} waiting` : "You're all caught up"}
+        </h1>
       </div>
 
-      {/* 2. MAIN CONTENT TWO-COLUMN GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN (WIDE - 8/12) */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
-          {/* RECENT ORDERS CARD */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-black text-slate-900 dark:text-white">Recent Orders</h3>
-              <Link
-                href="/merchant/orders"
-                className="text-xs font-extrabold text-[#087F5B] hover:text-[#065A43] transition-colors"
-              >
-                View All
-              </Link>
-            </div>
+      {/* Store banner, styled like the homepage promo */}
+      <section className="relative w-full aspect-[2/1] sm:aspect-[3/1] lg:aspect-[4/1] rounded-[28px] overflow-hidden bg-slate-900">
+        {banner && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={banner} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/40 to-transparent" />
+        <div className="relative h-full flex flex-col justify-end sm:justify-center gap-1.5 p-5 sm:p-8 max-w-[80%] sm:max-w-[60%]">
+          <h2 className="text-xl sm:text-3xl font-extrabold text-white leading-tight tracking-tight">{merchantStore.name}</h2>
+          {merchantStore.address && (
+            <p className="text-xs sm:text-sm text-white/80 flex items-center gap-1.5 truncate">
+              <MapPin className="w-3.5 h-3.5 shrink-0" /> {merchantStore.address}
+            </p>
+          )}
+          <Link
+            href="/merchant/profile"
+            className="mt-2 inline-flex w-fit items-center gap-1.5 h-9 px-4 rounded-full bg-white text-slate-900 text-xs sm:text-sm font-semibold"
+          >
+            <Pencil className="w-3.5 h-3.5" /> Edit store
+          </Link>
+        </div>
+      </section>
 
-            {/* STATUS TABS */}
-            <div className="flex items-center gap-2 border-slate-100 dark:border-slate-800 pb-3 overflow-x-auto">
-              {(
-                [
-                  { id: "new", label: "New", count: realOrders.filter((o) => inTab(o.status, "new")).length },
-                  { id: "preparing", label: "Preparing", count: realOrders.filter((o) => inTab(o.status, "preparing")).length },
-                  { id: "ready", label: "Ready", count: realOrders.filter((o) => inTab(o.status, "ready")).length },
-                  { id: "completed", label: "Completed", count: realOrders.filter((o) => inTab(o.status, "completed")).length },
-                ] as const
-              ).map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setOrderTab(tab.id)}
-                  className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
-                    orderTab === tab.id
-                      ? "text-[#087F5B] border-b-2 border-[#087F5B] font-black"
-                      : "text-[#66736E] dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                >
-                  {tab.label} ({tab.count})
-                </button>
-              ))}
-            </div>
+      {/* Today at a glance: plain numbers, no boxes */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-6">
+        <Stat label="Orders today" value={String(today.length)} />
+        <Stat label="Sales today" value={naira(salesToday)} hint="Before Novo's commission" />
+        <Stat label="Waiting on you" value={String(counts.new)} tone={counts.new ? "warn" : undefined} />
+        <Stat
+          label="Rating"
+          value={rating > 0 ? rating.toFixed(1) : "–"}
+          hint={merchantStore.reviewCount ? `${merchantStore.reviewCount} reviews` : "No reviews yet"}
+          icon={rating > 0 ? <Star className="w-5 h-5 fill-amber-400 text-amber-400" /> : undefined}
+        />
+      </section>
 
-            {(actionError || ordersError) && (
-              <p role="alert" className="text-xs font-semibold text-rose-700 bg-rose-50 dark:bg-rose-950/40 rounded-xl p-3">
-                {actionError || ordersError}
-              </p>
-            )}
-
-            {/* ORDERS TABLE ROWS */}
-            <div className="flex flex-col gap-2.5 mt-1">
-              {isLoading ? (
-                <div className="py-12 text-center text-xs font-bold text-slate-500">Loading your store…</div>
-              ) : !merchantStore ? (
-                <div className="py-12 text-center text-xs font-bold text-slate-500">
-                  No store is linked to this account yet. Complete merchant registration to start receiving orders.
-                </div>
-              ) : filteredOrders.length === 0 ? (
-                <div className="py-12 text-center flex flex-col items-center justify-center gap-2">
-                  <ShoppingBag className="w-8 h-8 text-slate-300 dark:text-slate-600" />
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                    No {orderTab} orders right now.
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    Your store is online and active. New incoming orders will appear here in real-time.
-                  </span>
-                </div>
-              ) : (
-                filteredOrders.map((ord) => (
-                  <div
-                    key={ord.id}
-                    className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/50 hover:bg-slate-100/80 transition-all"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-black text-slate-900 dark:text-white">
-                            #{ord.id.slice(-6).toUpperCase()}
-                          </span>
-                          <span
-                            className={`w-2 h-2 rounded-full ${
-                              isNewOrder(ord.status) ? "bg-emerald-500" : "bg-amber-500"
-                            }`}
-                          />
-                          <span
-                            className={`text-[11px] font-extrabold capitalize ${
-                              isNewOrder(ord.status) ? "text-emerald-600" : "text-amber-600"
-                            }`}
-                          >
-                            {statusLabel(ord.status)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col ml-4">
-                        <span className="text-xs font-black text-slate-900 dark:text-white">
-                          {ord.customerName || "Customer"}
-                        </span>
-                        <span className="text-xs font-black text-slate-800 dark:text-slate-200">
-                          ₦{(ord.total || 0).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <span className="text-[11px] font-semibold text-[#66736E] dark:text-slate-400 hidden sm:inline">
-                        {ord.createdAt ? new Date(ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
-                      </span>
-
-                      {isNewOrder(ord.status) ? (
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleAcceptOrder(ord.id)}
-                            disabled={busyOrderId === ord.id}
-                            className="disabled:opacity-50 px-4 py-1.5 rounded-xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all shadow-sm cursor-pointer"
-                          >
-                            Accept
-                          </button>
-                          <button
-                            onClick={() => handleDeclineOrder(ord.id)}
-                            disabled={busyOrderId === ord.id}
-                            className="disabled:opacity-50 px-4 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-extrabold hover:bg-slate-300 transition-all cursor-pointer"
-                          >
-                            Decline
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="px-4 py-1.5 rounded-xl bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 text-xs font-black">
-                          {statusLabel(ord.status)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* MENU ITEMS CARD */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <h3 className="text-base font-black text-slate-900 dark:text-white">Menu Items</h3>
-                <Link
-                  href="/merchant/menu"
-                  className="text-xs font-extrabold text-[#087F5B] hover:text-[#065A43] transition-colors"
-                >
-                  View All
-                </Link>
-              </div>
-
-              <Link
-                href="/merchant/menu?action=add"
-                className="px-4 py-2 rounded-xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all shadow-md shadow-[#087F5B]/20 flex items-center gap-1.5 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Item</span>
-              </Link>
-            </div>
-
-            {/* MENU TABS */}
-            <div className="flex items-center gap-2 border-slate-100 dark:border-slate-800 pb-3">
-              {(
-                [
-                  { id: "all", label: "All Items", count: realProducts.length },
-                  { id: "available", label: "Available", count: realProducts.filter((p) => p.inStock !== false).length },
-                  { id: "out", label: "Out of Stock", count: realProducts.filter((p) => p.inStock === false).length },
-                ] as const
-              ).map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setMenuTab(tab.id)}
-                  className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                    menuTab === tab.id
-                      ? "text-[#087F5B] border-b-2 border-[#087F5B] font-black"
-                      : "text-[#66736E] dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                >
-                  {tab.label} ({tab.count})
-                </button>
-              ))}
-            </div>
-
-            {/* PRODUCTS 4-CARD GRID */}
-            {filteredProducts.length === 0 ? (
-              <div className="py-12 text-center flex flex-col items-center justify-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-[#087F5B] flex items-center justify-center">
-                  <Plus className="w-6 h-6" />
-                </div>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  No menu items added yet.
-                </span>
-                <Link
-                  href="/merchant/menu?action=add"
-                  className="px-4 py-2 rounded-xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all"
-                >
-                  Create Your First Menu Item
-                </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-1">
-                {filteredProducts.map((p) => (
-                  <div
-                    key={p.id}
-                    className="bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl overflow-hidden flex flex-col group hover:shadow-md transition-all"
-                  >
-                    <div className="h-32 w-full overflow-hidden relative">
-                      <img
-                        src={p.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80"}
-                        alt={p.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    </div>
-                    <div className="p-3 flex flex-col gap-1">
-                      <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">{p.name}</h4>
-                      <span className="text-xs font-black text-slate-800 dark:text-slate-200">
-                        ₦{(p.price || 0).toLocaleString()}
-                      </span>
-                      <div className="flex items-center justify-between mt-2 pt-2 border-slate-200/60 dark:border-slate-700/60">
-                        <span className={`text-[10px] font-extrabold flex items-center gap-1 ${p.inStock !== false ? "text-emerald-600" : "text-rose-500"}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${p.inStock !== false ? "bg-emerald-500" : "bg-rose-500"}`} />
-                          {p.inStock !== false ? "Available" : "Out of Stock"}
-                        </span>
-                        <Link href="/merchant/menu" className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+      {/* Orders */}
+      <section className="flex flex-col gap-4">
+        <SectionHead title="Orders" href="/merchant/orders" />
+        <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              aria-pressed={tab === t.id}
+              className={`h-9 px-4 rounded-full text-[13px] font-semibold whitespace-nowrap flex items-center gap-1.5 transition-colors cursor-pointer ${
+                tab === t.id ? "bg-[#087F5B] text-white" : "bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300"
+              }`}
+            >
+              {t.label}
+              <span className={tab === t.id ? "text-white/80" : "text-slate-400"}>{counts[t.id]}</span>
+            </button>
+          ))}
         </div>
 
-        {/* RIGHT COLUMN (NARROW - 4/12) */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
-          {/* STORE OVERVIEW WIDGET (MATCHING MOCKUP) */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex flex-col gap-4">
-            <div className="h-36 w-full rounded-2xl overflow-hidden relative">
-              <img
-                src={currentStore?.banner || (activeStore ? getUniqueStoreBanner(activeStore) : getUniqueStoreBanner({ id: "store-merchant", name: activeStoreName }))}
-                alt="Store Banner"
-                className="w-full h-full object-cover"
+        {(actionError || ordersError) && (
+          <p role="alert" className="text-sm text-rose-700 bg-rose-50 dark:bg-rose-950/40 rounded-2xl px-4 py-3">
+            {actionError || ordersError}
+          </p>
+        )}
+
+        {shown.length === 0 ? (
+          <p className="py-10 text-center text-sm text-slate-500">
+            {tab === "new" ? "No new orders. They'll pop up here (with a sound) the moment one comes in." : "Nothing here right now."}
+          </p>
+        ) : (
+          <ul className="flex flex-col -mx-3">
+            {shown.map((o) => (
+              <OrderRow
+                key={o.id}
+                order={o}
+                busy={busyId === o.id}
+                onAdvance={(status) => run(o.id, () => updateOrderStatus(o.id, status))}
+                onReject={() => {
+                  if (!window.confirm("Reject this order? The customer will be told and refunded if they paid.")) return;
+                  run(o.id, () => updateOrderStatus(o.id, "cancelled", { reason: "Rejected by store" }));
+                }}
               />
-              <button
-                onClick={handleToggleStore}
-                disabled={busyOrderId === "store"}
-                className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-black shadow-md cursor-pointer transition-all ${
-                  storeOpen ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
-                }`}
-              >
-                {storeOpen ? "Open" : "Closed"}
-              </button>
-            </div>
+            ))}
+          </ul>
+        )}
+      </section>
 
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-black text-slate-900 dark:text-white">
-                  {activeStoreName}
-                </h3>
-                <Link href="/merchant/profile" className="text-slate-400 hover:text-slate-600">
-                  <Pencil className="w-4 h-4" />
-                </Link>
-              </div>
-
-              <span className="text-xs font-medium text-[#66736E] dark:text-slate-400 capitalize">
-                {activeStoreCategory}
-              </span>
-
-              <div className="flex flex-col gap-1.5 mt-2 text-xs font-medium text-[#66736E] dark:text-slate-400">
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5 text-[#087F5B]" />
-                  <span>{activeStoreAddress}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-3.5 h-3.5 text-[#087F5B]" />
-                  <span>Mon – Sun: 8AM – 10PM</span>
-                </div>
-              </div>
-
-              <Link
-                href="/merchant/profile"
-                className="w-full mt-4 py-3 rounded-2xl bg-[#087F5B] text-white text-xs font-black hover:bg-[#065A43] transition-all shadow-md shadow-[#087F5B]/20 text-center cursor-pointer"
-              >
-                Edit Store
-              </Link>
-            </div>
+      {/* Menu strip, like "Popular near you" on the homepage */}
+      <section className="flex flex-col gap-4">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold tracking-tight">Your menu</h2>
+            <p className="text-sm text-slate-500">
+              {storeProducts.length} item{storeProducts.length === 1 ? "" : "s"}
+              {storeProducts.some((p) => p.inStock === false) ? ` · ${storeProducts.filter((p) => p.inStock === false).length} sold out` : ""}
+            </p>
           </div>
-
-          {/* QUICK STATS WIDGET */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-[#087F5B]" />
-                <h3 className="text-sm font-black text-slate-900 dark:text-white">Quick Stats</h3>
-              </div>
-              <select className="text-xs font-bold bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-xl outline-none text-slate-700 dark:text-slate-300">
-                <option>Today</option>
-                <option>This Week</option>
-                <option>This Month</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-[#087F5B] flex items-center justify-center">
-                    <ShoppingBag className="w-4 h-4" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#66736E] font-semibold">Total Orders</span>
-                    <span className="text-sm font-black text-slate-900 dark:text-white">
-                      {analytics.totalOrders || realOrders.length || 0}
-                    </span>
-                  </div>
-                </div>
-                <span className="text-xs font-extrabold text-emerald-600">↑ 0%</span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-[#087F5B] flex items-center justify-center">
-                    <Wallet className="w-4 h-4" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#66736E] font-semibold">Total Earnings</span>
-                    <span className="text-sm font-black text-slate-900 dark:text-white">
-                      ₦{(analytics.totalRevenue || 0).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-                <span className="text-xs font-extrabold text-emerald-600">↑ 0%</span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-[#087F5B] flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#66736E] font-semibold">Average Order Value</span>
-                    <span className="text-sm font-black text-slate-900 dark:text-white">
-                      ₦{analytics.totalOrders ? Math.round(analytics.totalRevenue / analytics.totalOrders).toLocaleString() : 0}
-                    </span>
-                  </div>
-                </div>
-                <span className="text-xs font-extrabold text-emerald-600">↑ 0%</span>
-              </div>
-            </div>
-          </div>
-
-          {/* TIPS FOR GROWTH WIDGET */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm flex flex-col gap-4">
-            <div className="flex items-center gap-2">
-              <Lightbulb className="w-4 h-4 text-amber-500 fill-amber-500" />
-              <h3 className="text-sm font-black text-slate-900 dark:text-white">Tips for Growth</h3>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <Link
-                href="/merchant/menu"
-                className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#087F5B] flex items-center justify-center">
-                    <Pencil className="w-4 h-4" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-black text-slate-900 dark:text-white">Add new menu items</span>
-                    <span className="text-[10px] text-[#66736E] font-medium">Keep your menu fresh and exciting</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </Link>
-
-              <Link
-                href="/merchant/menu?action=add"
-                className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#087F5B] flex items-center justify-center">
-                    <Star className="w-4 h-4" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-black text-slate-900 dark:text-white">Use promotions</span>
-                    <span className="text-[10px] text-[#66736E] font-medium">Attract more customers</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </Link>
-
-              <Link
-                href="/merchant/profile"
-                className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#087F5B] flex items-center justify-center">
-                    <Users className="w-4 h-4" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-black text-slate-900 dark:text-white">Respond to reviews</span>
-                    <span className="text-[10px] text-[#66736E] font-medium">Build trust and grow faster</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </Link>
-            </div>
+          <div className="flex items-center gap-2">
+            <Link href="/merchant/menu?action=add" className="h-9 px-4 rounded-full bg-[#087F5B] text-white text-[13px] font-semibold flex items-center gap-1.5">
+              <Plus className="w-4 h-4" /> Add item
+            </Link>
+            <Link href="/merchant/menu" className="hidden sm:flex h-9 px-3 items-center gap-1 text-[13px] font-semibold text-[#087F5B]">
+              Manage <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
-      </div>
+
+        {storeProducts.length === 0 ? (
+          <p className="py-8 text-sm text-slate-500">Add your first item so customers can order from you.</p>
+        ) : (
+          <div className="flex gap-4 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
+            {storeProducts.slice(0, 12).map((p) => (
+              <Link key={p.id} href="/merchant/menu" className="w-40 sm:w-44 shrink-0 group">
+                <div className="relative aspect-square rounded-[22px] overflow-hidden bg-slate-100 dark:bg-slate-900">
+                  {p.image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.image} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  )}
+                  {p.inStock === false && (
+                    <span className="absolute inset-0 bg-slate-950/55 flex items-center justify-center text-white text-xs font-semibold">Sold out</span>
+                  )}
+                </div>
+                <p className="mt-2 text-sm font-semibold truncate">{p.name}</p>
+                <p className="text-sm text-slate-500">{naira(p.price)}</p>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
+  );
+}
+
+function SectionHead({ title, href }: { title: string; href: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <h2 className="text-lg font-bold tracking-tight">{title}</h2>
+      <Link href={href} className="text-[13px] font-semibold text-[#087F5B] flex items-center gap-1">
+        See all <ArrowRight className="w-4 h-4" />
+      </Link>
+    </div>
+  );
+}
+
+function Stat({ label, value, hint, tone, icon }: { label: string; value: string; hint?: string; tone?: "warn"; icon?: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className={`mt-1 text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-1.5 ${tone === "warn" ? "text-amber-600" : ""}`}>
+        {icon}
+        {value}
+      </p>
+      {hint && <p className="text-xs text-slate-400 mt-0.5">{hint}</p>}
+    </div>
+  );
+}
+
+function OrderRow({
+  order,
+  busy,
+  onAdvance,
+  onReject,
+}: {
+  order: Order;
+  busy: boolean;
+  onAdvance: (status: OrderStatus) => void;
+  onReject: () => void;
+}) {
+  const next = merchantNextStep(order.status);
+  const itemCount = order.items.reduce((n, it) => n + (it.quantity || 0), 0);
+  const time = order.createdAt ? new Date(order.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
+  return (
+    <li className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2.5 px-3 py-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors ${busy ? "opacity-60" : ""}`}>
+      <span className="w-11 h-11 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-[#087F5B] flex items-center justify-center text-sm font-semibold shrink-0">
+        {(order.customerName || "C").slice(0, 1).toUpperCase()}
+      </span>
+      <Link href="/merchant/orders" className="flex-1 min-w-0">
+        <p className="text-[15px] font-semibold truncate flex items-center justify-between gap-2">
+          <span className="truncate">{order.customerName || "Customer"}</span>
+          <span className="sm:hidden shrink-0">{naira(order.subtotal || order.total)}</span>
+        </p>
+        <p className="text-xs text-slate-500 truncate">
+          #{order.id.slice(-6).toUpperCase()} · {itemCount} item{itemCount === 1 ? "" : "s"} · {time}
+        </p>
+      </Link>
+      <span className="hidden sm:block text-[15px] font-semibold w-24 text-right">{naira(order.subtotal || order.total)}</span>
+      <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto pl-14 sm:pl-0">
+        {next ? (
+          <button
+            onClick={() => onAdvance(next.status)}
+            disabled={busy}
+            className="h-9 px-4 rounded-full bg-[#087F5B] text-white text-[13px] font-semibold cursor-pointer disabled:cursor-not-allowed"
+          >
+            {isNewOrder(order.status) ? "Accept" : next.label}
+          </button>
+        ) : (
+          <span className="h-9 px-3.5 rounded-full bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-[13px] font-medium flex items-center">
+            {statusLabel(order.status)}
+          </span>
+        )}
+        {isNewOrder(order.status) && merchantCanReject(order.status) && (
+          <button
+            onClick={onReject}
+            disabled={busy}
+            className="h-9 px-3.5 rounded-full text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-[13px] font-medium cursor-pointer"
+          >
+            Decline
+          </button>
+        )}
+      </div>
+    </li>
   );
 }

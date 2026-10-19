@@ -53,11 +53,13 @@ export const RestaurantCard: React.FC<RestaurantCardProps> = ({ store }) => {
         </button>
 
         {/* Rating Badge */}
+        {store.rating > 0 && (
         <div className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-xs font-black text-slate-900 dark:text-slate-100 shadow-md">
           <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
           <span>{store.rating.toFixed(1)}</span>
           <span className="text-[10px] text-slate-400 font-medium">({store.reviewCount})</span>
         </div>
+        )}
 
         {/* Store Logo */}
         <div className="absolute bottom-3 left-3 w-12 h-12 rounded-2xl border-2 border-white dark:border-slate-900 overflow-hidden bg-white shadow-md">

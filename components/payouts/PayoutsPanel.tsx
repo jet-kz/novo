@@ -13,7 +13,7 @@ const naira = (n: number) => `₦${(Math.round(n * 100) / 100).toLocaleString(un
       */
 export function PayoutsPanel({ tone = "light" }: { tone?: "light" | "dark" }) {
   const dark = tone === "dark";
-  const card = dark ? "bg-slate-900 text-white" : "bg-white dark:bg-slate-900 text-slate-900 dark:text-white";
+  const card = dark ? "bg-slate-900 text-white" : "bg-slate-50 dark:bg-slate-900/70 text-slate-900 dark:text-white";
   const muted = dark ? "text-slate-400" : "text-slate-500 dark:text-slate-400";
   const field = dark
     ? "w-full px-3 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm outline-none"
@@ -119,7 +119,7 @@ export function PayoutsPanel({ tone = "light" }: { tone?: "light" | "dark" }) {
         <div className={`rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 ${card}`}>
           <div className="flex-1">
             <p className={`text-xs font-bold uppercase ${muted}`}>Ready to withdraw</p>
-            <p className="text-2xl font-black mt-1">{naira(withdrawable)}</p>
+            <p className="text-2xl font-bold tracking-tight mt-1">{naira(withdrawable)}</p>
             <p className={`text-xs mt-1 ${muted}`}>Goes to {account.bank_name} ••••{account.account_last4}</p>
           </div>
           <form
