@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { AlertCircle, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { AuthButton, AuthNotice } from "@/components/auth/AuthShell";
 import { apiService } from "@/services/api";
 
 const RESEND_COOLDOWN = 45;
@@ -26,7 +27,7 @@ export function OtpCodeStep({
   onBack,
   initialNotice,
   tone = "light",
-  submitLabel = "Verify & Continue",
+  submitLabel = "Verify",
 }: OtpCodeStepProps) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -72,50 +73,51 @@ export function OtpCodeStep({
     }
   };
 
+  if (dark) {
+    return (
+      <form onSubmit={submit} className="flex flex-col gap-3">
+        <p className="text-xs text-center text-slate-400">
+          Enter the 6-digit code we sent to <span className="font-bold">{email}</span>
+        </p>
+        {notice && !error && <p className="p-3 text-xs font-semibold rounded-xl bg-emerald-950/80 text-emerald-300">{notice}</p>}
+        {error && <p role="alert" className="p-3 text-xs font-semibold rounded-xl bg-rose-950/80 text-rose-300">{error}</p>}
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          autoFocus
+          placeholder="••••••"
+          aria-label="Verification code"
+          className="w-full text-center text-2xl font-black tracking-[0.5em] py-3 outline-none rounded-xl bg-slate-950 text-white"
+        />
+        <button type="submit" disabled={busy} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-2 rounded-xl disabled:opacity-60 cursor-pointer">
+          {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+          <span>{busy ? "Verifying..." : submitLabel}</span>
+        </button>
+        <div className="flex items-center justify-between text-xs text-slate-400">
+          {onBack ? <button type="button" onClick={onBack} className="font-bold hover:underline cursor-pointer">← Change details</button> : <span />}
+          <button type="button" onClick={resend} disabled={cooldown > 0} className="font-bold text-emerald-400 disabled:text-slate-500 cursor-pointer disabled:cursor-default">
+            {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
+          </button>
+        </div>
+      </form>
+    );
+  }
+
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3">
-      <p className={`text-xs text-center ${dark ? "text-slate-400" : "text-slate-500 dark:text-slate-400"}`}>
-        Enter the 6-digit code we sent to <span className="font-bold">{email}</span>
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <p className="text-sm text-slate-500 dark:text-slate-400">
+        We sent a 6-digit code to <span className="font-semibold text-slate-900 dark:text-white">{email}</span>.
       </p>
-
-      {notice && !error && (
-        <div className={`p-3 text-xs font-semibold flex items-center gap-2 rounded-xl ${dark ? "bg-emerald-950/80 text-emerald-300" : "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"}`}>
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>{notice}</span>
-        </div>
-      )}
-      {error && (
-        <div className={`p-3 text-xs font-semibold flex items-center gap-2 rounded-xl ${dark ? "bg-rose-950/80 text-rose-300" : "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"}`}>
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      <input
-        value={code}
-        onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        autoFocus
-        placeholder="••••••"
-        aria-label="Verification code"
-        className={`w-full text-center text-2xl font-black tracking-[0.5em] py-3 outline-none rounded-xl ${dark ? "bg-slate-950 border border-slate-700 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"}`}
-      />
-
-      <button
-        type="submit"
-        disabled={busy}
-        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-2 rounded-xl disabled:opacity-60 cursor-pointer"
-      >
-        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-        <span>{busy ? "Verifying..." : submitLabel}</span>
-        {!busy && <ArrowRight className="w-4 h-4" />}
-      </button>
-
-      <div className={`flex items-center justify-between text-xs ${dark ? "text-slate-400" : "text-slate-500 dark:text-slate-400"}`}>
+      {notice && !error && <AuthNotice tone="ok">{notice}</AuthNotice>}
+      {error && <AuthNotice tone="error">{error}</AuthNotice>}
+      <CodeInput value={code} onChange={setCode} label="Verification code" autoFocus />
+      <AuthButton type="submit" busy={busy}>{busy ? "Verifying…" : submitLabel}</AuthButton>
+      <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
         {onBack ? (
-          <button type="button" onClick={onBack} className="font-bold hover:underline cursor-pointer">
-            ← Change details
+          <button type="button" onClick={onBack} className="font-medium hover:text-slate-900 dark:hover:text-white cursor-pointer">
+            Change details
           </button>
         ) : (
           <span />
@@ -124,12 +126,55 @@ export function OtpCodeStep({
           type="button"
           onClick={resend}
           disabled={cooldown > 0}
-          className="font-bold text-emerald-600 dark:text-emerald-400 disabled:text-slate-400 disabled:cursor-default hover:underline cursor-pointer"
+          className="font-medium text-[#087F5B] dark:text-emerald-400 disabled:text-slate-400 cursor-pointer disabled:cursor-default"
         >
-          {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
+          {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
         </button>
       </div>
     </form>
+  );
+}
+
+/** Six separate-looking digit boxes backed by one input (paste and SMS autofill just work). */
+export function CodeInput({
+  value,
+  onChange,
+  label,
+  autoFocus,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <label className="group relative block">
+      <span className="sr-only">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        autoFocus={autoFocus}
+        maxLength={6}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-text"
+      />
+      <span aria-hidden="true" className="grid grid-cols-6 gap-2">
+        {Array.from({ length: 6 }).map((_, i) => {
+          const active = i === Math.min(value.length, 5);
+          return (
+            <span
+              key={i}
+              className={`h-14 rounded-2xl flex items-center justify-center text-xl font-semibold transition-all bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-white ${
+                active ? "group-focus-within:ring-2 group-focus-within:ring-[#087F5B]/40 group-focus-within:bg-white dark:group-focus-within:bg-slate-900" : ""
+              }`}
+            >
+              {value[i] || ""}
+            </span>
+          );
+        })}
+      </span>
+    </label>
   );
 }
 

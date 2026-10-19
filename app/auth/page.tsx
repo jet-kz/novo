@@ -1,20 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import {
-  ShoppingBag,
-  Store,
-  ArrowRight,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
-import { NovoLogo } from "@/components/shared/NovoLogo";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
+import { AuthButton, AuthField, AuthNotice, AuthShell } from "@/components/auth/AuthShell";
 import { UserRole } from "@/types";
 import { apiService } from "@/services/api";
 import { OtpCodeStep, isUnverifiedEmailError } from "@/components/auth/OtpCodeStep";
@@ -27,6 +18,7 @@ function AuthContent() {
   const modeParam = searchParams.get("mode");
 
   const [isLogin, setIsLogin] = useState(modeParam !== "signup");
+  const next = searchParams.get("next");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -44,11 +36,15 @@ function AuthContent() {
   const handleRouteRedirect = (role: UserRole = "customer") => {
     setCurrentRole(role);
     setTimeout(() => {
-      if (role === "customer") router.push("/");
+      const home = role === "customer" ? "/" : `/${role}`;
+      // Honour ?next= only when it's a page this role can actually open.
+      const safeNext = next && next.startsWith("/") && !next.startsWith("//") && (role === "customer" ? !/^\/(admin|merchant|rider)/.test(next) : next.startsWith(home));
+      if (safeNext) router.push(next!);
+      else if (role === "customer") router.push("/");
       else if (role === "merchant") router.push("/merchant");
       else if (role === "rider") router.push("/rider");
       else if (role === "admin") router.push("/admin");
-    }, 1000);
+    }, 600);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,7 +67,7 @@ function AuthContent() {
           } catch (e) {
             console.warn("Could not resolve role from /auth/me:", e);
           }
-          setSuccessMsg(`Welcome back! Redirecting to ${targetRole.toUpperCase()} Portal...`);
+          setSuccessMsg("Signed in. Taking you there…");
           handleRouteRedirect(targetRole);
         } else {
           throw new Error("Invalid email or password");
@@ -88,7 +84,7 @@ function AuthContent() {
 
         if (result && result.access_token) {
           loginUser(result.access_token, email);
-          setSuccessMsg("Account created successfully! Redirecting...");
+          setSuccessMsg("Account created. Taking you in…");
           handleRouteRedirect("customer");
         } else {
           setOtpNotice(result?.message || `We've sent a 6-digit code to ${email}.`);
@@ -125,41 +121,48 @@ function AuthContent() {
     handleRouteRedirect(role);
   };
 
+  const switchMode = (login: boolean) => {
+    setIsLogin(login);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+  };
+
   return (
-    <div className="w-full max-w-sm sm:max-w-md flex flex-col gap-3 py-2 text-slate-900 dark:text-slate-100">
-      {/* LOGO & TITLE */}
-      <div className="flex flex-col items-center text-center gap-2">
-        <NovoLogo subtitle="Delivery Express" size="md" />
-        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-          {isOtpStep
-            ? "Verify Email OTP"
-            : isLogin
-              ? "Welcome Back to Novo"
-              : "Create Your Account"}
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-          {isOtpStep
-            ? "One last step to secure your account."
-            : "Order food, groceries, pharmacy & express delivery."}
-        </p>
-      </div>
-
-      {/* FEEDBACK ALERTS */}
-      {errorMsg && (
-        <div className="p-3 bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-          <span>{errorMsg}</span>
+    <AuthShell
+      title={isOtpStep ? "Check your email" : isLogin ? "Welcome back" : "Create your account"}
+      subtitle={
+        isOtpStep
+          ? "One last step to secure your account."
+          : isLogin
+            ? "Sign in to order from stores near you."
+            : "It takes less than a minute."
+      }
+    >
+      {!isOtpStep && (
+        <div className="grid grid-cols-2 p-1 rounded-2xl bg-slate-100 dark:bg-slate-900" role="tablist">
+          {[
+            { login: true, label: "Sign in" },
+            { login: false, label: "Create account" },
+          ].map((t) => (
+            <button
+              key={t.label}
+              type="button"
+              role="tab"
+              aria-selected={isLogin === t.login}
+              onClick={() => switchMode(t.login)}
+              className={`h-10 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                isLogin === t.login ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm" : "text-slate-500"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       )}
 
-      {successMsg && (
-        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-          <span>{successMsg}</span>
-        </div>
-      )}
+      {errorMsg && <AuthNotice tone="error">{errorMsg}</AuthNotice>}
+      {successMsg && <AuthNotice tone="ok">{successMsg}</AuthNotice>}
 
-      {/* AUTH FORM */}
       {isOtpStep ? (
         <OtpCodeStep
           email={email}
@@ -169,136 +172,56 @@ function AuthContent() {
           onBack={() => setIsOtpStep(false)}
         />
       ) : (
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <>
-            {!isLogin && (
-              <>
-                <Input
-                  label="Full Name *"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Godswill Okenrenkporo"
-                  required
-                />
-
-                <Input
-                  label="Phone Number"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="e.g. +234 801 234 5678"
-                />
-              </>
-            )}
-
-            <Input
-              label="Email Address *"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="user@domain.com"
-              required
-            />
-
-            <Input
-              label="Password *"
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {!isLogin && (
+            <>
+              <AuthField label="Full name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" autoComplete="name" required />
+              <AuthField label="Phone number" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="080 1234 5678" autoComplete="tel" />
+            </>
+          )}
+          <AuthField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required />
+          <div className="flex flex-col gap-2">
+            <AuthField
+              label="Password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="•••••••• (Min 6 chars)"
+              placeholder={isLogin ? "Your password" : "At least 6 characters"}
+              autoComplete={isLogin ? "current-password" : "new-password"}
+              minLength={6}
               required
             />
             {isLogin && (
               <Link
                 href={`/auth/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`}
-                className="self-end -mt-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
+                className="self-end text-[13px] font-medium text-[#087F5B] dark:text-emerald-400 hover:underline"
               >
                 Forgot password?
               </Link>
             )}
-          </>
-
-        <Button
-          variant="primary"
-          type="submit"
-          size="lg"
-          disabled={isLoading}
-          className="w-full mt-1 py-3 text-xs font-black rounded-none"
-          rightIcon={
-            isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <ArrowRight className="w-4 h-4" />
-            )
-          }
-        >
-          {isLoading
-            ? "Processing Request..."
-            : isLogin
-              ? "Sign In to Novo"
-              : "Create Account"}
-        </Button>
-      </form>
+          </div>
+          <div className="pt-1">
+            <AuthButton type="submit" busy={isLoading}>
+              {isLoading ? (isLogin ? "Signing in…" : "Creating account…") : isLogin ? "Sign in" : "Create account"}
+            </AuthButton>
+          </div>
+        </form>
       )}
 
-      {/* TOGGLE LOGIN / SIGNUP */}
-      {!isOtpStep && (
-        <div className="flex flex-col gap-2 pt-1">
-          <div className="flex items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-            <span>{isLogin ? "Don't have an account?" : "Already have an account?"}</span>
-            <button
-              type="button"
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setErrorMsg(null);
-                setSuccessMsg(null);
-              }}
-              className="font-black text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
-            >
-              {isLogin ? "Sign Up Now" : "Log In"}
-            </button>
-          </div>
-
-          {/* DEDICATED ROLE LINK BAR */}
-          <div className="mt-1 p-3 bg-slate-100/80 dark:bg-slate-900/90 rounded-2xl flex flex-col gap-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
-              Quick Portal Switch
-            </span>
-            <div className="grid grid-cols-2 gap-2 text-center text-xs">
-              <Link
-                href="/rider/login"
-                className="p-2 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-bold rounded-xl hover:scale-[1.02] transition-transform flex items-center justify-center gap-1"
-              >
-                <span>🛵 Rider Portal</span>
-              </Link>
-              <Link
-                href="/merchant/login"
-                className="p-2 bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 font-bold rounded-xl hover:scale-[1.02] transition-transform flex items-center justify-center gap-1"
-              >
-                <span>🏬 Merchant Portal</span>
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
-    </div>
+    </AuthShell>
   );
 }
 
 export default function AuthPage() {
   return (
-    <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 overflow-hidden select-none">
-      <Suspense
-        fallback={
-          <div className="flex flex-col items-center justify-center gap-3 p-8">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-            <p className="text-xs font-bold text-slate-400">Loading Novo Portal...</p>
-          </div>
-        }
-      >
-        <AuthContent />
-      </Suspense>
-    </div>
+    <Suspense
+      fallback={
+        <div className="min-h-[100dvh] flex items-center justify-center bg-white dark:bg-slate-950">
+          <Loader2 className="w-7 h-7 animate-spin text-emerald-600" />
+        </div>
+      }
+    >
+      <AuthContent />
+    </Suspense>
   );
 }

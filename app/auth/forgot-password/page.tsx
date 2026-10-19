@@ -3,17 +3,17 @@
 import React, { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { apiService } from "@/services/api";
 import { usePlatform } from "@/store/PlatformContext";
-import { NovoLogo } from "@/components/shared/NovoLogo";
-import { Input } from "@/components/ui/Input";
+import { AuthButton, AuthField, AuthNotice, AuthShell } from "@/components/auth/AuthShell";
+import { CodeInput } from "@/components/auth/OtpCodeStep";
 import { UserRole } from "@/types";
 
 const PORTALS = {
-  customer: { login: "/auth", subtitle: "Delivery Express" },
-  merchant: { login: "/merchant/login", subtitle: "Merchant Portal" },
-  rider: { login: "/rider/login", subtitle: "Courier Partner Portal" },
+  customer: { login: "/auth" },
+  merchant: { login: "/merchant/login" },
+  rider: { login: "/rider/login" },
 } as const;
 
 const HOME_FOR_ROLE: Record<string, string> = { customer: "/", merchant: "/merchant", rider: "/rider", admin: "/admin" };
@@ -90,119 +90,51 @@ function ForgotPasswordContent() {
   };
 
   return (
-    <div className="w-full max-w-sm flex flex-col gap-4 text-slate-900 dark:text-slate-100">
-      <div className="flex flex-col items-center text-center gap-2">
-        <NovoLogo subtitle={portal.subtitle} size="md" />
-        <h2 className="text-xl sm:text-2xl font-black tracking-tight">
-          {step === "email" ? "Forgot your password?" : "Choose a new password"}
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          {step === "email"
-            ? "Enter your account email and we'll send you a 6-digit reset code."
-            : `Enter the code we sent to ${email} and pick a new password.`}
-        </p>
-      </div>
-
-      {error && (
-        <div className="p-3 bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2 rounded-xl">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-      {notice && !error && (
-        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2 rounded-xl">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>{notice}</span>
-        </div>
-      )}
+    <AuthShell
+      title={step === "email" ? "Reset your password" : "Choose a new password"}
+      subtitle={step === "email" ? "We'll email you a 6-digit code." : `Enter the code we sent to ${email}.`}
+    >
+      {error && <AuthNotice tone="error">{error}</AuthNotice>}
+      {notice && !error && <AuthNotice tone="ok">{notice}</AuthNotice>}
 
       {step === "email" ? (
-        <form onSubmit={requestCode} className="flex flex-col gap-3">
-          <Input
-            label="Email Address"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            autoComplete="email"
-            required
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-2 rounded-xl disabled:opacity-60 cursor-pointer"
-          >
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            <span>{busy ? "Sending..." : "Send Reset Code"}</span>
-            {!busy && <ArrowRight className="w-4 h-4" />}
-          </button>
+        <form onSubmit={requestCode} className="flex flex-col gap-4">
+          <AuthField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required />
+          <AuthButton type="submit" busy={busy}>{busy ? "Sending…" : "Send code"}</AuthButton>
         </form>
       ) : (
-        <form onSubmit={reset} className="flex flex-col gap-3">
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            autoFocus
-            placeholder="••••••"
-            aria-label="Reset code"
-            className="w-full text-center text-2xl font-black tracking-[0.5em] py-3 outline-none rounded-xl bg-slate-100 dark:bg-slate-800"
-          />
-          <Input
-            label="New Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="At least 6 characters"
-            autoComplete="new-password"
-            required
-          />
-          <Input
-            label="Confirm New Password"
-            type="password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            autoComplete="new-password"
-            required
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-2 rounded-xl disabled:opacity-60 cursor-pointer"
-          >
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            <span>{busy ? "Updating..." : "Reset Password & Sign In"}</span>
-          </button>
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <button type="button" onClick={() => setStep("email")} className="font-bold hover:underline cursor-pointer">
-              ← Different email
+        <form onSubmit={reset} className="flex flex-col gap-4">
+          <CodeInput value={code} onChange={setCode} label="Reset code" />
+          <AuthField label="New password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="new-password" required />
+          <AuthField label="Confirm password" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
+          <AuthButton type="submit" busy={busy}>{busy ? "Updating…" : "Update password"}</AuthButton>
+          <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
+            <button type="button" onClick={() => setStep("email")} className="font-medium hover:text-slate-900 dark:hover:text-white cursor-pointer">
+              Use another email
             </button>
             <button
               type="button"
               onClick={() => requestCode()}
               disabled={cooldown > 0 || busy}
-              className="font-bold text-emerald-600 dark:text-emerald-400 disabled:text-slate-400 hover:underline cursor-pointer"
+              className="font-medium text-[#087F5B] dark:text-emerald-400 disabled:text-slate-400 cursor-pointer disabled:cursor-default"
             >
-              {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
+              {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
             </button>
           </div>
         </form>
       )}
 
-      <Link href={portal.login} className="text-center text-xs font-bold text-slate-500 dark:text-slate-400 hover:underline">
+      <Link href={portal.login} className="text-center text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
         Back to sign in
       </Link>
-    </div>
+    </AuthShell>
   );
 }
 
 export default function ForgotPasswordPage() {
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-8">
-      <Suspense fallback={<Loader2 className="w-8 h-8 animate-spin text-emerald-500" />}>
-        <ForgotPasswordContent />
-      </Suspense>
-    </div>
+    <Suspense fallback={<div className="min-h-[100dvh] flex items-center justify-center"><Loader2 className="w-7 h-7 animate-spin text-emerald-600" /></div>}>
+      <ForgotPasswordContent />
+    </Suspense>
   );
 }
