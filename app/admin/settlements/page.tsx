@@ -110,7 +110,7 @@ export default function AdminSettlementsPage() {
             key={id}
             onClick={() => setFilter(id)}
             className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer ${
-              filter === id ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300"
+              filter === id ? "bg-[#087F5B] text-white" : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300"
             }`}
           >
             {label}

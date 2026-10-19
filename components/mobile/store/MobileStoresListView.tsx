@@ -80,7 +80,7 @@ export function MobileStoresListView() {
                 onClick={() => setSelectedCategory(cat.slug)}
                 aria-pressed={on}
                 className={`h-9 pl-2.5 pr-3.5 rounded-full text-[13px] font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
-                  on ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                  on ? "bg-[#087F5B] text-white shadow-sm" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
                 }`}
               >
                 {cat.slug !== "all" && <CategoryIcon category={cat as any} size={18} />}
