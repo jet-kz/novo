@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { User, MapPin, CreditCard, Heart, LogOut, ShieldCheck, Phone, Mail, CheckCircle2, LogIn } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
-import { ThemeSwitcher } from "@/components/shared/ThemeToggle";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
@@ -38,10 +37,6 @@ export default function CustomerProfilePage() {
             Sign In / Register
           </Button>
         </Link>
-        <div className="w-full mt-10 text-left flex flex-col gap-2">
-          <span className="text-xs font-semibold text-slate-500">Appearance</span>
-          <ThemeSwitcher />
-        </div>
       </div>
     );
   }
