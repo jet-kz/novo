@@ -58,6 +58,14 @@ export interface ProductSpecs {
   spicyLevel?: string;
   calories?: string;
   serves?: string;
+  brand?: string;
+  size?: string;
+  unit?: string;
+  strength?: string;
+  dosageForm?: string;
+  packSize?: string;
+  /** Pharmacy items the store must see a prescription for. */
+  requiresPrescription?: boolean;
 }
 
 /** One choice inside an option group, e.g. "Beef +₦500". */
@@ -91,6 +99,61 @@ export interface SelectedOption {
   price: number;
   quantity?: number;
   group?: string;
+}
+
+/** A promo code a store runs (and pays for) itself. */
+export interface StorePromo {
+  id: string;
+  code: string;
+  name?: string | null;
+  description?: string | null;
+  promo_type: "PERCENTAGE" | "FIXED" | "FREE_DELIVERY";
+  discount_value: number;
+  min_order_amount: number;
+  max_discount_amount?: number | null;
+  usage_limit?: number | null;
+  per_user_limit: number;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  is_active: boolean;
+  state: "live" | "scheduled" | "ended" | "paused" | "used_up" | "archived";
+  uses: number;
+  discount_given: number;
+  funding_source?: string;
+  applicable_merchant_id?: string | null;
+}
+
+export interface StorePromoRules {
+  min_percent: number;
+  max_percent: number;
+  min_fixed: number;
+  fixed_needs_min_order_multiple: number;
+  max_live_codes: number;
+  max_days: number;
+  max_per_customer: number;
+  code_format: string;
+}
+
+export type CatalogKind = "food" | "grocery" | "pharmacy";
+
+export interface CsvImportRow {
+  line: number;
+  name: string;
+  action: "create" | "update";
+  product_id: string | null;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface CsvImportResult {
+  kind: CatalogKind;
+  file_errors: string[];
+  warnings?: string[];
+  rows: CsvImportRow[];
+  summary?: { create: number; update: number; errors: number };
+  applied: boolean;
+  created?: number;
+  updated?: number;
 }
 
 export interface PromoBanner {

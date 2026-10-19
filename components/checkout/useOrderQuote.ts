@@ -13,6 +13,8 @@ export interface CheckoutQuote {
   total: number;
   applied_promo_code: string | null;
   promo_valid: boolean | null;
+  /** Why a promo code didn't apply (or the applied message). */
+  promo_message?: string | null;
 }
 
 /** The order lines the server prices, in the shape /orders/quote and order creation expect. */

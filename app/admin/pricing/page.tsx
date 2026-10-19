@@ -13,7 +13,7 @@ import {
   Pencil,
   X
 } from "lucide-react";
-import { api } from "@/services/api";
+import { api, apiService } from "@/services/api";
 import { usePlatform } from "@/store/PlatformContext";
 
 export default function AdminPricingPage() {
@@ -742,13 +742,14 @@ export default function AdminPricingPage() {
                       <th className="px-4 py-3">Discount</th>
                       <th className="px-4 py-3">Funding</th>
                       <th className="px-4 py-3">Min Spend</th>
+                      <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="">
                     {promotions.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-4 text-center text-gray-500">
+                        <td colSpan={8} className="px-4 py-4 text-center text-gray-500">
                           No promotion campaigns found.
                         </td>
                       </tr>
@@ -767,14 +768,52 @@ export default function AdminPricingPage() {
                             </span>
                           </td>
                           <td className="px-4 py-4">₦{p.min_order_amount.toLocaleString()}</td>
-                          <td className="px-4 py-4 text-right">
-                            <button
-                              onClick={() => openEditModal("promotion", p)}
-                              className="px-3 py-1 bg-emerald-50 dark:bg-gray-800 text-xs font-bold text-emerald-700 dark:text-emerald-400 rounded-lg flex items-center gap-1.5 ml-auto cursor-pointer"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                              Edit Promo
-                            </button>
+                          <td className="px-4 py-4 text-xs">
+                            <span className={`px-2 py-0.5 rounded-full font-semibold ${(p as any).state === "live" ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500 dark:bg-gray-800"}`}>
+                              {String((p as any).state || (p.is_active ? "live" : "paused")).replace("_", " ")}
+                            </span>
+                            {(p as any).applicable_merchant_id && <span className="block text-[11px] text-gray-400 mt-1">Store code · {(p as any).uses ?? 0} uses</span>}
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {!(p as any).applicable_merchant_id && (
+                                <button
+                                  onClick={() => openEditModal("promotion", p)}
+                                  className="px-3 py-1 bg-emerald-50 dark:bg-gray-800 text-xs font-bold text-emerald-700 dark:text-emerald-400 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  Edit
+                                </button>
+                              )}
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await apiService.adminSetPromotionActive(p.id, !p.is_active);
+                                    await loadPricingData();
+                                  } catch (e: any) {
+                                    setMessage({ type: "error", text: e.message });
+                                  }
+                                }}
+                                className="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-xs font-bold text-gray-700 dark:text-gray-300 rounded-lg cursor-pointer"
+                              >
+                                {p.is_active ? "Pause" : "Resume"}
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (!window.confirm(`Remove ${p.code}? Used codes are archived so order history stays intact.`)) return;
+                                  try {
+                                    const r = await apiService.adminDeletePromotion(p.id);
+                                    setMessage({ type: "success", text: `${p.code} ${r.result}.` });
+                                    await loadPricingData();
+                                  } catch (e: any) {
+                                    setMessage({ type: "error", text: e.message });
+                                  }
+                                }}
+                                className="px-3 py-1 bg-rose-50 dark:bg-rose-950/40 text-xs font-bold text-rose-700 dark:text-rose-300 rounded-lg cursor-pointer"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))

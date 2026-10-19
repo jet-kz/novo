@@ -65,7 +65,7 @@ export function useCheckout() {
   }, [quoteError]);
   useEffect(() => {
     if (promoCode && quote?.promo_valid === false) {
-      setNotice(`Promo code ${promoCode} can't be used on this order.`);
+      setNotice(quote.promo_message || `Promo code ${promoCode} can't be used on this order.`);
       setPromoCode(null);
     }
   }, [quote, promoCode]);

@@ -62,6 +62,8 @@ interface PlatformContextType {
   updateProduct: (id: string, updates: Partial<Product>) => Promise<Product>;
   deleteProduct: (id: string) => Promise<void>;
   toggleProductStock: (id: string) => Promise<void>;
+  /** Reload every product from the server (e.g. after a spreadsheet import). */
+  refreshProducts: () => Promise<void>;
 
   // Cart
   cart: CartItem[];
@@ -519,6 +521,10 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };
 
+  const refreshProducts = useCallback(async () => {
+    setProducts(await apiService.getProducts());
+  }, []);
+
   const toggleProductStock = async (id: string) => {
     const saved = await apiService.toggleProductStock(id, getToken());
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...saved } : p)));
@@ -738,6 +744,7 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateProduct,
         deleteProduct,
         toggleProductStock,
+        refreshProducts,
 
         cart,
         isCartOpen,

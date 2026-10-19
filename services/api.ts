@@ -1,6 +1,7 @@
 import {
   Store, Product, Order, OrderStatus, RiderProfile, PlatformAnalytics, Review,
   PlatformCategory, HomeCollection, MenuSection, AppNotification, PromoBanner,
+  StorePromo, StorePromoRules, CatalogKind, CsvImportResult,
   MyPayouts, PayoutAccountView, PayoutsOverview, AdminUserRow,
 } from "@/types";
 import { shrinkImageForUpload } from "@/utils/imageUpload";
@@ -796,6 +797,51 @@ export const apiService = {
     request<HomeCollection>(`/catalog/collections/${id}`, { method: "PATCH", body: JSON.stringify(payload) }, "Could not save collection"),
   deleteHomeCollection: (id: string) =>
     request(`/catalog/collections/${id}`, { method: "DELETE" }, "Could not delete collection"),
+
+  // 10.3a STORE PROMO CODES (merchant-run, merchant-funded)
+  getStorePromoRules: () => request<StorePromoRules>("/pricing/merchant-promo-rules", {}, "Could not load promo rules"),
+  getMyPromotions: () => request<StorePromo[]>("/pricing/my-promotions", {}, "Could not load your promotions"),
+  createMyPromotion: (payload: Partial<StorePromo>) =>
+    request<StorePromo>("/pricing/my-promotions", { method: "POST", body: JSON.stringify(payload) }, "Could not create promotion"),
+  updateMyPromotion: (id: string, payload: Partial<StorePromo>) =>
+    request<StorePromo>(`/pricing/my-promotions/${id}`, { method: "PATCH", body: JSON.stringify(payload) }, "Could not update promotion"),
+  deleteMyPromotion: (id: string) =>
+    request<{ result: "deleted" | "archived" }>(`/pricing/my-promotions/${id}`, { method: "DELETE" }, "Could not delete promotion"),
+  adminSetPromotionActive: (id: string, is_active: boolean) =>
+    request(`/pricing/promotions/${id}`, { method: "PATCH", body: JSON.stringify({ is_active }) }, "Could not update promotion"),
+  adminDeletePromotion: (id: string) =>
+    request<{ result: "deleted" | "archived" }>(`/pricing/promotions/${id}`, { method: "DELETE" }, "Could not delete promotion"),
+
+  // 10.3c MENU SPREADSHEETS
+  /** Downloads a CSV (template or the store's current items) and saves it with its server filename. */
+  downloadCatalogCsv: async (kind: CatalogKind, storeId?: string) => {
+    const path = storeId
+      ? `/products/csv/export?store_id=${encodeURIComponent(storeId)}&kind=${kind}`
+      : `/products/csv/template?kind=${kind}`;
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE_URL}${path}`, { headers: getAuthHeaders() });
+    } catch {
+      throw new Error("Can't reach the server. Check your connection and try again.");
+    }
+    if (!res.ok) throw new Error(extractApiError(await res.json().catch(() => ({})), "Could not download the file"));
+    const blob = await res.blob();
+    const name = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") || "")?.[1] || `novo-${kind}.csv`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
+  importCatalogCsv: (storeId: string, payload: { csv: string; kind: CatalogKind; dry_run: boolean; skip_invalid?: boolean }) =>
+    request<CsvImportResult>(
+      `/products/csv/import?store_id=${encodeURIComponent(storeId)}`,
+      { method: "POST", body: JSON.stringify(payload) },
+      "Could not import the file"
+    ),
 
   // 10.3b PROMO BANNERS (homepage ad carousel)
   getBanners: (placement: "home" | "shop" | "all" = "home", includeInactive = false) =>

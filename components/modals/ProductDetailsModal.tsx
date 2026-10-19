@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Clock, Flame, Minus, Plus, Users, UtensilsCrossed, X } from "lucide-react";
+import { Check, Clock, FileText, Flame, Minus, Package, Pill, Plus, Tag, Users, UtensilsCrossed, X } from "lucide-react";
 import { OptionGroup, Product, SelectedOption } from "@/types";
 import { groupRule, optionGroupsOf } from "@/utils/options";
 
@@ -116,6 +116,10 @@ function SheetBody({
     { icon: <Flame className="w-4 h-4" />, label: "Spice", value: product.specs?.spicyLevel || "" },
     { icon: <UtensilsCrossed className="w-4 h-4" />, label: "Energy", value: product.specs?.calories || "" },
     { icon: <Users className="w-4 h-4" />, label: "Serves", value: product.specs?.serves || "" },
+    { icon: <Tag className="w-4 h-4" />, label: "Brand", value: product.specs?.brand || "" },
+    { icon: <Package className="w-4 h-4" />, label: "Size", value: [product.specs?.size, product.specs?.unit].filter(Boolean).join(" ") },
+    { icon: <Pill className="w-4 h-4" />, label: "Strength", value: [product.specs?.strength, product.specs?.dosageForm].filter(Boolean).join(" · ") },
+    { icon: <Package className="w-4 h-4" />, label: "Pack", value: product.specs?.packSize || "" },
   ].filter((s) => s.value);
 
   return (
@@ -142,6 +146,12 @@ function SheetBody({
             <span className="text-lg font-extrabold text-[#087F5B] dark:text-emerald-400 shrink-0">{naira(product.price)}</span>
           </div>
           {product.description && <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{product.description}</p>}
+          {product.specs?.requiresPrescription && (
+            <p className="mt-2 flex items-start gap-2 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-sm px-4 py-3">
+              <FileText className="w-4 h-4 mt-0.5 shrink-0" />
+              Prescription required. The pharmacy will ask to see it before handing this over.
+            </p>
+          )}
           {specs.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
               {specs.map((s) => (

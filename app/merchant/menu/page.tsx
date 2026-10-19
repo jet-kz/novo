@@ -7,9 +7,10 @@ import { apiService } from "@/services/api";
 import { MenuSection, OptionGroup } from "@/types";
 import { MenuSectionsManager } from "@/components/merchant/MenuSectionsManager";
 import { OptionGroupsEditor, cleanGroups, groupsProblem } from "@/components/merchant/OptionGroupsEditor";
+import { CatalogCsvImport } from "@/components/merchant/CatalogCsvImport";
 
 export default function MerchantMenuPage() {
-  const { products, merchantStore, merchantStoreLoading, saveProduct, toggleProductStock, deleteProduct } = usePlatform();
+  const { products, merchantStore, merchantStoreLoading, saveProduct, toggleProductStock, deleteProduct, refreshProducts } = usePlatform();
 
   // The menu always belongs to the store the server says this merchant owns.
   const myStore = merchantStore || ({ id: "", name: merchantStoreLoading ? "Loading…" : "No store" } as any);
@@ -137,12 +138,6 @@ export default function MerchantMenuPage() {
     setFormError(null);
   };
 
-  // CSV Import State
-  const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [csvLoading, setCsvLoading] = useState(false);
-  const [csvResult, setCsvResult] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!merchantStore) {
@@ -192,53 +187,6 @@ export default function MerchantMenuPage() {
     setImage("");
   };
 
-  const handleCsvUpload = async () => {
-    if (!csvFile) return;
-    setCsvLoading(true);
-    setCsvResult(null);
-
-    try {
-      const text = await csvFile.text();
-      const lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
-      let created = 0;
-      const failures: string[] = [];
-
-      for (let i = 0; i < lines.length; i++) {
-        if (i === 0 && lines[i].toLowerCase().includes("name")) continue; // header
-        const parts = lines[i].split(",").map((p) => p.trim().replace(/^["']|["']$/g, ""));
-        const [itemName, itemPrice, itemCat, itemDesc, itemImg] = parts;
-        if (!itemName || itemPrice === undefined || Number.isNaN(Number(itemPrice))) {
-          failures.push(`Line ${i + 1}: needs a name and a numeric price`);
-          continue;
-        }
-        try {
-          await saveProduct({
-            storeId: myStore.id,
-            name: itemName,
-            price: Number(itemPrice),
-            category: itemCat || undefined,
-            description: itemDesc || "",
-            image: itemImg || "",
-            inStock: true,
-            preparationTimeMinutes: 20,
-          });
-          created++;
-        } catch (e: any) {
-          failures.push(`Line ${i + 1} (${itemName}): ${e?.message || "failed"}`);
-        }
-      }
-
-      setCsvResult(
-        `Imported ${created} item${created === 1 ? "" : "s"} into ${myStore.name}.` +
-          (failures.length ? ` ${failures.length} line(s) skipped — ${failures.slice(0, 3).join("; ")}` : "")
-      );
-    } catch (e: any) {
-      setCsvResult(`Could not read the CSV file: ${e?.message || "unknown error"}`);
-    } finally {
-      setCsvLoading(false);
-    }
-  };
-
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-12">
       {/* HEADER */}
@@ -256,7 +204,7 @@ export default function MerchantMenuPage() {
             className="px-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-50 transition-all flex items-center gap-2 cursor-pointer"
           >
             <Upload className="w-4 h-4 text-[#087F5B]" />
-            <span>CSV Bulk Import</span>
+            <span>Import / export</span>
           </button>
 
           <button
@@ -594,53 +542,17 @@ export default function MerchantMenuPage() {
         </div>
       )}
 
-      {/* CSV BULK IMPORT MODAL */}
-      {isCsvModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl flex flex-col gap-5">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">CSV Bulk Inventory Import</h3>
-              <button onClick={() => setIsCsvModalOpen(false)} className="p-1.5 rounded-xl text-slate-400">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-xs text-[#66736E] font-medium">
-              Upload your inventory CSV file containing columns for <code className="font-bold text-[#087F5B]">product_id</code>, <code className="font-bold text-[#087F5B]">quantity</code>, <code className="font-bold text-[#087F5B]">low_stock_threshold</code>, and optional <code className="font-bold text-[#087F5B]">image</code> URLs.
-            </p>
-
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="p-8 rounded-2xl border-2 border-dashed border-emerald-200 dark:border-slate-700 bg-emerald-50/50 dark:bg-slate-800/50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-emerald-50 transition-colors"
-            >
-              <FileText className="w-8 h-8 text-[#087F5B]" />
-              <span className="text-xs font-bold text-slate-900 dark:text-white">
-                {csvFile ? csvFile.name : "Click to select CSV File"}
-              </span>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                className="hidden"
-              />
-            </div>
-
-            {csvResult && (
-              <div className="p-3 rounded-xl bg-emerald-100 text-[#087F5B] text-xs font-bold text-center">
-                {csvResult}
-              </div>
-            )}
-
-            <button
-              onClick={handleCsvUpload}
-              disabled={!csvFile || csvLoading}
-              className="w-full py-3 rounded-2xl bg-[#087F5B] text-white text-xs font-bold hover:bg-[#065A43] transition-all cursor-pointer disabled:opacity-50"
-            >
-              {csvLoading ? "Processing Import..." : "Upload & Sync Inventory"}
-            </button>
-          </div>
-        </div>
+      {/* SPREADSHEET IMPORT */}
+      {isCsvModalOpen && merchantStore && (
+        <CatalogCsvImport
+          storeId={merchantStore.id}
+          storeCategory={(merchantStore as any).category}
+          onClose={() => setIsCsvModalOpen(false)}
+          onImported={async () => {
+            await refreshProducts();
+            loadSections();
+          }}
+        />
       )}
     </div>
   );
