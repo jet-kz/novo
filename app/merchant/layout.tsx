@@ -23,6 +23,7 @@ import { apiService } from "@/services/api";
 import { EnableAlertsCard } from "@/components/notifications/EnableAlertsCard";
 import { NovoLogo } from "@/components/shared/NovoLogo";
 import { NotificationBell } from "@/components/shared/NotificationBell";
+import { ThemeSwitcher, ThemeToggle } from "@/components/shared/ThemeToggle";
 import { NewOrderAlert } from "@/components/merchant/NewOrderAlert";
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ className?: string }>; badge?: number };
@@ -216,6 +217,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
 
           <div className="ml-auto md:ml-0 flex items-center gap-2 shrink-0">
             {openSwitch}
+            <ThemeToggle className="hidden sm:flex" />
             <NotificationBell />
           </div>
         </div>
@@ -271,6 +273,10 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
           <div className="absolute inset-0 bg-slate-950/50" onClick={() => setMoreOpen(false)} />
           <div className="relative w-full bg-white dark:bg-slate-900 rounded-t-[28px] p-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <span className="block mx-auto mb-3 mt-1 w-10 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700" />
+            <div className="px-4 pb-3">
+              <p className="text-xs text-slate-500 mb-2">Appearance</p>
+              <ThemeSwitcher />
+            </div>
             <MoreLinks items={moreNav} isActive={isActive} onPick={() => setMoreOpen(false)} onLogout={handleLogout} large />
           </div>
         </div>

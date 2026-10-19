@@ -30,7 +30,11 @@ interface PlatformContextType {
   logout: () => void;
   favorites: string[];
   toggleFavorite: (id: string) => void;
+  /** What's showing now. */
   theme: "light" | "dark";
+  /** What the user picked; "system" follows the device. */
+  themePreference: ThemePreference;
+  setThemePreference: (pref: ThemePreference) => void;
   toggleTheme: () => void;
 
   // Location & Geofencing
@@ -117,6 +121,8 @@ interface PlatformContextType {
   // Reviews
   reviews: Review[];
 }
+
+export type ThemePreference = "system" | "light" | "dark";
 
 const PlatformContext = createContext<PlatformContextType | undefined>(undefined);
 
@@ -266,34 +272,29 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setFavorites((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
   };
 
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  const toggleTheme = () =>
-    setTheme((prev) => {
-      const next = prev === "light" ? "dark" : "light";
-      try {
-        localStorage.setItem("novo_theme", next);
-      } catch {}
-      return next;
-    });
+  // Theme: "system" (default) follows the phone/computer; "light"/"dark" are the user's choice.
+  // The inline script in app/layout.tsx applies it before first paint.
+  const [themePreference, setThemePreferenceState] = useState<ThemePreference>("system");
+  const [systemDark, setSystemDark] = useState(false);
+  const theme: "light" | "dark" = themePreference === "system" ? (systemDark ? "dark" : "light") : themePreference;
 
-  // The inline script in app/layout.tsx already set the class before paint; mirror it here and
-  // keep following the system setting until the user picks a theme themselves.
+  const setThemePreference = useCallback((pref: ThemePreference) => {
+    setThemePreferenceState(pref);
+    try {
+      if (pref === "system") localStorage.removeItem("novo_theme");
+      else localStorage.setItem("novo_theme", pref);
+    } catch {}
+  }, []);
+  const toggleTheme = () => setThemePreference(theme === "dark" ? "light" : "dark");
+
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const saved = (() => {
-      try {
-        return localStorage.getItem("novo_theme") as "light" | "dark" | null;
-      } catch {
-        return null;
-      }
-    })();
-    setTheme(saved || (media.matches ? "dark" : "light"));
-    const follow = (e: MediaQueryListEvent) => {
-      try {
-        if (localStorage.getItem("novo_theme")) return;
-      } catch {}
-      setTheme(e.matches ? "dark" : "light");
-    };
+    setSystemDark(media.matches);
+    try {
+      const saved = localStorage.getItem("novo_theme");
+      if (saved === "light" || saved === "dark") setThemePreferenceState(saved);
+    } catch {}
+    const follow = (e: MediaQueryListEvent) => setSystemDark(e.matches);
     media.addEventListener("change", follow);
     return () => media.removeEventListener("change", follow);
   }, []);
@@ -738,6 +739,8 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         favorites,
         toggleFavorite,
         theme,
+        themePreference,
+        setThemePreference,
         toggleTheme,
 
         userLocationAddress,

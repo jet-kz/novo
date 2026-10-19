@@ -7,6 +7,7 @@ import { Bike, History, LogOut, MessageSquare, Wallet } from "lucide-react";
 import { apiService } from "@/services/api";
 import { usePlatform } from "@/store/PlatformContext";
 import { NovoLogo } from "@/components/shared/NovoLogo";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 /** Rider app chrome: glass header + bottom tabs on phones, matching the customer and merchant apps. */
 export function RiderNavbar() {
@@ -97,6 +98,7 @@ export function RiderNavbar() {
                 {online ? "Online" : "Offline"}
               </button>
             )}
+            <ThemeToggle />
             <button
               onClick={signOut}
               aria-label="Sign out"

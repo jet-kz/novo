@@ -20,6 +20,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
+import { ThemeSwitcher } from "@/components/shared/ThemeToggle";
 
 export function MobileProfileView() {
   const router = useRouter();
@@ -159,6 +160,12 @@ export function MobileProfileView() {
             </div>
           );
         })}
+
+        {/* APPEARANCE */}
+        <div className="px-5 flex flex-col gap-2">
+          <span className="text-[11px] font-black uppercase text-[#66736D] dark:text-slate-400 tracking-wider">Appearance</span>
+          <ThemeSwitcher />
+        </div>
 
         {/* LOGOUT / AUTH BUTTON (FLAT BORDERLESS BUTTON) */}
         <div className="px-5 mt-2">

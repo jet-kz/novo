@@ -17,6 +17,7 @@ import { LocationPicker } from "@/components/location/LocationPicker";
 import { CategoryIcon, useCatalog } from "@/components/shared/useCatalog";
 import { HomeCollections } from "@/components/shared/HomeCollections";
 import { PromoCarousel } from "@/components/home/PromoCarousel";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Store, Product } from "@/types";
 
 
@@ -97,6 +98,7 @@ export function MobileHomeView() {
               </div>
             </div>
           </button>
+          <ThemeToggle />
         </div>
 
         {/* Search */}

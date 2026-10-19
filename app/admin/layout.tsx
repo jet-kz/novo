@@ -23,6 +23,7 @@ import {
 import { usePlatform } from "@/store/PlatformContext";
 import { NovoLogo } from "@/components/shared/NovoLogo";
 import { NotificationBell } from "@/components/shared/NotificationBell";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { apiService } from "@/services/api";
 
 type Badges = { orders: number; riders: number; stores: number; refunds: number };
@@ -205,6 +206,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white truncate">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <NotificationBell />
           </div>
         </header>

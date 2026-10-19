@@ -4,10 +4,10 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Bell, Moon, Shield, Smartphone, ChevronRight } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
+import { ThemeSwitcher } from "@/components/shared/ThemeToggle";
 
 export default function CustomerSettingsPage() {
   const router = useRouter();
-  const { theme, toggleTheme } = usePlatform();
   const [pushNotifs, setPushNotifs] = useState(true);
   const [emailNotifs, setEmailNotifs] = useState(true);
 
@@ -34,28 +34,17 @@ export default function CustomerSettingsPage() {
 
         {/* FLAT BORDERLESS HERO UI LIST */}
         <div className="flex flex-col bg-white dark:bg-slate-900 border-[#E3EAE6] dark:border-slate-800">
-          <div className="py-4 px-3 flex items-center justify-between border-[#E3EAE6]/70 dark:border-slate-800/70">
+          <div className="py-4 px-3 flex flex-col gap-3">
             <div className="flex items-center gap-3.5">
               <div className="w-9 h-9 rounded-full bg-[#E8F7EF] dark:bg-slate-800 text-[#008A4C] flex items-center justify-center shrink-0">
                 <Moon className="w-4 h-4" />
               </div>
               <div className="flex flex-col gap-0.5">
-                <span className="text-xs font-black text-[#101714] dark:text-white">Dark Mode</span>
-                <span className="text-xs text-[#66736D] dark:text-slate-400 font-medium">Switch between light and dark visual mode</span>
+                <span className="text-xs font-black text-[#101714] dark:text-white">Appearance</span>
+                <span className="text-xs text-[#66736D] dark:text-slate-400 font-medium">Follow your phone, or always light or dark</span>
               </div>
             </div>
-            <button
-              onClick={toggleTheme}
-              className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                theme === "dark" ? "bg-[#008A4C]" : "bg-slate-300"
-              }`}
-            >
-              <div
-                className={`w-5 h-5 rounded-full bg-white transition-transform absolute top-0.5 ${
-                  theme === "dark" ? "translate-x-5.5" : "translate-x-0.5"
-                }`}
-              />
-            </button>
+            <ThemeSwitcher className="w-full sm:max-w-sm" />
           </div>
 
           <div className="py-4 px-3 flex items-center justify-between border-[#E3EAE6]/70 dark:border-slate-800/70">
