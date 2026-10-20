@@ -4,6 +4,7 @@ import "./globals.css";
 import { PlatformProvider } from "@/store/PlatformContext";
 import ResponsiveLayout from "@/components/shared/ResponsiveLayout";
 import { ProductSheetHost } from "@/components/product/ProductSheetHost";
+import { LiveAlerts } from "@/components/notifications/LiveAlerts";
 
 // Variable font (200–800): one file covers every weight.
 const jakarta = Plus_Jakarta_Sans({
@@ -54,6 +55,7 @@ export default function RootLayout({
           <PlatformProvider>
             <ResponsiveLayout>{children}</ResponsiveLayout>
             <ProductSheetHost />
+            <LiveAlerts />
           </PlatformProvider>
         </HeroUIProviderWrapper>
       </body>

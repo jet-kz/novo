@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { CheckCircle2, Loader2, MessageSquare, ShieldCheck } from "lucide-react";
 import { apiService } from "@/services/api";
+import { AlertSettings } from "@/components/notifications/AlertSettings";
 import { AppNotification } from "@/types";
 
 const timeAgo = (iso: string) => {
@@ -32,6 +33,10 @@ export default function RiderMessagesPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 w-full flex flex-col gap-6">
       <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Messages</h1>
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold text-slate-500">Job alerts</h2>
+        <AlertSettings ringLabel="new jobs" />
+      </section>
       {error && <p className="text-sm text-rose-700 bg-rose-50 dark:bg-rose-950/40 rounded-2xl px-4 py-3">{error}</p>}
       {!items && !error && <Loader2 className="w-6 h-6 animate-spin text-[#087F5B] mx-auto mt-10" />}
       {items && items.length === 0 && (

@@ -5,28 +5,7 @@ import Link from "next/link";
 import { BellRing, X } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
 import { Order } from "@/types";
-
-/** Two-tone chime made in the browser (no audio file to load). */
-function chime() {
-  try {
-    const Ctx = window.AudioContext || (window as any).webkitAudioContext;
-    const ctx = new Ctx();
-    [880, 1320].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = freq;
-      osc.type = "sine";
-      const start = ctx.currentTime + i * 0.22;
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.3, start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.5);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(start);
-      osc.stop(start + 0.55);
-    });
-    setTimeout(() => ctx.close(), 1500);
-  } catch {}
-}
+import { startRing, stopRing } from "@/utils/alertSound";
 
 /**
   * While the merchant dashboard is open: chime, show a banner and badge the tab title when a new
@@ -48,9 +27,16 @@ export function NewOrderAlert() {
     arrived.forEach((o) => seen.current!.add(o.id));
     if (arrived.length) {
       setFresh((prev) => [...arrived, ...prev].slice(0, 3));
-      chime();
-      if ("vibrate" in navigator) navigator.vibrate?.([200, 100, 200]);
+      // Rings (like a kitchen tablet) until someone taps View or dismisses it.
+      arrived.forEach((o) => startRing(`order-${o.id}`));
     }
+    // Stop ringing for orders someone already handled (accepted here or on another device).
+    const waitingIds = new Set(waiting.map((o) => o.id));
+    setFresh((prev) => {
+      const still = prev.filter((o) => waitingIds.has(o.id));
+      prev.filter((o) => !waitingIds.has(o.id)).forEach((o) => stopRing(`order-${o.id}`));
+      return still.length === prev.length ? prev : still;
+    });
   }, [orders, merchantStore]);
 
   // Badge the browser tab while there are unseen orders.
@@ -73,12 +59,20 @@ export function NewOrderAlert() {
           </div>
           <Link
             href="/merchant/orders"
-            onClick={() => setFresh([])}
+            onClick={() => {
+              fresh.forEach((x) => stopRing(`order-${x.id}`));
+              setFresh([]);
+            }}
             className="px-3 py-2 rounded-xl bg-white text-[#087F5B] text-xs font-black shrink-0"
           >
             View
           </Link>
-          <button onClick={() => setFresh((prev) => prev.filter((x) => x.id !== o.id))} aria-label="Dismiss" className="p-1 text-white/70 cursor-pointer">
+          <button
+            onClick={() => {
+              stopRing(`order-${o.id}`);
+              setFresh((prev) => prev.filter((x) => x.id !== o.id));
+            }}
+            aria-label="Dismiss" className="p-1 text-white/70 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>

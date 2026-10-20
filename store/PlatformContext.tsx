@@ -161,7 +161,8 @@ export function normalizeStore(bs: any): Store {
     category: (bs.store_type || "restaurant").toLowerCase() as Store["category"],
     address: bs.address || "",
     phone: bs.phone || "",
-    rating: Number(bs.rating) || 0,
+    // The database defaults rating to 5; only show one once real reviews exist.
+    rating: Number(bs.review_count) > 0 ? Number(bs.rating) || 0 : 0,
     reviewCount: bs.review_count || 0,
     isOpening: bs.is_open ?? true,
     isVerified: !!bs.is_verified,

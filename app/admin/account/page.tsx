@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { KeyRound, Loader2, ShieldCheck, UserPlus } from "lucide-react";
+import { Bell, KeyRound, Loader2, ShieldCheck, UserPlus } from "lucide-react";
+import { AlertSettings } from "@/components/notifications/AlertSettings";
 import { apiService } from "@/services/api";
 import { usePlatform } from "@/store/PlatformContext";
 import { Button } from "@/components/ui/Button";
@@ -16,6 +17,10 @@ export default function AdminAccountPage() {
   return (
     <div className="flex flex-col gap-6 w-full max-w-3xl">
       <ProfileCard name={currentUser.name} phone={currentUser.phone} email={currentUser.email} superAdmin={isSuperAdmin} />
+      <Section title="Alerts" icon={<Bell className="w-4 h-4 text-[#087F5B]" />}>
+        <p className="text-sm text-slate-500 -mt-1 mb-1">New rider applications, stores to approve and failed deliveries.</p>
+        <AlertSettings ringLabel="urgent items" />
+      </Section>
       <PasswordCard />
       <AdminsCard canManage={isSuperAdmin} myId={currentUser.id} />
     </div>

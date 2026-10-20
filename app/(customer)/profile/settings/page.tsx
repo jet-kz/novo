@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Bell, Moon, Shield, Smartphone, ChevronRight } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
 import { ThemeSwitcher } from "@/components/shared/ThemeToggle";
+import { AlertSettings } from "@/components/notifications/AlertSettings";
 
 export default function CustomerSettingsPage() {
   const router = useRouter();
-  const [pushNotifs, setPushNotifs] = useState(true);
   const [emailNotifs, setEmailNotifs] = useState(true);
 
   return (
@@ -47,28 +47,9 @@ export default function CustomerSettingsPage() {
             <ThemeSwitcher className="w-full sm:max-w-sm" />
           </div>
 
-          <div className="py-4 px-3 flex items-center justify-between border-[#E3EAE6]/70 dark:border-slate-800/70">
-            <div className="flex items-center gap-3.5">
-              <div className="w-9 h-9 rounded-full bg-[#E8F7EF] dark:bg-slate-800 text-[#008A4C] flex items-center justify-center shrink-0">
-                <Bell className="w-4 h-4" />
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-xs font-black text-[#101714] dark:text-white">Push Notifications</span>
-                <span className="text-xs text-[#66736D] dark:text-slate-400 font-medium">Real-time status updates on active orders</span>
-              </div>
-            </div>
-            <button
-              onClick={() => setPushNotifs(!pushNotifs)}
-              className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                pushNotifs ? "bg-[#008A4C]" : "bg-slate-300"
-              }`}
-            >
-              <div
-                className={`w-5 h-5 rounded-full bg-white transition-transform absolute top-0.5 ${
-                  pushNotifs ? "translate-x-5.5" : "translate-x-0.5"
-                }`}
-              />
-            </button>
+          <div className="py-4 px-3 flex flex-col gap-3">
+            <span className="text-xs font-black text-[#101714] dark:text-white">Order alerts</span>
+            <AlertSettings ringLabel="important updates" />
           </div>
 
           <div className="py-4 px-3 flex items-center justify-between border-[#E3EAE6]/70 dark:border-slate-800/70">

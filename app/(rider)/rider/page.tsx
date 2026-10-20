@@ -31,6 +31,7 @@ import { NovoLogo } from "@/components/shared/NovoLogo";
 import { LiveOrderMap } from "@/components/map/LiveOrderMap";
 import { useRiderGps } from "@/components/rider/useRiderGps";
 import { useOrderRoute } from "@/components/tracking/useOrderRoute";
+import { startRing, stopRing } from "@/utils/alertSound";
 import { RiderOnboardingStatus } from "@/components/rider/RiderOnboardingStatus";
 import { EnableAlertsCard } from "@/components/notifications/EnableAlertsCard";
 import type { Order } from "@/types";
@@ -72,6 +73,13 @@ export default function RiderHubPage() {
       setOfferTimer(20);
     }
   }, [riderProfile.isOnline, availableJobs, activeOrder, jobOfferModal, dismissedJobIds]);
+
+  // Ring while a job offer is showing (the offer itself times out after 20s).
+  useEffect(() => {
+    if (jobOfferModal) startRing("new-job", 25_000);
+    else stopRing("new-job");
+    return () => stopRing("new-job");
+  }, [jobOfferModal]);
 
   const dismissOffer = () => {
     if (targetJobId) setDismissedJobIds((prev) => [...prev, targetJobId]);

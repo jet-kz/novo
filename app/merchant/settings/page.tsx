@@ -1,68 +1,47 @@
 "use client";
 
-import React, { useState } from "react";
-import { Settings, Shield, Bell, Lock, Check } from "lucide-react";
+import React from "react";
+import Link from "next/link";
+import { KeyRound } from "lucide-react";
+import { AlertSettings } from "@/components/notifications/AlertSettings";
+import { ThemeSwitcher } from "@/components/shared/ThemeToggle";
 
 export default function MerchantSettingsPage() {
-  const [emailNotifs, setEmailNotifs] = useState(true);
-  const [orderSound, setOrderSound] = useState(true);
-  const [saved, setSaved] = useState(false);
-
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  };
-
   return (
-    <div className="flex flex-col gap-6 max-w-3xl mx-auto pb-12">
+    <div className="flex flex-col gap-8 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Account Settings</h1>
-        <p className="text-xs text-[#66736E] font-medium mt-1">Manage notification sounds, email alerts and account security</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Settings</h1>
+        <p className="text-sm text-slate-500 mt-1">Alerts, appearance and your password.</p>
       </div>
 
-      {saved && (
-        <div className="p-4 rounded-2xl bg-emerald-100 text-[#087F5B] text-xs font-bold flex items-center gap-2">
-          <Check className="w-4 h-4" />
-          <span>Preferences updated successfully!</span>
-        </div>
-      )}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-bold tracking-tight">Order alerts</h2>
+        <p className="text-sm text-slate-500 -mt-1">
+          Turn these on for every phone or tablet you take orders on. New orders ring until someone taps them.
+        </p>
+        <AlertSettings ringLabel="new orders" />
+      </section>
 
-      <div className="bg-slate-50 dark:bg-slate-900/70 p-6 rounded-3xl flex flex-col gap-6">
-        <h3 className="text-base font-bold text-slate-900 dark:text-white">Notification Preferences</h3>
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-bold tracking-tight">Appearance</h2>
+        <ThemeSwitcher className="max-w-sm" />
+      </section>
 
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-xs font-bold text-slate-900 dark:text-white block">Order Alert Chime</span>
-            <span className="text-[11px] text-slate-400">Play sound notification when a new customer order arrives</span>
-          </div>
-          <input
-            type="checkbox"
-            checked={orderSound}
-            onChange={(e) => setOrderSound(e.target.checked)}
-            className="w-5 h-5 accent-[#087F5B]"
-          />
-        </div>
-
-        <div className="flex items-center justify-between border-slate-100 dark:border-slate-800 pt-4">
-          <div>
-            <span className="text-xs font-bold text-slate-900 dark:text-white block">Email Receipts & Summaries</span>
-            <span className="text-[11px] text-slate-400">Receive daily order summaries and payout receipts</span>
-          </div>
-          <input
-            type="checkbox"
-            checked={emailNotifs}
-            onChange={(e) => setEmailNotifs(e.target.checked)}
-            className="w-5 h-5 accent-[#087F5B]"
-          />
-        </div>
-
-        <button
-          onClick={handleSave}
-          className="w-fit px-8 py-3 rounded-2xl bg-[#087F5B] text-white text-xs font-bold hover:bg-[#065A43] transition-all cursor-pointer mt-2"
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-bold tracking-tight">Security</h2>
+        <Link
+          href="/auth/forgot-password?portal=merchant"
+          className="flex items-center gap-3 rounded-2xl bg-slate-50 dark:bg-slate-900/70 p-3.5 hover:bg-slate-100 dark:hover:bg-slate-800"
         >
-          Save Preferences
-        </button>
-      </div>
+          <span className="w-9 h-9 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-[#087F5B] flex items-center justify-center shrink-0">
+            <KeyRound className="w-4 h-4" />
+          </span>
+          <span className="flex-1">
+            <span className="block text-sm font-semibold">Change password</span>
+            <span className="block text-xs text-slate-500">We&apos;ll email you a code to set a new one.</span>
+          </span>
+        </Link>
+      </section>
     </div>
   );
 }

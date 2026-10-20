@@ -25,6 +25,7 @@ import { NovoLogo } from "@/components/shared/NovoLogo";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 import { ThemeSwitcher, ThemeToggle } from "@/components/shared/ThemeToggle";
 import { NewOrderAlert } from "@/components/merchant/NewOrderAlert";
+import { SoundUnlockHint } from "@/components/notifications/AlertSettings";
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ className?: string }>; badge?: number };
 
@@ -225,6 +226,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-28 md:pb-12">
         <NewOrderAlert />
+        <SoundUnlockHint />
         <div className="mb-5 empty:hidden">
           <EnableAlertsCard
             storageKey="merchant"
