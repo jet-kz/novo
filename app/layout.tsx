@@ -35,7 +35,7 @@ export const viewport: Viewport = {
 
 import { HeroUIProviderWrapper } from "@/components/providers/HeroUIProviderWrapper";
 
-const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("novo_theme");if(t!=="light"&&t!=="dark"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}if(t==="dark")document.documentElement.classList.add("dark");document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.setAttribute("content",t==="dark"?"#000000":"#ffffff")})}catch(e){}})();`;
+const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("novo_theme");if(t!=="light"&&t!=="dark"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}var d=document.documentElement,c=t==="dark"?"#000000":"#ffffff";if(t==="dark")d.classList.add("dark");d.style.backgroundColor=t==="dark"?"#000000":"";var m=document.createElement("meta");m.name="theme-color";m.content=c;document.head.appendChild(m)}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -45,8 +45,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={jakarta.variable} suppressHydrationWarning>
       <head>
-        {/* Browser/status bar colour; THEME_SCRIPT switches it to black in dark mode. */}
-        <meta name="theme-color" content="#ffffff" />
+        {/* THEME_SCRIPT also adds the browser/status-bar colour tag (black in dark mode). */}
         {/* Apply the theme before first paint so dark mode never flashes white. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>

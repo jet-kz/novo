@@ -8,6 +8,7 @@
  * neutral grey, so "dark:bg-slate-900" etc. become X's surfaces without touching components.
  *   page #000 · card #16181C · raised #202327 · line #2F3336 · muted text #71767B · text #E7E9EA
  */
+:root.dark,
 .dark {
   color-scheme: dark;
   --background: #000000;
@@ -68,6 +69,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
+
+html {
+  background-color: var(--background);
+}
 
 body {
   background-color: var(--background);

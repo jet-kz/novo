@@ -302,6 +302,8 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
+    // Safari fills its top strip and the area behind its toolbar with the page colour.
+    document.documentElement.style.backgroundColor = theme === "dark" ? "#000000" : "";
     // Browser top bar / phone status bar follows the app theme too.
     const color = theme === "dark" ? "#000000" : "#ffffff";
     const metas = document.querySelectorAll('meta[name="theme-color"]');
