@@ -43,6 +43,7 @@
 }
 
 :root {
+  color-scheme: light;
   --background: #f8fafc; /* slate-50 */
   --foreground: #0f172a; /* slate-900 */
   --primary: #0f172a; /* slate-900 */

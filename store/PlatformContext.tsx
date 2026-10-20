@@ -301,6 +301,16 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
+    // Browser top bar / phone status bar follows the app theme too.
+    const color = theme === "dark" ? "#000000" : "#ffffff";
+    const metas = document.querySelectorAll('meta[name="theme-color"]');
+    if (metas.length === 0) {
+      const meta = document.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      meta.setAttribute("content", color);
+      document.head.appendChild(meta);
+    }
+    metas.forEach((m) => m.setAttribute("content", color));
   }, [theme]);
 
   // ── Auth ────────────────────────────────────────────────────────────────

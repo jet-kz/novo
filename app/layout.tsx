@@ -29,15 +29,12 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Draw under the notch / home indicator; layouts pad with env(safe-area-inset-*).
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
-  ],
+  // Browser bar colour is set from the app theme (not the OS) by THEME_SCRIPT and PlatformContext.
 };
 
 import { HeroUIProviderWrapper } from "@/components/providers/HeroUIProviderWrapper";
 
-const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("novo_theme");if(t!=="light"&&t!=="dark"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}if(t==="dark")document.documentElement.classList.add("dark")}catch(e){}})();`;
+const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("novo_theme");if(t!=="light"&&t!=="dark"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}if(t==="dark")document.documentElement.classList.add("dark");document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.setAttribute("content",t==="dark"?"#000000":"#ffffff")})}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -47,6 +44,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={jakarta.variable} suppressHydrationWarning>
       <head>
+        {/* Browser/status bar colour; THEME_SCRIPT switches it to black in dark mode. */}
+        <meta name="theme-color" content="#ffffff" />
         {/* Apply the theme before first paint so dark mode never flashes white. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
