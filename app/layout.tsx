@@ -14,13 +14,10 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://www.novong.com"),
   title: "Novo | On-Demand Delivery Express",
   description: "Order food, groceries, pharmacy & express courier delivery fast and reliably across nationwide locations.",
-  icons: {
-    icon: "/novo-logo/01_Motion_N/01-motion-n_green.svg",
-    shortcut: "/novo-logo/01_Motion_N/01-motion-n_green.svg",
-    apple: "/novo-logo/01_Motion_N/01-motion-n_green.png",
-  },
+  // Icons come from app/favicon.ico, app/icon.png and app/apple-icon.png (the Novo N).
   // Home-screen launches on iPhone open without Safari's bars.
   appleWebApp: { capable: true, title: "Novo", statusBarStyle: "default" },
 };

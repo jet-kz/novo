@@ -17,7 +17,7 @@ import { apiService } from "@/services/api";
 import { getUniqueStoreBanner, getUniqueStoreLogo } from "@/utils/storeImageUtils";
 import { relinkPushIfGranted } from "@/utils/push";
 import { cartLineKey, lineUnitPrice, needsChoices } from "@/utils/options";
-import { Coordinates, isStoreInDeliveryRange, getCoordinatesForAddress } from "@/utils/locationUtils";
+import { Coordinates, getCoordinatesForAddress, getDeliveryRule, isStoreInDeliveryRange, setDeliveryRule } from "@/utils/locationUtils";
 
 interface PlatformContextType {
   // Role & Auth State
@@ -171,7 +171,8 @@ export function normalizeStore(bs: any): Store {
     longitude: bs.location?.longitude,
     banner: getUniqueStoreBanner({ id: bs.id, name: bs.name, category: bs.store_type, banner: bs.banner }),
     logo: getUniqueStoreLogo({ id: bs.id, name: bs.name, category: bs.store_type, logo: bs.logo }),
-    deliveryFee: Number(settings.delivery_fee) || 450,
+    // Real fees come from the delivery rule via getStoreDeliveryDetails.
+    deliveryFee: 0,
     deliveryTime: settings.delivery_time || "20-30 min",
     minOrder: Number(settings.min_order) || 0,
     cuisineType: bs.store_type || "Restaurant",
@@ -266,7 +267,19 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch {}
   }, []);
 
-  const getStoreDeliveryDetails = (store: Store) => isStoreInDeliveryRange(store, userLocationAddress, userLocationCoords);
+  // Load the live delivery-fee rule once, so store cards show what checkout will charge.
+  const [deliveryRuleVersion, setDeliveryRuleVersion] = useState(0);
+  useEffect(() => {
+    apiService
+      .getDeliveryRule()
+      .then((rule) => {
+        setDeliveryRule(rule);
+        setDeliveryRuleVersion((v) => v + 1);
+      })
+      .catch(() => {});
+  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const getStoreDeliveryDetails = useCallback((store: Store) => isStoreInDeliveryRange(store, userLocationAddress, userLocationCoords), [userLocationAddress, userLocationCoords, deliveryRuleVersion]);
 
   const [favorites, setFavorites] = useState<string[]>([]);
   const toggleFavorite = (id: string) => {
@@ -614,7 +627,7 @@ export const PlatformProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const cartDeliveryFee = useMemo(() => {
     if (cart.length === 0) return 0;
     const store = stores.find((s) => s.id === cart[0]?.product?.storeId);
-    if (!store) return 450;
+    if (!store) return getDeliveryRule().minimum_fee;
     return isStoreInDeliveryRange(store, userLocationAddress, userLocationCoords).deliveryFee;
   }, [cart, stores, userLocationAddress, userLocationCoords]);
 

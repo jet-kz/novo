@@ -800,6 +800,8 @@ export const apiService = {
   deleteHomeCollection: (id: string) =>
     request(`/catalog/collections/${id}`, { method: "DELETE" }, "Could not delete collection"),
 
+  getDeliveryRule: () => request<import("@/utils/locationUtils").DeliveryRule>("/pricing/delivery-rule", {}, "Could not load delivery pricing"),
+
   // 10.3a STORE PROMO CODES (merchant-run, merchant-funded)
   getStorePromoRules: () => request<StorePromoRules>("/pricing/merchant-promo-rules", {}, "Could not load promo rules"),
   getMyPromotions: () => request<StorePromo[]>("/pricing/my-promotions", {}, "Could not load your promotions"),

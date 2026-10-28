@@ -4,11 +4,12 @@ import React, { useState, Suspense } from "react";
 import { sectionOf, useSectionTabs } from "@/components/shared/useSectionTabs";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Star, Clock, Bike, ShieldCheck, Search, ArrowLeft, Store as StoreIcon } from "lucide-react";
+import { Star, Clock, Bike, ShieldCheck, Search, ArrowLeft, Share2, Store as StoreIcon } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
 import { RestaurantCard } from "@/components/cards/RestaurantCard";
 import { ProductCard } from "@/components/cards/ProductCard";
 import { Product } from "@/types";
+import { shareStore } from "@/utils/shareStore";
 
 import { MobileStoreView } from "@/components/mobile/store/MobileStoreView";
 import { MobileStoresListView } from "@/components/mobile/store/MobileStoresListView";
@@ -18,7 +19,7 @@ function ShopContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const storeParam = searchParams.get("store") || "";
-  const { stores, products, addToCart, openProduct } = usePlatform();
+  const { stores, products, addToCart, openProduct, getStoreDeliveryDetails } = usePlatform();
 
   const selectedStore = storeParam
     ? stores.find(
@@ -83,14 +84,30 @@ function ShopContent() {
                   <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
                   <span>{selectedStore.rating > 0 ? `${selectedStore.rating.toFixed(1)} (${selectedStore.reviewCount} reviews)` : "New on Novo"}</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="w-4 h-4 text-emerald-400" />
-                  <span>{selectedStore.deliveryTime}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Bike className="w-4 h-4 text-indigo-400" />
-                  <span>₦{selectedStore.deliveryFee} delivery</span>
-                </div>
+                {getStoreDeliveryDetails(selectedStore).inRange ? (
+                  <>
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4 text-emerald-400" />
+                      <span>{getStoreDeliveryDetails(selectedStore).deliveryTime}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Bike className="w-4 h-4 text-emerald-400" />
+                      <span>₦{getStoreDeliveryDetails(selectedStore).deliveryFee.toLocaleString()} delivery</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-1 text-amber-300">
+                    <Bike className="w-4 h-4" />
+                    <span>Doesn&apos;t deliver to your area yet</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => shareStore(selectedStore).then((r) => r === "copied" && window.alert("Link copied. Paste it anywhere to share this store."))}
+                  className="flex items-center gap-1 px-3 py-1 rounded-full bg-white/15 hover:bg-white/25 cursor-pointer"
+                >
+                  <Share2 className="w-4 h-4" /> Share
+                </button>
               </div>
             </div>
           </div>

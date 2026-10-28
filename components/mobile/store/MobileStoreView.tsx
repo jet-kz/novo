@@ -21,12 +21,14 @@ import {
 } from "lucide-react";
 import { usePlatform } from "@/store/PlatformContext";
 import { Product, Store } from "@/types";
+import { shareStore } from "@/utils/shareStore";
 
 export function MobileStoreView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const storeIdParam = searchParams.get("store") || "";
-  const { stores, products, addToCart, openProduct, favorites, toggleFavorite } = usePlatform();
+  const { stores, products, addToCart, openProduct, favorites, toggleFavorite, getStoreDeliveryDetails } = usePlatform();
+  const [shareNote, setShareNote] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<"menu" | "info" | "reviews">("menu");
   const [activeCategory, setActiveCategory] = useState<string>("All");
@@ -60,6 +62,7 @@ export function MobileStoreView() {
   }
 
   const isFav = favorites.includes(store.id);
+  const delivery = getStoreDeliveryDetails(store);
 
   const filteredProducts = storeProducts.filter((p) => {
     const matchesCat = activeCategory === "All" || sectionOf(p) === activeCategory;
@@ -96,9 +99,12 @@ export function MobileStoreView() {
             </button>
             <button
               onClick={() => {
-                if (navigator.share) {
-                  navigator.share({ title: store.name, url: window.location.href });
-                }
+                shareStore(store).then((r) => {
+                  if (r === "copied") {
+                    setShareNote("Link copied");
+                    setTimeout(() => setShareNote(null), 2000);
+                  }
+                });
               }}
               className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-md text-white flex items-center justify-center transition-colors cursor-pointer shadow-md"
             >
@@ -106,6 +112,11 @@ export function MobileStoreView() {
             </button>
           </div>
         </div>
+        {shareNote && (
+          <span role="status" className="absolute z-20 top-16 right-4 px-3 py-1.5 rounded-full bg-black/70 text-white text-xs font-semibold">
+            {shareNote}
+          </span>
+        )}
 
         {/* Store Logo & Details */}
         <div className="absolute bottom-4 left-4 right-4 flex items-end gap-3 z-10">
@@ -129,14 +140,22 @@ export function MobileStoreView() {
               ) : (
                 <span className="text-slate-200">New on Novo</span>
               )}
-              <span className="flex items-center gap-0.5 text-emerald-300">
-                <Clock className="w-3 h-3" />
-                {store.deliveryTime}
-              </span>
-              <span className="flex items-center gap-0.5 text-indigo-300">
-                <Bike className="w-3 h-3" />
-                ₦{store.deliveryFee} delivery
-              </span>
+              {delivery.inRange ? (
+                <>
+                  <span className="flex items-center gap-0.5 text-emerald-300">
+                    <Clock className="w-3 h-3" />
+                    {delivery.deliveryTime}
+                  </span>
+                  <span className="flex items-center gap-0.5 text-emerald-100">
+                    <Bike className="w-3 h-3" />
+                    ₦{delivery.deliveryFee.toLocaleString()} delivery
+                  </span>
+                </>
+              ) : (
+                <span className="flex items-center gap-1 text-amber-300">
+                  <Bike className="w-3 h-3" /> Doesn&apos;t deliver to your area yet
+                </span>
+              )}
             </div>
           </div>
         </div>

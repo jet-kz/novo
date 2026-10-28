@@ -15,6 +15,7 @@ export default function manifest(): MetadataRoute.Manifest {
     icons: [
       { src: "/novo-logo/01_Motion_N/01-motion-n_green.png", sizes: "1024x1024", type: "image/png", purpose: "any" },
       { src: "/novo-logo/01_Motion_N/01-motion-n_green.svg", sizes: "any", type: "image/svg+xml" },
+      { src: "/novo-logo/app-icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   };
 }

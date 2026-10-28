@@ -163,21 +163,45 @@ export function getCoordinatesForAddress(address?: string, coords?: Coordinates 
   return TARGET_CITY_COORDINATES[city] || TARGET_CITY_COORDINATES.warri;
 }
 
+/** The live delivery-fee rule from the server (GET /pricing/delivery-rule). */
+export interface DeliveryRule {
+  base_fee: number;
+  per_km_fee: number;
+  minimum_fee: number;
+  maximum_fee: number;
+  surge_multiplier: number;
+  default_distance_km: number;
+  max_distance_km: number;
+}
+
+// Same defaults the server uses when no rule is configured.
+let deliveryRule: DeliveryRule = {
+  base_fee: 500,
+  per_km_fee: 150,
+  minimum_fee: 500,
+  maximum_fee: 3000,
+  surge_multiplier: 1,
+  default_distance_km: 3,
+  max_distance_km: 50,
+};
+
+export function setDeliveryRule(rule: DeliveryRule) {
+  deliveryRule = { ...deliveryRule, ...rule };
+}
+
+export function getDeliveryRule(): DeliveryRule {
+  return deliveryRule;
+}
+
 /**
- * Calculates dynamic delivery fee based on distance:
- * Base fee ₦300 + ₦100 per km (minimum ₦300, capped at ₦2500)
+ * Delivery fee exactly as checkout charges it:
+ * clamp(base + km × per-km, minimum, maximum) × surge.
  */
-export function calculateDynamicDeliveryFee(
-  distanceKm: number,
-  baseFee: number = 300,
-  ratePerKm: number = 100,
-  minFee: number = 300,
-  maxFee: number = 2500
-): number {
-  if (distanceKm <= 0) return minFee;
-  const rawFee = baseFee + Math.ceil(distanceKm) * ratePerKm;
-  const rounded = Math.ceil(rawFee / 50) * 50; // Round up to nearest 50 Naira
-  return Math.min(Math.max(rounded, minFee), maxFee);
+export function calculateDynamicDeliveryFee(distanceKm: number): number {
+  const r = deliveryRule;
+  const km = Math.min(Math.max(distanceKm, 0), r.max_distance_km);
+  const fee = Math.min(Math.max(r.base_fee + km * r.per_km_fee, r.minimum_fee), r.maximum_fee) * r.surge_multiplier;
+  return Math.round(fee);
 }
 
 /**
@@ -216,7 +240,10 @@ export function isStoreInDeliveryRange(
   const cityMatches = storeCity === userCity || (storeCity === "warri" && userCity === "effurun") || (storeCity === "effurun" && userCity === "warri");
   const inRange = storePinned && userCoords ? distanceKm <= maxAllowedRadius : cityMatches && distanceKm <= maxAllowedRadius;
 
-  const deliveryFee = calculateDynamicDeliveryFee(distanceKm, store.deliveryFee || 300);
+  // Checkout prices by real distance when both the store and the customer are pinned on the map,
+  // and by the standard distance otherwise; do the same so the fee shown is the fee charged.
+  const feeKm = storePinned && userCoords ? distanceKm : deliveryRule.default_distance_km;
+  const deliveryFee = calculateDynamicDeliveryFee(feeKm);
   const deliveryTime = estimateDeliveryTime(distanceKm);
 
   return {

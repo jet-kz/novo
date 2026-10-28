@@ -12,7 +12,8 @@ interface RestaurantCardProps {
 }
 
 export const RestaurantCard: React.FC<RestaurantCardProps> = ({ store }) => {
-  const { favorites, toggleFavorite } = usePlatform();
+  const { favorites, toggleFavorite, getStoreDeliveryDetails } = usePlatform();
+  const delivery = getStoreDeliveryDetails(store);
   const isFav = favorites.includes(store.id);
 
   const bannerUrl = getUniqueStoreBanner(store);
@@ -93,12 +94,12 @@ export const RestaurantCard: React.FC<RestaurantCardProps> = ({ store }) => {
         <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 pt-3 border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
             <Clock className="w-3.5 h-3.5 text-emerald-500" />
-            <span>{store.deliveryTime}</span>
+            <span>{delivery.deliveryTime}</span>
           </div>
 
           <div className="flex items-center gap-1">
             <Bike className="w-3.5 h-3.5 text-slate-400" />
-            <span>₦{store.deliveryFee} fee</span>
+            <span>₦{delivery.deliveryFee.toLocaleString()} delivery</span>
           </div>
         </div>
       </div>
