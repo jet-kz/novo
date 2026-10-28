@@ -25,6 +25,7 @@ export function useOrderLines() {
     product_id: item.product.id,
     quantity: item.quantity,
     addons: (item.selectedOptions || []).map((o) => ({ id: o.id, name: o.name, quantity: o.quantity || 1 })),
+    note: item.specialInstructions?.trim() || undefined,
   }));
   const coords = userLocationCoords
     ? { delivery_latitude: userLocationCoords.lat, delivery_longitude: userLocationCoords.lon }

@@ -44,6 +44,7 @@ export function useCheckout() {
   const [tip, setTip] = useState(0);
   const [promoInput, setPromoInput] = useState("");
   const [promoCode, setPromoCode] = useState<string | null>(null);
+  const [orderNote, setOrderNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -122,6 +123,7 @@ export function useCheckout() {
       customer_name: contactName.trim(),
       customer_phone: contactPhone.trim(),
       customer_email: contactEmail.trim() || undefined,
+      customer_note: orderNote.trim() || undefined,
     };
 
     let order: any;
@@ -200,6 +202,8 @@ export function useCheckout() {
     setTip,
     promoInput,
     setPromoInput,
+    orderNote,
+    setOrderNote,
     promoCode,
     applyPromo,
     removePromo,

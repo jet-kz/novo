@@ -9,6 +9,7 @@ import { useCheckout, PaymentMethod } from "@/components/checkout/useCheckout";
 import { MobileCheckoutView } from "@/components/mobile/checkout/MobileCheckoutView";
 import { ContactFields } from "@/components/checkout/ContactFields";
 import { DeliveryLocationField } from "@/components/checkout/DeliveryLocationField";
+import { OrderNoteField } from "@/components/checkout/OrderNoteField";
 import { cartLineKey, optionsUnitPrice } from "@/utils/options";
 
 const PAYMENT_OPTIONS: { id: PaymentMethod; label: string; icon: React.ReactNode }[] = [
@@ -51,6 +52,10 @@ export default function CheckoutPage() {
 
               <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xs">
                 <DeliveryLocationField checkout={checkout} />
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xs">
+                <OrderNoteField checkout={checkout} />
               </div>
 
               <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xs flex flex-col gap-4">

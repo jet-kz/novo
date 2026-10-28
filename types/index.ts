@@ -252,6 +252,8 @@ export type OrderStatus =
 
 export interface Order {
   id: string;
+  /** Customer's note for the store/rider. */
+  customerNote?: string;
   customerId: string;
   customerName: string;
   customerPhone: string;

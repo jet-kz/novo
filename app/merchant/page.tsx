@@ -17,6 +17,7 @@ import {
   statusLabel,
 } from "@/utils/orderStatus";
 import type { Order, OrderStatus } from "@/types";
+import { OrderItemsDetail } from "@/components/merchant/OrderItemsDetail";
 
 type Tab = "new" | "preparing" | "ready" | "completed";
 
@@ -284,6 +285,11 @@ function OrderRow({
         </p>
       </Link>
       <span className="hidden sm:block text-[15px] font-semibold w-24 text-right">{naira(order.subtotal || order.total)}</span>
+      {isNewOrder(order.status) && (
+        <div className="w-full pl-14 order-last sm:order-none sm:basis-full">
+          <OrderItemsDetail order={order} compact />
+        </div>
+      )}
       <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto pl-14 sm:pl-0">
         {next ? (
           <button

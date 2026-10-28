@@ -14,6 +14,7 @@ import {
 } from "@/utils/orderStatus";
 import { apiService } from "@/services/api";
 import { Order, OrderStatus } from "@/types";
+import { OrderItemsDetail } from "@/components/merchant/OrderItemsDetail";
 import {
   ShoppingBag,
   Clock,
@@ -162,85 +163,77 @@ export default function MerchantOrdersPage() {
           </div>
         ) : (
           filteredOrders.map((ord) => (
-            <div
-              key={ord.id}
-              className="bg-slate-50 dark:bg-slate-900/70 rounded-3xl p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base font-bold text-slate-900 dark:text-white">#{ord.id}</span>
-                    <span
-                      className={`px-3 py-1 rounded-full text-[11px] font-semibold ${
-                        isNewOrder(ord.status)
-                          ? "bg-emerald-100 text-[#087F5B]"
-                          : isInKitchen(ord.status)
-                          ? "bg-amber-100 text-amber-700"
-                          : isReady(ord.status) || isOnTheWay(ord.status)
-                          ? "bg-blue-100 text-blue-700"
-                          : isDone(ord.status)
-                          ? "bg-slate-100 text-slate-700"
-                          : "bg-rose-100 text-rose-700"
-                      }`}
-                    >
-                      {statusLabel(ord.status)}
-                    </span>
-                  </div>
-                  <span className="text-xs text-[#66736E] font-semibold mt-1" suppressHydrationWarning>
-                    {new Date(ord.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            <div key={ord.id} className="bg-slate-50 dark:bg-slate-900/70 rounded-3xl p-5 flex flex-col gap-4">
+              {/* Who and when */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-base font-bold truncate">#{ord.id.slice(-8)}</span>
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold shrink-0 ${
+                      isNewOrder(ord.status)
+                        ? "bg-emerald-100 text-[#087F5B] dark:bg-emerald-950/50 dark:text-emerald-300"
+                        : isInKitchen(ord.status)
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
+                        : isReady(ord.status) || isOnTheWay(ord.status)
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
+                        : isDone(ord.status)
+                        ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        : "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"
+                    }`}
+                  >
+                    {statusLabel(ord.status)}
                   </span>
                 </div>
-
-                <div className="flex flex-col pl-1">
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">{ord.customerName || "Customer"}</span>
-                  <span className="text-xs text-[#66736E] font-medium">{ord.customerPhone || "No phone provided"}</span>
-                </div>
-
-                <div className="flex flex-col pl-1 max-w-xs">
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">
-                    {ord.items && ord.items.length > 0
-                      ? ord.items.map((i) => `${i.quantity}x ${i.product?.name || "Item"}`).join(", ")
-                      : "Standard Order Items"}
-                  </span>
-                  <span className="text-xs font-bold text-[#087F5B]">₦{ord.total?.toLocaleString() || "0"}</span>
-                </div>
+                <span className="text-xs text-slate-500" suppressHydrationWarning>
+                  {new Date(ord.createdAt || Date.now()).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                  {" · "}
+                  {ord.customerName || "Customer"}
+                </span>
               </div>
 
-              {/* ACTION BUTTONS */}
-              <div className="flex items-center gap-2 lg:border-t-0 pt-3 lg:pt-0 border-slate-100 dark:border-slate-800">
-                <button
-                  onClick={() => setSelectedOrder(ord)}
-                  className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 transition-colors cursor-pointer"
-                  title="View Details"
-                >
-                  <Eye className="w-4 h-4" />
-                </button>
+              {/* What they ordered and picked */}
+              <OrderItemsDetail order={ord} compact={!isNewOrder(ord.status)} />
 
-                {merchantNextStep(ord.status) && (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className={`text-sm ${isNewOrder(ord.status) ? "invisible" : ""}`}>
+                  <span className="font-bold">₦{Math.round(ord.subtotal || ord.total || 0).toLocaleString()}</span>
+                  <span className="text-slate-500"> · {ord.paymentMethod === "card" ? "Paid online" : ord.paymentMethod === "cash" ? "Cash on delivery" : "Transfer on delivery"}</span>
+                </p>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => handleStatusChange(ord.id, merchantNextStep(ord.status)!.status)}
-                    disabled={busyId === ord.id}
-                    className="px-5 py-2.5 rounded-2xl bg-[#087F5B] text-white text-xs font-bold hover:bg-[#065A43] transition-all cursor-pointer disabled:opacity-50"
+                    onClick={() => setSelectedOrder(ord)}
+                    className="h-10 w-10 rounded-full bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center cursor-pointer"
+                    title="Full details"
+                    aria-label="Full details"
                   >
-                    {busyId === ord.id ? "Saving…" : merchantNextStep(ord.status)!.label}
+                    <Eye className="w-4 h-4" />
                   </button>
-                )}
-
-                {merchantCanReject(ord.status) && (
-                  <button
-                    onClick={() => setCancelModalOrder(ord)}
-                    disabled={busyId === ord.id}
-                    className="px-4 py-2.5 rounded-2xl bg-rose-100 text-rose-700 text-xs font-semibold hover:bg-rose-200 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    Decline
-                  </button>
-                )}
-
-                {(isReady(ord.status) || ord.status === "rider_assigned") && ord.pickupCode && (
-                  <span className="px-4 py-2.5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-bold" title="Give this code to the rider at pickup">
-                    Pickup code: {ord.pickupCode}
-                  </span>
-                )}
+                  {merchantCanReject(ord.status) && (
+                    <button
+                      onClick={() => setCancelModalOrder(ord)}
+                      disabled={busyId === ord.id}
+                      className="h-10 px-4 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-sm font-semibold cursor-pointer disabled:opacity-50"
+                    >
+                      Decline
+                    </button>
+                  )}
+                  {merchantNextStep(ord.status) && (
+                    <button
+                      onClick={() => handleStatusChange(ord.id, merchantNextStep(ord.status)!.status)}
+                      disabled={busyId === ord.id}
+                      className="h-10 px-5 rounded-full bg-[#087F5B] text-white text-sm font-semibold cursor-pointer disabled:opacity-50"
+                    >
+                      {busyId === ord.id ? "Saving…" : isNewOrder(ord.status) ? "Accept" : merchantNextStep(ord.status)!.label}
+                    </button>
+                  )}
+                  {(isReady(ord.status) || ord.status === "rider_assigned") && ord.pickupCode && (
+                    <span className="h-10 px-4 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-sm font-semibold flex items-center" title="Give this code to the rider at pickup">
+                      Pickup code {ord.pickupCode}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           ))
@@ -283,23 +276,10 @@ export default function MerchantOrdersPage() {
               </div>
             </div>
 
-            {/* ITEMS LIST */}
+            {/* ITEMS, CHOICES, NOTES, TOTALS */}
             <div className="flex flex-col gap-3">
-              <span className="text-xs font-bold text-slate-900 dark:text-white">Ordered Items</span>
-              {selectedOrder.items && selectedOrder.items.length > 0 ? (
-                selectedOrder.items.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-xs font-semibold text-slate-800 dark:text-slate-200">
-                    <span>{item.quantity}x {item.product?.name || "Item"}</span>
-                    <span>₦{((item.product?.price || 0) * item.quantity).toLocaleString()}</span>
-                  </div>
-                ))
-              ) : (
-                <span className="text-xs text-slate-500 font-medium">Item breakdown included in total</span>
-              )}
-              <div className="border-slate-200 dark:border-slate-800 pt-3 flex items-center justify-between text-sm font-bold text-[#087F5B]">
-                <span>Total Amount</span>
-                <span>₦{selectedOrder.total?.toLocaleString() || "0"}</span>
-              </div>
+              <span className="text-xs font-bold text-slate-900 dark:text-white">What they ordered</span>
+              <OrderItemsDetail order={selectedOrder} />
             </div>
 
             {/* TIMELINE HISTORY FROM BACKEND */}

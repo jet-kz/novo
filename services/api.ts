@@ -476,6 +476,7 @@ export const apiService = {
                 },
                 quantity: Number(it.quantity) || 1,
                 selectedOptions: Array.isArray(it.addons) ? it.addons : [],
+                specialInstructions: it.note || undefined,
               }
         )
       : [];
@@ -488,6 +489,7 @@ export const apiService = {
       customerEmail: raw.customer_email || raw.customerEmail || undefined,
       isGuest: Boolean(raw.is_guest ?? raw.isGuest),
       deliveryAddress: raw.delivery_address || raw.deliveryAddress || "",
+      customerNote: raw.customer_note || raw.customerNote || undefined,
       storeId: raw.store_id || raw.storeId || "",
       storeName: raw.store_name || raw.storeName || "",
       storeAddress: raw.store_address || raw.storeAddress || "",

@@ -14,6 +14,7 @@ import {
 import type { useCheckout, PaymentMethod } from "@/components/checkout/useCheckout";
 import { ContactFields } from "@/components/checkout/ContactFields";
 import { DeliveryLocationField } from "@/components/checkout/DeliveryLocationField";
+import { OrderNoteField } from "@/components/checkout/OrderNoteField";
 
 const naira = (n: number) => `₦${Math.round(n).toLocaleString()}`;
 
@@ -44,6 +45,10 @@ export function MobileCheckoutView({ checkout }: { checkout: ReturnType<typeof u
         {/* 2. DELIVERY LOCATION */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 shadow-xs">
           <DeliveryLocationField checkout={checkout} />
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 shadow-xs">
+          <OrderNoteField checkout={checkout} />
         </div>
 
         {/* 3. PAYMENT METHOD SECTION */}
