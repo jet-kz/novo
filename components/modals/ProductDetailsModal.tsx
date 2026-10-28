@@ -190,7 +190,9 @@ function SheetBody({
                       <Check className="w-3.5 h-3.5" />
                     </span>
                   ) : !single && count > 0 ? (
-                    <span className="text-xs font-bold text-slate-500 shrink-0">{count}/{g.max}</span>
+                    <span className="text-xs font-bold text-slate-500 shrink-0">
+                      {g.max >= g.options.reduce((n, o) => n + Math.max(1, o.max_qty || 1), 0) ? `${count} added` : `${count}/${g.max}`}
+                    </span>
                   ) : null}
                 </div>
 

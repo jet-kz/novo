@@ -29,6 +29,8 @@ export const cartLineKey = (item: Pick<CartItem, "product" | "selectedOptions">)
 export function groupRule(g: OptionGroup): string {
   const min = g.min || 0;
   const max = g.max || g.options.length;
+  const capacity = g.options.reduce((n, o) => n + Math.max(1, o.max_qty || 1), 0);
+  if (max > 1 && max >= capacity) return min > 0 ? `Required · add at least ${min}, as many as you like` : "Optional · add as many as you like";
   if (min === 1 && max === 1) return "Required · pick 1";
   if (min > 0 && min === max) return `Required · pick ${min}`;
   if (min > 0) return `Required · pick ${min}–${max}`;

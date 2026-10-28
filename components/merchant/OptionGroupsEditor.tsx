@@ -6,14 +6,15 @@ import type { GroupOption, OptionGroup, Product } from "@/types";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-type Template = { label: string; name: string; min: number; max: number; options: string[] };
+/** max "any" = customers add as many as they like; qty = how many of each one choice. */
+type Template = { label: string; name: string; min: number; max: number | "any"; qty?: number; options: string[] };
 
 const FOOD_TEMPLATES: Template[] = [
   { label: "Protein", name: "Choose your protein", min: 1, max: 1, options: ["Chicken", "Beef", "Fish"] },
-  { label: "Extra meat", name: "Extra protein", min: 0, max: 3, options: ["Chicken", "Beef", "Goat meat"] },
+  { label: "Extra meat", name: "Extra protein", min: 0, max: "any", qty: 5, options: ["Chicken", "Beef", "Goat meat", "Fish"] },
   { label: "Swallow", name: "Choose your swallow", min: 1, max: 1, options: ["Eba", "Pounded yam", "Semo"] },
-  { label: "Sides", name: "Add sides", min: 0, max: 4, options: ["Plantain", "Coleslaw", "Moi moi"] },
-  { label: "Drink", name: "Add a drink", min: 0, max: 2, options: ["Coke", "Fanta", "Water"] },
+  { label: "Sides", name: "Add sides", min: 0, max: "any", qty: 5, options: ["Plantain", "Coleslaw", "Moi moi"] },
+  { label: "Drinks", name: "Add drinks", min: 0, max: "any", qty: 10, options: ["Coke", "Fanta", "Water", "Malt"] },
   { label: "Spice", name: "How spicy?", min: 1, max: 1, options: ["Mild", "Medium", "Hot"] },
 ];
 const SHOP_TEMPLATES: Template[] = [
@@ -21,10 +22,15 @@ const SHOP_TEMPLATES: Template[] = [
   { label: "Weight", name: "Choose weight", min: 1, max: 1, options: ["500g", "1kg", "2kg"] },
   { label: "Pack", name: "Pack size", min: 1, max: 1, options: ["Single", "Pack of 6", "Carton"] },
   { label: "Flavour", name: "Choose flavour", min: 1, max: 1, options: [] },
-  { label: "Add-ons", name: "Add-ons", min: 0, max: 5, options: [] },
+  { label: "Add-ons", name: "Add-ons", min: 0, max: "any", qty: 10, options: [] },
 ];
 
+const QTY_CHOICES = [1, 2, 3, 4, 5, 6, 8, 10, 15, 20];
+
 const capacity = (g: OptionGroup) => Math.max(1, g.options.reduce((n, o) => n + Math.max(1, o.max_qty || 1), 0));
+type Mode = "one" | "upto" | "any";
+/** How a group is set up: pick one, up to N, or any amount (limit = everything on offer). */
+const modeOf = (g: OptionGroup): Mode => (g.max <= 1 ? "one" : g.max >= capacity(g) ? "any" : "upto");
 
 export function groupsProblem(groups: OptionGroup[]): string | null {
   for (const g of groups) {
@@ -60,7 +66,28 @@ interface Props {
       */
 export function OptionGroupsEditor({ groups, onChange, otherProducts = [], isFood = true }: Props) {
   const [copyFrom, setCopyFrom] = useState("");
-  const update = (i: number, patch: Partial<OptionGroup>) => onChange(groups.map((g, idx) => (idx === i ? { ...g, ...patch } : g)));
+  const update = (i: number, patch: Partial<OptionGroup>) =>
+    onChange(
+      groups.map((g, idx) => {
+        if (idx !== i) return g;
+        const next = { ...g, ...patch };
+        // "Any amount" follows the choices: adding a choice or raising its limit raises the group's.
+        if (patch.options && patch.max === undefined && modeOf(g) === "any") next.max = capacity(next);
+        return next;
+      })
+    );
+  const setMode = (i: number, mode: Mode) => {
+    const g = groups[i];
+    if (mode === "one") return update(i, { max: 1, min: Math.min(g.min, 1) });
+    if (mode === "any") {
+      // Let each choice be added several times when switching to "any amount".
+      const options = g.options.map((o) => ({ ...o, max_qty: Math.max(o.max_qty || 1, 5) }));
+      return update(i, { options, max: capacity({ ...g, options }) });
+    }
+    const options = g.options.map((o) => ({ ...o, max_qty: Math.max(o.max_qty || 1, 1) }));
+    const cap = capacity({ ...g, options });
+    return update(i, { options, max: Math.max(2, Math.min(3, cap - 1 || 2)) });
+  };
   const updateOption = (gi: number, oi: number, patch: Partial<GroupOption>) =>
     update(gi, { options: groups[gi].options.map((o, idx) => (idx === oi ? { ...o, ...patch } : o)) });
   const move = (i: number, dir: -1 | 1) => {
@@ -78,8 +105,12 @@ export function OptionGroupsEditor({ groups, onChange, otherProducts = [], isFoo
         id: uid(),
         name: t?.name || "",
         min: t?.min ?? 0,
-        max: t?.max ?? 1,
-        options: (t?.options.length ? t.options : [""]).map((name) => ({ id: uid(), name, price: 0, available: true, max_qty: 1 })),
+        ...(() => {
+          const qty = t?.qty ?? 1;
+          const options = (t?.options.length ? t.options : [""]).map((name) => ({ id: uid(), name, price: 0, available: true, max_qty: qty }));
+          const max = t?.max === "any" ? options.length * qty : t?.max ?? 1;
+          return { max, options };
+        })(),
       },
     ]);
 
@@ -99,6 +130,7 @@ export function OptionGroupsEditor({ groups, onChange, otherProducts = [], isFoo
       {groups.map((g, gi) => {
         const cap = capacity(g);
         const required = g.min > 0;
+        const mode = modeOf(g);
         return (
           <div key={g.id} className="rounded-3xl bg-slate-50 dark:bg-slate-800/60 p-4 flex flex-col gap-3">
             <div className="flex items-center gap-2">
@@ -132,18 +164,38 @@ export function OptionGroupsEditor({ groups, onChange, otherProducts = [], isFoo
                   </button>
                 ))}
               </div>
+              <div className="inline-flex p-1 rounded-2xl bg-white dark:bg-slate-900" role="radiogroup" aria-label="How many can they pick">
+                {([
+                  ["one", "Pick one"],
+                  ["upto", "Up to…"],
+                  ["any", "Any amount"],
+                ] as const).map(([m, text]) => (
+                  <button
+                    key={m}
+                    type="button"
+                    role="radio"
+                    aria-checked={mode === m}
+                    onClick={() => setMode(gi, m)}
+                    className={`px-3 py-1.5 rounded-xl font-semibold cursor-pointer transition-colors ${mode === m ? "bg-[#087F5B] text-white" : "text-slate-500"}`}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
+              {mode === "upto" && (
+                <Stepper label="Up to" value={Math.min(g.max, cap)} min={Math.max(2, g.min)} max={cap} onChange={(v) => update(gi, { max: v })} />
+              )}
               {required && g.max > 1 && (
                 <Stepper label="At least" value={g.min} min={1} max={g.max} onChange={(v) => update(gi, { min: v })} />
               )}
-              <Stepper
-                label={g.max === 1 ? "Pick" : "Up to"}
-                value={Math.min(g.max, cap)}
-                min={Math.max(1, g.min)}
-                max={cap}
-                onChange={(v) => update(gi, { max: v })}
-                suffix={g.max === 1 ? "only" : undefined}
-              />
             </div>
+            <p className="text-[11px] text-slate-500 -mt-1">
+              {mode === "one"
+                ? `Customers ${required ? "must pick" : "can pick"} one.`
+                : mode === "any"
+                  ? `Customers can add as many as they like${required ? ` (at least ${g.min})` : ""}, and more than one of each choice.`
+                  : `Customers can pick up to ${g.max}${required ? ` (at least ${g.min})` : ""}.`}
+            </p>
 
             {/* Choices */}
             <ul className="flex flex-col gap-1.5">
@@ -166,7 +218,7 @@ export function OptionGroupsEditor({ groups, onChange, otherProducts = [], isFoo
                       className="w-16 py-2 pl-1 bg-transparent text-sm outline-none"
                     />
                   </span>
-                  {g.max > 1 && (
+                  {mode !== "one" && (
                     <select
                       value={o.max_qty || 1}
                       onChange={(e) => updateOption(gi, oi, { max_qty: Number(e.target.value) })}
@@ -174,8 +226,8 @@ export function OptionGroupsEditor({ groups, onChange, otherProducts = [], isFoo
                       title="How many of this one choice a customer can add"
                       className="py-2 px-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs outline-none cursor-pointer"
                     >
-                      {[1, 2, 3, 4, 5, 6, 8, 10].map((n) => (
-                        <option key={n} value={n}>{n === 1 ? "×1" : `up to ×${n}`}</option>
+                      {QTY_CHOICES.map((n) => (
+                        <option key={n} value={n}>{n === 1 ? "once" : `up to ×${n}`}</option>
                       ))}
                     </select>
                   )}
@@ -200,7 +252,9 @@ export function OptionGroupsEditor({ groups, onChange, otherProducts = [], isFoo
             </ul>
             <button
               type="button"
-              onClick={() => update(gi, { options: [...g.options, { id: uid(), name: "", price: 0, available: true, max_qty: 1 }] })}
+              onClick={() =>
+                update(gi, { options: [...g.options, { id: uid(), name: "", price: 0, available: true, max_qty: mode === "any" ? 5 : 1 }] })
+              }
               className="self-start px-3 py-2 rounded-xl text-xs font-semibold text-[#087F5B] hover:bg-white dark:hover:bg-slate-900 flex items-center gap-1 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" /> Add choice
