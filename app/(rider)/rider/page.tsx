@@ -76,10 +76,13 @@ export default function RiderHubPage() {
 
   // Ring while a job offer is showing (the offer itself times out after 20s).
   useEffect(() => {
-    if (jobOfferModal) startRing("new-job", 25_000);
-    else stopRing("new-job");
+    if (jobOfferModal && offeredJob) {
+      const words = `New delivery job. You earn ₦${earningsFor(offeredJob).toLocaleString()}.${offeredJob.storeName ? ` Pick up at ${offeredJob.storeName}.` : ""}`;
+      startRing("new-job", 25_000, false, words);
+    } else stopRing("new-job");
     return () => stopRing("new-job");
-  }, [jobOfferModal]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobOfferModal, offeredJob?.id]);
 
   const dismissOffer = () => {
     if (targetJobId) setDismissedJobIds((prev) => [...prev, targetJobId]);

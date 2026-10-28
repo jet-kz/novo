@@ -28,7 +28,12 @@ export function NewOrderAlert() {
     if (arrived.length) {
       setFresh((prev) => [...arrived, ...prev].slice(0, 3));
       // Rings (like a kitchen tablet) until someone taps View or dismisses it.
-      arrived.forEach((o) => startRing(`order-${o.id}`));
+      arrived.forEach((o) => {
+        const count = o.items.reduce((n, it) => n + (it.quantity || 0), 0);
+        const first = (o.customerName || "").trim().split(" ")[0];
+        const words = `New order! ₦${Math.round(o.total).toLocaleString()}, ${count} item${count === 1 ? "" : "s"}${first ? `, from ${first}` : ""}.`;
+        startRing(`order-${o.id}`, 120_000, false, words);
+      });
     }
     // Stop ringing for orders someone already handled (accepted here or on another device).
     const waitingIds = new Set(waiting.map((o) => o.id));

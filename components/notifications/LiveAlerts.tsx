@@ -57,20 +57,20 @@ export function LiveAlerts() {
       const id = d.tag || `${d.title}-${Date.now()}`;
       if (d.kind === "new_order") {
         // The merchant dashboard shows its own ringing banner for new orders.
-        startRing(id);
+        startRing(id, 120_000, false, `${d.title}. ${d.body || ""}`);
         if (!pathname.startsWith("/merchant")) push({ id, title: d.title, body: d.body, url: d.url, ringKey: id, urgent: true });
         return;
       }
       if (d.kind === "job") {
         // The rider app opens the job offer and rings from there.
-        startRing("new-job", 30_000);
+        startRing("new-job", 30_000, false, `${d.title}. ${d.body || ""}`);
         if (!pathname.startsWith("/rider")) push({ id, title: d.title, body: d.body, url: d.url, ringKey: "new-job", urgent: true });
         return;
       }
       // Customers' own order updates are announced by the order watcher below.
       const orderId = typeof d.tag === "string" && d.tag.startsWith("order-") ? d.tag.slice(6) : null;
       if (orderId && orders.some((o) => o.id === orderId && o.customerId === currentUser.id)) return;
-      chime();
+      chime(false, d.body && d.body.length < 140 ? `${d.title}. ${d.body}` : d.title);
       push({ id, title: d.title, body: d.body, url: d.url });
     };
     navigator.serviceWorker.addEventListener("message", onMessage);
@@ -91,7 +91,8 @@ export function LiveAlerts() {
       if (!before || before === o.status) continue;
       const text = CUSTOMER_STATUS_TEXT[o.status];
       if (!text) continue;
-      chime();
+      const code = o.status === "picked_up" && o.deliveryCode ? ` Your delivery code is ${o.deliveryCode.split("").join(" ")}.` : "";
+      chime(false, `${text}.${code}`);
       push({
         id: `order-${o.id}`,
         title: o.storeName || "Your order",

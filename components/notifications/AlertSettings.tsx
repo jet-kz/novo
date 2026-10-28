@@ -1,9 +1,23 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Bell, BellOff, Loader2, Smartphone, Volume2, VolumeX } from "lucide-react";
+import { Bell, BellOff, Loader2, Mic, Music2, Smartphone, Volume2, VolumeX } from "lucide-react";
 import { enablePush, pushState, type PushState } from "@/utils/push";
-import { audioUnlocked, chime, onSoundChange, setSoundEnabled, soundEnabled, startRing, stopRing } from "@/utils/alertSound";
+import {
+  alertStyle,
+  audioUnlocked,
+  chime,
+  onSoundChange,
+  setAlertStyle,
+  setSoundEnabled,
+  soundEnabled,
+  speak,
+  speakable,
+  startRing,
+  stopRing,
+  voiceSupported,
+  type AlertStyle,
+} from "@/utils/alertSound";
 
 const PUSH_TEXT: Record<PushState, string> = {
   granted: "On. You'll get alerts on this device even when Novo is closed.",
@@ -14,16 +28,30 @@ const PUSH_TEXT: Record<PushState, string> = {
 };
 
 /** Notifications + sound controls with a test button. Used on every role's settings screen. */
+/** What the voice says in the preview, per screen. */
+const VOICE_SAMPLE: Record<string, string> = {
+  "new orders": "New order! ₦7,600, 3 items, from Tega.",
+  "new jobs": "New delivery job. You earn ₦850. Pick up at Mama Put Kitchen.",
+  "urgent items": "New store to approve. Mama Put Kitchen is waiting.",
+};
+
 export function AlertSettings({ ringLabel = "new orders and jobs" }: { ringLabel?: string }) {
   const [push, setPush] = useState<PushState | null>(null);
   const [sound, setSound] = useState(true);
+  const [style, setStyle] = useState<AlertStyle>("chime");
+  const [canSpeak, setCanSpeak] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setPush(pushState());
     setSound(soundEnabled());
-    return onSoundChange(() => setSound(soundEnabled()));
+    setStyle(alertStyle());
+    setCanSpeak(voiceSupported());
+    return onSoundChange(() => {
+      setSound(soundEnabled());
+      setStyle(alertStyle());
+    });
   }, []);
 
   const turnOn = async () => {
@@ -38,12 +66,25 @@ export function AlertSettings({ ringLabel = "new orders and jobs" }: { ringLabel
     }
   };
 
+  const sample = VOICE_SAMPLE[ringLabel] || "Your order is on the way. Your delivery code is 4 8 2 1.";
+
+  const pickStyle = (next: AlertStyle) => {
+    setAlertStyle(next);
+    // Let them hear it straight away.
+    if (next === "voice") speak(sample, true);
+    else chime(true, undefined, "chime");
+  };
+
   const test = () => {
-    chime(true);
-    setTimeout(() => {
-      startRing("test", 3600, true);
-      setTimeout(() => stopRing("test"), 3600);
-    }, 900);
+    if (alertStyle() === "voice") {
+      speak(sample, true);
+    } else {
+      chime(true, undefined, "chime");
+      setTimeout(() => {
+        startRing("test", 3600, true, undefined, "chime");
+        setTimeout(() => stopRing("test"), 3600);
+      }, 900);
+    }
     if (push === "granted" && "serviceWorker" in navigator) {
       navigator.serviceWorker.ready
         .then((reg) =>
@@ -91,6 +132,42 @@ export function AlertSettings({ ringLabel = "new orders and jobs" }: { ringLabel
           </button>
         }
       />
+      {sound && (
+        <div className="rounded-2xl bg-slate-50 dark:bg-slate-900/70 p-3.5 flex flex-col gap-2.5">
+          <div>
+            <p className="text-sm font-semibold">Alert style</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {canSpeak ? "Voice reads alerts out loud, like a payment app." : "This browser can't speak, so alerts use the chime."}
+            </p>
+          </div>
+          <div role="radiogroup" aria-label="Alert style" className="grid grid-cols-2 p-1 rounded-2xl bg-white dark:bg-slate-800">
+            {([
+              { id: "chime", label: "Chime", icon: Music2 },
+              { id: "voice", label: "Voice", icon: Mic },
+            ] as const).map((o) => {
+              const Icon = o.icon;
+              const on = style === o.id;
+              const disabled = o.id === "voice" && !canSpeak;
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  disabled={disabled}
+                  onClick={() => pickStyle(o.id)}
+                  className={`h-10 rounded-xl flex items-center justify-center gap-1.5 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                    on ? "bg-[#087F5B] text-white" : "text-slate-500"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" /> {o.label}
+                </button>
+              );
+            })}
+          </div>
+          {style === "voice" && <p className="text-xs text-slate-500 dark:text-slate-400">e.g. “{speakable(sample)}”</p>}
+        </div>
+      )}
       {error && <p role="alert" className="text-sm text-rose-700 bg-rose-50 dark:bg-rose-950/40 rounded-2xl px-4 py-3">{error}</p>}
       <button onClick={test} className="self-start h-10 px-4 rounded-full bg-slate-100 dark:bg-slate-800 text-[13px] font-semibold cursor-pointer">
         Test alert
